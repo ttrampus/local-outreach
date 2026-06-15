@@ -1,0 +1,111 @@
+// Local-business outreach pipeline — data model.
+// SQLite has no native enums; "enum-like" fields are documented strings.
+// Run migrations with: npm run db:migrate
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// A discovered local business, scored into an outreach tier.
+model Lead {
+  id                  String   @id @default(cuid())
+  placeId             String   @unique // Google Places place_id (or source-prefixed id)
+  source              String   @default("google") // which LeadSource produced this
+
+  name                String
+  address             String?
+  phone               String?
+  website             String?
+  rating              Float?
+  reviewCount         Int      @default(0)
+  photoCount          Int      @default(0)
+
+  // Qualification ---------------------------------------------------------
+  tier                String   @default("COLD") // HOT | WARM | COLD
+  score               Int      @default(0)
+  qualificationReason String?
+  signals             String?  // JSON: raw signal map used to compute the tier
+
+  // Artifacts -------------------------------------------------------------
+  previewImagePath    String?  // /previews/{placeId}.png once generated
+  previewHtmlPath     String?
+  deployedUrl         String?
+
+  // Funnel ----------------------------------------------------------------
+  // discovered -> preview_ready -> drafted -> approved -> sent -> deployed
+  status              String   @default("discovered")
+
+  searchRunId         String?
+  searchRun           SearchRun? @relation(fields: [searchRunId], references: [id])
+  outreach            Outreach[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([tier])
+  @@index([status])
+}
+
+/// A drafted outreach message awaiting manual review + send. Never auto-sent.
+model Outreach {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  channel   String   @default("email") // email | whatsapp | phone | manual
+  contact   String?  // resolved contact handle (email/phone), if any
+  subject   String?
+  body      String
+
+  status    String   @default("draft") // draft | approved | sent
+  sentAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([status])
+}
+
+/// A discovery run, so past searches and their counts are visible.
+model SearchRun {
+  id          String   @id @default(cuid())
+  query       String
+  location    String
+  status      String   @default("running") // running | done | error
+  error       String?
+
+  totalFound  Int      @default(0) // raw places returned by search
+  newLeads    Int      @default(0) // places not previously in DB
+  cachedHits  Int      @default(0) // place details served from cache
+  detailCalls Int      @default(0) // Place Details API calls actually billed
+
+  leads       Lead[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// Raw API response cache, keyed by placeId. Never re-fetch a cached place.
+model PlaceCache {
+  placeId   String   @id
+  source    String   @default("google")
+  raw       String   // raw JSON response for this place
+  createdAt DateTime @default(now())
+}
+
+/// Per-SKU API call counter (one row per SKU per UTC day) for cost tracking.
+model ApiUsage {
+  id    String @id @default(cuid())
+  sku   String // TEXT_SEARCH | PLACE_DETAILS
+  day   String // YYYY-MM-DD (UTC)
+  count Int    @default(0)
+
+  @@unique([sku, day])
+  @@index([sku])
+}
