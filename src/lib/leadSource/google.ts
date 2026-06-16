@@ -20,6 +20,9 @@ const BASE = "https://places.googleapis.com/v1";
 // Tight masks. Search only needs ids to dedupe + drive Details; Details requests
 // exactly what the qualifier and outreach consume — nothing more.
 const SEARCH_FIELD_MASK = "places.id,places.displayName,places.formattedAddress,nextPageToken";
+// We already bill at the Enterprise tier (because of `reviews`), so the extra
+// qualification fields below — priceLevel, regularOpeningHours, primaryType,
+// review publishTime — add NO cost: they're all within the tier we already pay.
 const DETAILS_FIELD_MASK = [
   "id",
   "displayName",
@@ -32,6 +35,10 @@ const DETAILS_FIELD_MASK = [
   "businessStatus",
   "regularOpeningHours",
   "types",
+  "primaryType",
+  "primaryTypeDisplayName",
+  "priceLevel",
+  "googleMapsUri",
   "reviews",
 ].join(",");
 
@@ -90,7 +97,16 @@ interface GooglePlace {
   photos?: unknown[];
   businessStatus?: string;
   types?: string[];
-  reviews?: { text?: { text?: string }; originalText?: { text?: string } }[];
+  primaryType?: string;
+  primaryTypeDisplayName?: { text?: string };
+  priceLevel?: string;
+  googleMapsUri?: string;
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
+  reviews?: {
+    text?: { text?: string };
+    originalText?: { text?: string };
+    publishTime?: string;
+  }[];
 }
 
 export const googleSource: LeadSource = {
@@ -129,11 +145,22 @@ export const googleSource: LeadSource = {
       DETAILS_FIELD_MASK,
     )) as GooglePlace;
 
-    const reviewSnippets = (p.reviews ?? [])
+    const reviews = p.reviews ?? [];
+    const reviewSnippets = reviews
       .map((r) => r.text?.text ?? r.originalText?.text ?? "")
       .map((t) => t.trim())
       .filter(Boolean)
       .slice(0, 3);
+
+    // Most recent review timestamp → recency/activity signal for qualification.
+    const reviewTimes = reviews
+      .map((r) => r.publishTime)
+      .filter((t): t is string => Boolean(t))
+      .map((t) => Date.parse(t))
+      .filter((n) => !Number.isNaN(n));
+    const lastReviewAt = reviewTimes.length
+      ? new Date(Math.max(...reviewTimes)).toISOString()
+      : undefined;
 
     const details: NormalizedPlaceDetails = {
       placeId: p.id ?? placeId,
@@ -147,6 +174,12 @@ export const googleSource: LeadSource = {
       businessStatus: p.businessStatus,
       reviewSnippets,
       categories: p.types ?? [],
+      primaryType: p.primaryType,
+      primaryTypeDisplayName: p.primaryTypeDisplayName?.text,
+      priceLevel: p.priceLevel,
+      hasHours: Boolean(p.regularOpeningHours?.weekdayDescriptions?.length),
+      lastReviewAt,
+      googleMapsUri: p.googleMapsUri,
     };
     return details;
   },

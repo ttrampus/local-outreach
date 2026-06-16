@@ -25,6 +25,20 @@ export interface NormalizedPlaceDetails {
   reviewSnippets: string[];
   /** Free-form category/type hints, used to pick preview styling later. */
   categories: string[];
+
+  // ── Enrichment for qualification (all optional; sources fill what they have) ──
+  /** The single most specific Google place type, e.g. "hair_salon". */
+  primaryType?: string;
+  /** Human-readable primary type, e.g. "Hair Salon". */
+  primaryTypeDisplayName?: string;
+  /** Price level enum, e.g. "PRICE_LEVEL_MODERATE" — a budget/ability-to-pay proxy. */
+  priceLevel?: string;
+  /** True if the listing publishes opening hours (a maintained, active listing). */
+  hasHours?: boolean;
+  /** ISO timestamp of the most recent review, for recency/activity scoring. */
+  lastReviewAt?: string;
+  /** Canonical Google Maps URL, handy for manual verification. */
+  googleMapsUri?: string;
 }
 
 /**

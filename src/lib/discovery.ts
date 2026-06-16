@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { getLeadSource } from "@/lib/leadSource";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { recordCall, dailyLimitReached, monthlyLimitReached } from "@/lib/usage";
-import { analyzeSite, qualify } from "@/lib/qualify";
+import { analyzeSite, qualify, classifyWebPresence, presenceNeedsFetch } from "@/lib/qualify";
 
 const MAX_PAGES = 3; // Text Search returns up to ~20/page; 3 pages ≈ 60 places.
 
@@ -109,8 +109,13 @@ export async function runDiscovery(
           });
         }
 
-        // Qualify. Analyze the existing site only if there is one.
-        const site = details.website ? await analyzeSite(details.website) : undefined;
+        // Qualify. Only fetch the page when it's the business's OWN site — no point
+        // fetching a Facebook/Booksy/etc. profile (those are scored by host alone).
+        const presence = classifyWebPresence(details.website).presence;
+        const site =
+          details.website && presenceNeedsFetch(presence)
+            ? await analyzeSite(details.website)
+            : undefined;
         const q = qualify(details, site);
 
         await prisma.lead.create({
@@ -197,7 +202,11 @@ export async function requalifyAll(): Promise<{
       continue;
     }
 
-    const siteSignals = details.website ? await analyzeSite(details.website) : undefined;
+    const presence = classifyWebPresence(details.website).presence;
+    const siteSignals =
+      details.website && presenceNeedsFetch(presence)
+        ? await analyzeSite(details.website)
+        : undefined;
     const q = qualify(details, siteSignals);
 
     await prisma.lead.update({
