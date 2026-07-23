@@ -13,6 +13,7 @@ interface OutreachItem {
   status: string;
   sentAt: string | null;
   updatedAt: string;
+  followups?: { id: string; step: number; subject: string | null; body: string }[];
   lead: {
     id: string;
     name: string;
@@ -119,8 +120,16 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
-      if (action === "save") setSavedAt(Date.now());
-      else onChanged();
+      if (action === "save") {
+        setSavedAt(Date.now());
+      } else {
+        // Manual send path: no SMTP configured, so open a prefilled Gmail compose
+        // tab for the operator to actually send from (with the preview attached).
+        if (action === "send" && data.delivery?.method === "manual" && data.delivery?.composeUrl) {
+          window.open(data.delivery.composeUrl, "_blank", "noopener");
+        }
+        onChanged();
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -217,7 +226,7 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
                 {confirmSend ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="text-[11px] text-[var(--muted)]">
-                      You’re sending this yourself — confirm?
+                      Send now? (delivers if SMTP is set, else opens Gmail)
                     </span>
                     <button
                       onClick={() => {
@@ -227,7 +236,7 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
                       disabled={busy !== null}
                       className="px-3 py-1.5 rounded-lg text-sm bg-[#16a34a] text-white disabled:opacity-40"
                     >
-                      Mark as sent
+                      {busy === "send" ? "Sending…" : "Send"}
                     </button>
                     <button
                       onClick={() => setConfirmSend(false)}
@@ -253,7 +262,57 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
           </div>
         )}
         {error && <p className="text-sm text-[var(--hot)]">{error}</p>}
+
+        {item.followups && item.followups.length > 0 && (
+          <details className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)]/40">
+            <summary className="cursor-pointer select-none px-3 py-2 text-[13px] text-[var(--muted)]">
+              {item.followups.length} follow-up{item.followups.length === 1 ? "" : "s"} ready —
+              send if there&apos;s no reply
+            </summary>
+            <div className="px-3 pb-3 space-y-3">
+              {item.followups.map((f) => (
+                <Followup key={f.id} index={f.step} subject={f.subject} body={f.body} />
+              ))}
+            </div>
+          </details>
+        )}
       </div>
+    </div>
+  );
+}
+
+function Followup({
+  index,
+  subject,
+  body,
+}: {
+  index: number;
+  subject: string | null;
+  body: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const text = subject ? `${subject}\n\n${body}` : body;
+  return (
+    <div className="rounded-md border border-[var(--border)] bg-[var(--panel)] p-3">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-[11px] font-medium text-[var(--muted)]">Follow-up {index}</span>
+        <button
+          onClick={() => {
+            navigator.clipboard?.writeText(text).then(
+              () => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              },
+              () => {},
+            );
+          }}
+          className="ml-auto text-[11px] px-2 py-0.5 rounded border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"
+        >
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+      </div>
+      {subject && <div className="text-[12px] text-[var(--muted)] mb-1">{subject}</div>}
+      <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-[var(--text)]">{body}</p>
     </div>
   );
 }

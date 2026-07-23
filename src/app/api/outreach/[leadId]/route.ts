@@ -9,6 +9,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCachedDetails } from "@/lib/places";
 import { buildDraft } from "@/lib/outreach/draft";
+import { generateOutreachWithClaude } from "@/lib/outreach/claude";
+import { deliverOutreach } from "@/lib/outreach/send";
+import { env } from "@/lib/env";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 
 export const runtime = "nodejs";
@@ -41,27 +44,43 @@ export async function POST(
       categories: [],
     };
 
-  const draft = buildDraft(lead, details, lead.searchRun?.query ?? "");
+  // Prefer a Claude-drafted message (native language, references the live preview
+  // link); fall back to the deterministic template when no key / refusal / error.
+  const previewUrl = `${env.appBaseUrl}/p/${lead.id}`;
+  const draft =
+    (await generateOutreachWithClaude(lead, details, previewUrl)) ??
+    buildDraft(lead, details, lead.searchRun?.query ?? "");
 
-  // Replace any existing *unsent* draft; keep sent history intact.
-  await prisma.outreach.deleteMany({ where: { leadId: lead.id, status: "draft" } });
-  const outreach = await prisma.outreach.create({
-    data: {
-      leadId: lead.id,
-      channel: draft.channel,
-      contact: draft.contact,
-      subject: draft.subject,
-      body: draft.body,
-      status: "draft",
-    },
+  // Replace any existing *unsent* messages (the editable initial draft plus queued
+  // follow-ups); sent history is kept intact. Step 0 is the editable/sendable draft;
+  // steps 1+ are queued follow-ups, stored as reference for when there's no reply.
+  await prisma.outreach.deleteMany({
+    where: { leadId: lead.id, status: { in: ["draft", "approved", "queued"] } },
   });
+  const created = [];
+  for (const m of draft.messages) {
+    created.push(
+      await prisma.outreach.create({
+        data: {
+          leadId: lead.id,
+          channel: draft.channel,
+          contact: draft.contact,
+          subject: m.subject,
+          body: m.body,
+          step: m.step,
+          status: m.step === 0 ? "draft" : "queued",
+        },
+      }),
+    );
+  }
+  const primary = created.find((c) => c.step === 0) ?? created[0];
 
   // Advance funnel to "drafted" unless already further along.
   if (["discovered", "preview_ready"].includes(lead.status)) {
     await prisma.lead.update({ where: { id: lead.id }, data: { status: "drafted" } });
   }
 
-  return NextResponse.json({ outreach });
+  return NextResponse.json({ outreach: primary, sequence: created });
 }
 
 const PatchSchema = z.object({
@@ -112,22 +131,36 @@ export async function PATCH(
   if (channel !== undefined) data.channel = channel;
   if (contact !== undefined) data.contact = contact;
 
-  let leadStatus: string | null = null;
-  if (action === "approve") {
-    data.status = "approved";
-    leadStatus = "approved";
-  } else if (action === "unapprove") {
-    data.status = "draft";
-  } else if (action === "send") {
+  // Sending is special: persist any final edits first, then hand off to the shared
+  // delivery path (real SMTP send when configured, else a Gmail compose link),
+  // which marks it sent, advances the lead, and schedules the first follow-up.
+  if (action === "send") {
     if (current.status !== "approved") {
       return NextResponse.json(
         { error: "Approve the message before sending." },
         { status: 409 },
       );
     }
-    data.status = "sent";
-    data.sentAt = new Date();
-    leadStatus = "sent";
+    if (Object.keys(data).length) {
+      await prisma.outreach.update({ where: { id: current.id }, data });
+    }
+    const result = await deliverOutreach(current.id);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: `Send failed: ${result.error ?? "unknown error"}` },
+        { status: 502 },
+      );
+    }
+    const outreach = await prisma.outreach.findUnique({ where: { id: current.id } });
+    return NextResponse.json({ outreach, delivery: result });
+  }
+
+  let leadStatus: string | null = null;
+  if (action === "approve") {
+    data.status = "approved";
+    leadStatus = "approved";
+  } else if (action === "unapprove") {
+    data.status = "draft";
   }
 
   const outreach = await prisma.outreach.update({ where: { id: current.id }, data });

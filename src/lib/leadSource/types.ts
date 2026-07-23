@@ -19,6 +19,9 @@ export interface NormalizedPlaceDetails {
   rating?: number;
   reviewCount: number;
   photoCount: number;
+  /** Google Place Photo resource names (e.g. "places/X/photos/Y"), if the source
+   * provides them. Fetched lazily into real images only when a preview is built. */
+  photoRefs?: string[];
   /** "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | undefined */
   businessStatus?: string;
   /** A few representative review snippets, used to personalize previews/outreach. */
@@ -35,10 +38,16 @@ export interface NormalizedPlaceDetails {
   priceLevel?: string;
   /** True if the listing publishes opening hours (a maintained, active listing). */
   hasHours?: boolean;
+  /** Localized weekday opening-hours lines, e.g. ["Monday: 9 AM–5 PM", …]. Real,
+   * factual content for the preview's contact section — far better than a guess. */
+  openingHours?: string[];
   /** ISO timestamp of the most recent review, for recency/activity scoring. */
   lastReviewAt?: string;
   /** Canonical Google Maps URL, handy for manual verification. */
   googleMapsUri?: string;
+  /** Geographic coordinates, used to render a real static map of the location. */
+  latitude?: number;
+  longitude?: number;
 }
 
 /**
@@ -62,4 +71,4 @@ export interface LeadSource {
 }
 
 /** Cost-center SKUs we track per call. */
-export type ApiSku = "TEXT_SEARCH" | "PLACE_DETAILS";
+export type ApiSku = "TEXT_SEARCH" | "PLACE_DETAILS" | "PLACE_PHOTOS" | "STATIC_MAP";

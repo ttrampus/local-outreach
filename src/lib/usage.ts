@@ -41,11 +41,15 @@ export async function callsThisMonth(sku: ApiSku): Promise<number> {
 const DAILY_CEILING: Record<ApiSku, number> = {
   TEXT_SEARCH: env.maxSearchPerDay,
   PLACE_DETAILS: env.maxDetailsPerDay,
+  PLACE_PHOTOS: env.maxPhotosPerDay,
+  STATIC_MAP: env.maxStaticMapsPerDay,
 };
 
 const MONTHLY_CEILING: Record<ApiSku, number> = {
   TEXT_SEARCH: env.maxSearchPerMonth,
   PLACE_DETAILS: env.maxDetailsPerMonth,
+  PLACE_PHOTOS: env.maxPhotosPerMonth,
+  STATIC_MAP: env.maxStaticMapsPerMonth,
 };
 
 /** True when today's calls for this SKU are at/over the configured daily stop. */
@@ -83,10 +87,12 @@ export async function usageSummary(): Promise<UsageSummary[]> {
     monthBySku.set(r.sku, (monthBySku.get(r.sku) ?? 0) + r.count);
   }
 
-  const skus: ApiSku[] = ["TEXT_SEARCH", "PLACE_DETAILS"];
+  const skus: ApiSku[] = ["TEXT_SEARCH", "PLACE_DETAILS", "PLACE_PHOTOS", "STATIC_MAP"];
   const freeTier: Record<ApiSku, number> = {
     TEXT_SEARCH: env.freeTierTextSearchPerMonth,
     PLACE_DETAILS: env.freeTierPlaceDetailsPerMonth,
+    PLACE_PHOTOS: env.freeTierPlacePhotosPerMonth,
+    STATIC_MAP: env.freeTierStaticMapsPerMonth,
   };
 
   const result: UsageSummary[] = [];

@@ -15,6 +15,7 @@
 // weakness (it's often a network/DNS/IPv6/bot-block issue on our side).
 import { env } from "@/lib/env";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
+import { discoverEmail } from "@/lib/email/discover";
 
 export type Tier = "HOT" | "WARM" | "COLD";
 
@@ -42,6 +43,9 @@ export interface SiteSignals {
   tinyPage: boolean; // suspiciously small HTML payload
   freeHost: boolean; // wix/wordpress.com/etc subdomain
   flash: boolean; // Flash / <embed swf> references
+  /** A plausible contact email scraped from the page (mailto: or inline), if any —
+   *  unlocks a safe, scalable outreach channel without buying anything. */
+  email: string | null;
 }
 
 export interface Qualification {
@@ -262,6 +266,7 @@ export async function analyzeSite(website: string): Promise<SiteSignals> {
     tinyPage: false,
     freeHost: false,
     flash: false,
+    email: null,
   };
 
   const { presence } = classifyWebPresence(website);
@@ -336,6 +341,11 @@ export async function analyzeSite(website: string): Promise<SiteSignals> {
       base.copyrightYear = Math.max(...years);
       base.oldCopyright = new Date().getFullYear() - base.copyrightYear >= STALE_YEARS;
     }
+
+    // Find a contact email — homepage first, then a short contact-page crawl with
+    // obfuscation decoding. This is the only scalable outreach channel, so it's
+    // worth a couple of extra requests when the homepage doesn't surface one.
+    base.email = await discoverEmail(website, html);
 
     return base;
   } catch (err) {

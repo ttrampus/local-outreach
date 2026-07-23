@@ -14,6 +14,8 @@ interface Usage {
 const LABELS: Record<string, string> = {
   TEXT_SEARCH: "Text Search",
   PLACE_DETAILS: "Place Details",
+  PLACE_PHOTOS: "Place Photos",
+  STATIC_MAP: "Static Map",
 };
 
 export function UsageBar({ refreshKey = 0 }: { refreshKey?: number }) {

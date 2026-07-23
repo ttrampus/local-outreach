@@ -125,6 +125,7 @@ export async function runDiscovery(
             name: details.name,
             address: details.address,
             phone: details.phone,
+            email: site?.email ?? null,
             website: details.website,
             rating: details.rating ?? null,
             reviewCount: details.reviewCount,
@@ -164,6 +165,21 @@ export async function runDiscovery(
         error: (err as Error).message.slice(0, 500),
       },
     });
+  }
+}
+
+/**
+ * Run a list of pre-created SearchRuns one after another (NOT in parallel). A
+ * sweep fans one category across ~20 regions; running them sequentially keeps the
+ * per-SKU daily/monthly cost ceilings tight (parallel runs race the read-then-act
+ * cap check and can overshoot). Each runDiscovery swallows its own errors, so one
+ * bad region never aborts the rest of the sweep.
+ */
+export async function runDiscoveryBatch(
+  runs: { runId: string; query: string; location: string }[],
+): Promise<void> {
+  for (const r of runs) {
+    await runDiscovery(r.runId, r.query, r.location);
   }
 }
 
@@ -216,6 +232,7 @@ export async function requalifyAll(): Promise<{
         score: q.score,
         qualificationReason: q.reason,
         signals: JSON.stringify(q.signals),
+        email: siteSignals?.email ?? undefined,
       },
     });
     rescored += 1;
@@ -223,4 +240,74 @@ export async function requalifyAll(): Promise<{
   }
 
   return { total: leads.length, rescored, changedTier, skippedNoCache };
+}
+
+export interface RefreshResult {
+  status: "ok" | "capped" | "error";
+  message?: string;
+  photoRefs?: number;
+}
+
+/**
+ * Force a fresh Place Details fetch for ONE lead (overwriting its cache), then
+ * re-qualify it. Use this to backfill leads cached before a field existed —
+ * notably `photoRefs`, so a regenerated preview can pull real photos. Costs one
+ * PLACE_DETAILS call and respects the daily/monthly cost stops.
+ */
+export async function refreshLeadDetails(leadId: string): Promise<RefreshResult> {
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return { status: "error", message: "Lead not found." };
+
+  const source = getLeadSource();
+  const billable = source.name !== "mock";
+
+  if (billable && (await monthlyLimitReached("PLACE_DETAILS"))) {
+    return { status: "capped", message: "Monthly Place Details free-tier guard reached." };
+  }
+  if (billable && (await dailyLimitReached("PLACE_DETAILS"))) {
+    return { status: "capped", message: "Daily Place Details limit reached." };
+  }
+
+  let details: NormalizedPlaceDetails;
+  try {
+    details = await source.details(lead.placeId);
+  } catch (err) {
+    return { status: "error", message: (err as Error).message.slice(0, 200) };
+  }
+  if (billable) await recordCall("PLACE_DETAILS");
+
+  // Overwrite the cached snapshot — it now carries photoRefs and fresh fields.
+  await prisma.placeCache.upsert({
+    where: { placeId: lead.placeId },
+    update: { raw: JSON.stringify(details), source: source.name },
+    create: { placeId: lead.placeId, source: source.name, raw: JSON.stringify(details) },
+  });
+
+  // Re-qualify from the fresh details and refresh the flat Lead fields.
+  const presence = classifyWebPresence(details.website).presence;
+  const site =
+    details.website && presenceNeedsFetch(presence) ? await analyzeSite(details.website) : undefined;
+  const q = qualify(details, site);
+
+  await prisma.lead.update({
+    where: { id: lead.id },
+    data: {
+      name: details.name,
+      address: details.address ?? null,
+      phone: details.phone ?? null,
+      // Only set when freshly found, so a transient site failure can't wipe a
+      // previously-extracted email (undefined = "leave as-is" in Prisma).
+      email: site?.email ?? undefined,
+      website: details.website ?? null,
+      rating: details.rating ?? null,
+      reviewCount: details.reviewCount,
+      photoCount: details.photoCount,
+      tier: q.tier,
+      score: q.score,
+      qualificationReason: q.reason,
+      signals: JSON.stringify(q.signals),
+    },
+  });
+
+  return { status: "ok", photoRefs: details.photoRefs?.length ?? 0 };
 }

@@ -20,6 +20,7 @@ model Lead {
   name                String
   address             String?
   phone               String?
+  email               String?  // contact email extracted from the business's own site/social
   website             String?
   rating              Float?
   reviewCount         Int      @default(0)
@@ -34,15 +35,30 @@ model Lead {
   // Artifacts -------------------------------------------------------------
   previewImagePath    String?  // /previews/{placeId}.png once generated
   previewHtmlPath     String?
-  deployedUrl         String?
+  deployedUrl         String?  // the live hosting URL (e.g. *.vercel.app) after deploy
+  customDomain        String?  // a real domain attached to the deployed site, when configured
 
   // Funnel ----------------------------------------------------------------
-  // discovered -> preview_ready -> drafted -> approved -> sent -> deployed
+  // discovered -> preview_ready -> drafted -> approved -> sent -> interested
+  //   -> customer -> deployed   (or -> lost at any point)
   status              String   @default("discovered")
+
+  // Engagement (public /p/ preview) ---------------------------------------
+  previewViews        Int      @default(0)  // times the public preview was opened
+  firstViewedAt       DateTime?
+  lastViewedAt        DateTime?
+  interestedAt        DateTime?             // prospect clicked "I'm interested" on the demo
+  repliedAt           DateTime?             // operator marked the prospect replied — pauses the follow-up sequence
+
+  // Billing (Stripe) ------------------------------------------------------
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   String?              // active | trialing | past_due | canceled
 
   searchRunId         String?
   searchRun           SearchRun? @relation(fields: [searchRunId], references: [id])
   outreach            Outreach[]
+  siteMessages        SiteMessage[]
 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -62,7 +78,13 @@ model Outreach {
   subject   String?
   body      String
 
-  status    String   @default("draft") // draft | approved | sent
+  // 0 = initial message; 1..n = follow-ups in the sequence (sent later if no reply).
+  step      Int      @default(0)
+
+  status    String   @default("draft") // draft | approved | queued | sent | skipped
+  // When a queued follow-up becomes due to send. Set when the prior step is sent;
+  // the follow-up "due" queue surfaces queued rows whose scheduledAt has passed.
+  scheduledAt DateTime?
   sentAt    DateTime?
 
   createdAt DateTime @default(now())
@@ -97,6 +119,25 @@ model PlaceCache {
   source    String   @default("google")
   raw       String   // raw JSON response for this place
   createdAt DateTime @default(now())
+}
+
+/// A message submitted through the contact form on a deployed customer site.
+/// The deployed HTML is static, so its form posts back to THIS app; each submission
+/// is stored here and (best-effort) emailed to the site owner.
+model SiteMessage {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  name      String?
+  email     String?
+  phone     String?
+  message   String
+
+  notified  Boolean  @default(false) // whether we managed to email the owner
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
 }
 
 /// Per-SKU API call counter (one row per SKU per UTC day) for cost tracking.

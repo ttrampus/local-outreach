@@ -37,10 +37,14 @@ yarn-error.log*
 # database
 *.db
 *.db-journal
+*.db.bak-*
 
-# generated artifacts (previews + stored html)
+# generated artifacts (previews, stored html, cached place photos)
 /public/previews/
-/data/previews/
+/data/
+
+# claude code (local settings + worktrees)
+/.claude/
 
 # vercel
 .vercel

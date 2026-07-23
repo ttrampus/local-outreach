@@ -32,13 +32,18 @@ export async function renderPreview(
     const page = await browser.newPage({
       viewport: { width: 1280, height: 820 },
       deviceScaleFactor: 2, // crisp retina screenshot
+      // The template's entrance/scroll animations are gated behind
+      // `prefers-reduced-motion: no-preference`, so emulating "reduce" here makes
+      // the screenshot capture the settled end-state (full hero, nothing mid-fade)
+      // while the live preview iframe — a normal browser — still animates.
+      reducedMotion: "reduce",
     });
     // Tolerate slow font CDNs: load, then wait briefly for webfonts.
     await page.setContent(html, { waitUntil: "load", timeout: 15_000 });
     await page
       .evaluate(() => (document as Document).fonts.ready)
       .catch(() => {});
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(700);
 
     // Hero screenshot = the above-the-fold viewport (nav + hero band).
     await page.screenshot({ path: imgFsPath, fullPage: false });

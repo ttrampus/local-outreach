@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SWEEP_REGIONS } from "@/lib/regions";
+
+const SLOVENIA_COUNT = SWEEP_REGIONS.slovenia.length;
 
 interface Pair {
   query: string;
@@ -86,6 +89,33 @@ export function SearchLauncher() {
     }
   }
 
+  // Fan the first row's category across every Slovenian region (location ignored).
+  async function launchSweep() {
+    setError(null);
+    const query = pairs[0]?.query.trim();
+    if (!query) {
+      setError("Enter a category in the first row to sweep all of Slovenia.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, sweep: "slovenia" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Request failed (${res.status})`);
+      }
+      setRefresh((n) => n + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Form */}
@@ -125,14 +155,29 @@ export function SearchLauncher() {
           >
             + Add another pair
           </button>
-          <button
-            onClick={launch}
-            disabled={submitting}
-            className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          >
-            {submitting ? "Launching…" : "Launch discovery"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={launchSweep}
+              disabled={submitting}
+              title={`Runs the first row's category across all ${SLOVENIA_COUNT} Slovenian regions (location ignored).`}
+              className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--text)] text-sm font-medium hover:border-[var(--accent)] disabled:opacity-50"
+            >
+              🇸🇮 Sweep all Slovenia ({SLOVENIA_COUNT})
+            </button>
+            <button
+              onClick={launch}
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            >
+              {submitting ? "Launching…" : "Launch discovery"}
+            </button>
+          </div>
         </div>
+        <p className="mt-2 text-[11px] text-[var(--muted)]">
+          Sweep fans the first row&apos;s category across {SLOVENIA_COUNT} regions, then stops
+          fetching new businesses once your daily/monthly cost cap is reached — rerun on
+          later days to continue where it left off.
+        </p>
         {error && <p className="mt-3 text-sm text-[var(--hot)]">{error}</p>}
       </div>
 

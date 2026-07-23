@@ -6,11 +6,33 @@ import type { Lead } from "@/generated/prisma/client";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme } from "@/lib/preview/theme";
 
-export interface DraftResult {
-  channel: string;
-  contact: string | null;
+/** One message in an outreach sequence. step 0 = initial; 1.. = follow-ups. */
+export interface OutreachMessage {
+  step: number;
   subject: string;
   body: string;
+}
+
+/** A full outreach sequence for one lead: a channel/contact + ordered messages. */
+export interface OutreachDraft {
+  channel: string;
+  contact: string | null;
+  messages: OutreachMessage[];
+}
+
+/**
+ * Decide the first-touch channel. We deliberately avoid defaulting to WhatsApp:
+ * cold WhatsApp messaging breaches WhatsApp Business policy and risks a ban. Prefer
+ * a real email when we extracted one, else a phone call; WhatsApp is only sensible
+ * once the prospect has replied (the operator can switch it then).
+ */
+export function pickChannel(lead: Pick<Lead, "email" | "phone">): {
+  channel: string;
+  contact: string | null;
+} {
+  if (lead.email) return { channel: "email", contact: lead.email };
+  if (lead.phone) return { channel: "phone", contact: lead.phone };
+  return { channel: "manual", contact: null };
 }
 
 const MONTHLY_PRICE = "€50/month";
@@ -57,17 +79,14 @@ export function buildDraft(
   lead: Lead,
   details: NormalizedPlaceDetails,
   searchHint = "",
-): DraftResult {
+): OutreachDraft {
   const name = lead.name;
   const detail = personalDetail(details, searchHint);
-  const phone = lead.phone ?? null;
-  // We get phone (not email) from Places, so default to a messaging channel when
-  // a number exists; the operator can change channel/contact before sending.
-  const channel = phone ? "whatsapp" : "email";
+  const { channel, contact } = pickChannel(lead);
 
   const subject = `A quick website idea for ${name}`;
 
-  const body = `Hi ${name} team,
+  const initial = `Hi ${name} team,
 
 I came across ${name}${detail}
 
@@ -80,5 +99,32 @@ Happy to adjust the design to match your style. Would it be worth a quick look?
 Best,
 [Your name]`;
 
-  return { channel, contact: phone, subject, body };
+  // Most replies to cold outreach come from a follow-up, not the first message.
+  const followup1 = `Hi ${name} team,
+
+Just following up on the website preview I sent — did you get a chance to take a look? ${previewLine(lead)}
+
+No pressure at all. If a detail feels off, tell me and I'll adjust it.
+
+Best,
+[Your name]`;
+
+  const followup2 = `Hi ${name} team,
+
+I'll keep this short — I'll be taking the demo site down at the end of the week to free it up. If you'd like me to keep it and put it live (${MONTHLY_PRICE}, cancel anytime), just say the word and it's done.
+
+Either way, thanks for your time.
+
+Best,
+[Your name]`;
+
+  return {
+    channel,
+    contact,
+    messages: [
+      { step: 0, subject, body: initial },
+      { step: 1, subject: `Re: ${subject}`, body: followup1 },
+      { step: 2, subject: `Re: ${subject}`, body: followup2 },
+    ],
+  };
 }
