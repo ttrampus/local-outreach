@@ -62,7 +62,7 @@ async function loadContext(leadId: string) {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
   const { leadId } = await params;
@@ -77,6 +77,18 @@ export async function GET(
     Boolean(mapUri),
     lead.previewVariant ?? 0,
   );
+
+  // ?part=system / ?part=user return one half, bare and banner-free.
+  //
+  // The system half is identical for every business, so it belongs in a chat
+  // Project's custom instructions — set once, then only the per-business brief
+  // gets pasted each time, which is roughly half the text.
+  const part = req.nextUrl.searchParams.get("part");
+  if (part === "system" || part === "user") {
+    return new NextResponse(part === "system" ? system : user, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
 
   // Plain text, not JSON: this is meant to be copied straight out of the terminal
   // or browser into a chat box, and JSON escaping would make that miserable.

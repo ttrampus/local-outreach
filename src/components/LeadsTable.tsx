@@ -327,19 +327,34 @@ function ManualDesign({
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  async function copyPromptAndOpen() {
+  /**
+   * Copy one of the prompt forms to the clipboard.
+   *
+   * `full` also opens a chat tab. It reuses the browser's own session, so you stay
+   * signed in — nothing here touches the chat page itself beyond opening it.
+   */
+  async function copyPrompt(part: "full" | "user" | "system", openTab = false) {
     setErr(null);
     setNote(null);
     try {
-      const res = await fetch(`/api/preview/${lead.id}/manual`);
+      const qs = part === "full" ? "" : `?part=${part}`;
+      const res = await fetch(`/api/preview/${lead.id}/manual${qs}`);
       if (!res.ok) throw new Error(`Could not build the prompt (${res.status})`);
-      const text = await res.text();
-      // The response is a copy-paste document with instruction banners; the model
-      // only needs the two prompt sections, so drop the trailing "what to do next".
-      const brief = text.split("===== AFTER YOU GET THE HTML =====")[0].trim();
-      await navigator.clipboard.writeText(brief);
-      window.open("https://claude.ai/new", "_blank", "noopener");
-      setNote("Prompt copied. Paste it in the new tab, then paste the HTML back below.");
+      let text = await res.text();
+      if (part === "full") {
+        // The full response is a copy-paste document with instruction banners; the
+        // model only needs the prompt sections, so drop the trailing "what next".
+        text = text.split("===== AFTER YOU GET THE HTML =====")[0].trim();
+      }
+      await navigator.clipboard.writeText(text);
+      if (openTab) window.open("https://claude.ai/new", "_blank", "noopener");
+      setNote(
+        part === "system"
+          ? "System prompt copied — paste it into your Project's instructions once."
+          : part === "user"
+            ? "Business brief copied. Paste it into your Project chat."
+            : "Prompt copied. Paste it in the new tab, then paste the HTML back below.",
+      );
     } catch (e) {
       setErr((e as Error).message);
     }
@@ -384,13 +399,38 @@ function ManualDesign({
 
       {open && (
         <div className="px-3 pb-3 space-y-2">
-          <button
-            type="button"
-            onClick={copyPromptAndOpen}
-            className="rounded-md px-3 py-1.5 text-xs bg-[var(--accent,#7c3aed)] text-white hover:opacity-90"
-          >
-            1 · Copy prompt &amp; open Claude
-          </button>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <button
+              type="button"
+              onClick={() => copyPrompt("full", true)}
+              className="rounded-md px-3 py-1.5 text-xs bg-[var(--accent,#7c3aed)] text-white hover:opacity-90"
+            >
+              1 · Copy prompt &amp; open Claude
+            </button>
+            {/* The system half never changes, so it can live in a Project's
+                instructions — then only the short business brief is pasted. */}
+            <button
+              type="button"
+              onClick={() => copyPrompt("user")}
+              title="Just the per-business half — for a Project that already holds the system prompt"
+              className="text-[11px] text-[var(--muted)] hover:text-[var(--text)] underline decoration-dotted"
+            >
+              brief only
+            </button>
+            <button
+              type="button"
+              onClick={() => copyPrompt("system")}
+              title="The unchanging half — paste once into a Project's custom instructions"
+              className="text-[11px] text-[var(--muted)] hover:text-[var(--text)] underline decoration-dotted"
+            >
+              system prompt
+            </button>
+          </div>
+
+          <p className="text-[11px] text-[var(--muted)]">
+            Use <span className="text-[var(--text)]">Opus</span> with extended
+            thinking on — that matches the API path (effort <code>high</code>).
+          </p>
 
           <textarea
             value={html}
