@@ -13,17 +13,43 @@ export interface RenderResult {
   htmlPath: string; // absolute path to stored HTML on disk
 }
 
+/**
+ * Where this render's artifacts go.
+ *
+ * AI output is expensive and unreproducible — the design is non-deterministic, so
+ * a regenerated site is a DIFFERENT site, not the same one rebuilt. It therefore
+ * gets a unique name (engine + variant + UTC timestamp) and is never written
+ * over: not by a later AI run, and — the case that actually bit us — not by a
+ * `regenerate-all` sweep falling back to the template because the API key was
+ * missing or out of credit.
+ *
+ * Template output is deterministic and free, so it keeps the stable
+ * `{placeId}.html` name and overwrites in place. Nothing of value is lost.
+ */
+function artifactBase(safeId: string, engine: string, variant: number): string {
+  if (engine !== "ai") return safeId;
+  const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+  // The timestamp is second-resolution and a design takes minutes, so a clash is
+  // already unlikely — but "unlikely" is not what this function is for. The suffix
+  // makes the name unconditionally unique.
+  const suffix = Math.random().toString(16).slice(2, 6);
+  return `${safeId}--ai-v${variant}-${stamp}-${suffix}`;
+}
+
 export async function renderPreview(
   placeId: string,
   html: string,
+  engine: string = "template",
+  variant: number = 0,
 ): Promise<RenderResult> {
   await mkdir(PREVIEW_IMG_DIR, { recursive: true });
   await mkdir(PREVIEW_HTML_DIR, { recursive: true });
 
   const safeId = placeId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const htmlPath = path.join(PREVIEW_HTML_DIR, `${safeId}.html`);
-  const imgFsPath = path.join(PREVIEW_IMG_DIR, `${safeId}.png`);
-  const imgWebPath = `/previews/${safeId}.png`;
+  const base = artifactBase(safeId, engine, variant);
+  const htmlPath = path.join(PREVIEW_HTML_DIR, `${base}.html`);
+  const imgFsPath = path.join(PREVIEW_IMG_DIR, `${base}.png`);
+  const imgWebPath = `/previews/${base}.png`;
 
   await writeFile(htmlPath, html, "utf8");
 
