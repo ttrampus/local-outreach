@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import { getCachedDetails } from "@/lib/places";
 import { fetchPreviewPhotos } from "@/lib/preview/photos";
 import { fetchStaticMap } from "@/lib/preview/staticMap";
@@ -83,11 +84,17 @@ export async function GET(
   // The system half is identical for every business, so it belongs in a chat
   // Project's custom instructions — set once, then only the per-business brief
   // gets pasted each time, which is roughly half the text.
+  // Carried as a header so the client panel knows where to open without needing the
+  // value inlined at build time — changing MANUAL_CHAT_URL takes effect on restart,
+  // and the setting stays server-side like the rest of env.
+  const headers = {
+    "Content-Type": "text/plain; charset=utf-8",
+    "X-Chat-Url": env.manualChatUrl,
+  };
+
   const part = req.nextUrl.searchParams.get("part");
   if (part === "system" || part === "user") {
-    return new NextResponse(part === "system" ? system : user, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    return new NextResponse(part === "system" ? system : user, { headers });
   }
 
   // Plain text, not JSON: this is meant to be copied straight out of the terminal
@@ -111,9 +118,7 @@ export async function GET(
     `Leave those tokens exactly as they are — do not paste real image URLs.`,
   ].join("\n");
 
-  return new NextResponse(body, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
-  });
+  return new NextResponse(body, { headers });
 }
 
 export async function POST(

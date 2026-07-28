@@ -26,6 +26,12 @@ export const env = {
   // (the free deterministic template). Empty → "ai" when a key is set, else "template".
   previewEngine: (process.env.PREVIEW_ENGINE ?? "").toLowerCase(),
 
+  // Where the manual-design panel's "open Claude" button points. Defaults to a new
+  // chat; point it at your own Project (or a standing conversation) so you land
+  // somewhere that already holds the system prompt. Personal to each operator —
+  // hence config, not a constant.
+  manualChatUrl: process.env.MANUAL_CHAT_URL || "https://claude.ai/new",
+
   // Public base URL used to build the shareable preview link dropped into outreach
   // (e.g. https://your-app.example.com/p/<leadId>). Defaults to local dev.
   appBaseUrl: (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, ""),

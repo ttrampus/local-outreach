@@ -340,6 +340,8 @@ function ManualDesign({
       const qs = part === "full" ? "" : `?part=${part}`;
       const res = await fetch(`/api/preview/${lead.id}/manual${qs}`);
       if (!res.ok) throw new Error(`Could not build the prompt (${res.status})`);
+      // Configured server-side via MANUAL_CHAT_URL; falls back to a fresh chat.
+      const chatUrl = res.headers.get("X-Chat-Url") || "https://claude.ai/new";
       let text = await res.text();
       if (part === "full") {
         // The full response is a copy-paste document with instruction banners; the
@@ -347,7 +349,7 @@ function ManualDesign({
         text = text.split("===== AFTER YOU GET THE HTML =====")[0].trim();
       }
       await navigator.clipboard.writeText(text);
-      if (openTab) window.open("https://claude.ai/new", "_blank", "noopener");
+      if (openTab) window.open(chatUrl, "_blank", "noopener");
       setNote(
         part === "system"
           ? "System prompt copied — paste it into your Project's instructions once."
