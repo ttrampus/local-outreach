@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { env } from "@/lib/env";
+import { recordAiUsage } from "@/lib/aiUsage";
 import type { Lead } from "@/generated/prisma/client";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { detectLocale } from "@/lib/preview/i18n";
@@ -44,23 +45,30 @@ const OutreachSchema = z.object({
     .describe("An initial message followed by two short follow-ups (3 items total)."),
 });
 
-const SYSTEM = `You are a freelance web designer writing a first cold-outreach SEQUENCE to the owner of a local business you found on Google Maps. You build them a modern website and host it for a low monthly fee. You produce three messages: one initial message and two short follow-ups to send later if they don't reply.
+const SYSTEM = `You are a local freelance web designer writing a first cold-outreach SEQUENCE to the owner of a small business you found on Google Maps. You build modern websites and host them for a low monthly fee. You produce three messages: one initial message and two short follow-ups to send later if they don't reply.
 
 Language & tone:
-- Write EVERYTHING in the business's own language, as given. Sound like a native speaker — natural, warm, professional, never machine-translated.
+- Write EVERYTHING in the business's own language, as given. Sound like a native speaker — natural, warm, plain-spoken, never machine-translated and never like marketing copy.
 - Use the polite/formal register where the language has one (Slovene "vikanje", German "Sie", etc.). This is a first contact with a business owner — never the informal register.
-- No buzzwords, no "I hope this email finds you well", no emoji.
+- Write like one person to another: short sentences, no buzzwords, no "I hope this email finds you well", no exclamation-mark enthusiasm, no emoji.
 
-The INITIAL message (step 0), ~120-170 words:
-- Lead with value, not a sales pitch. OPEN by referencing the most specific, flattering real detail you're given — ideally a standout point from their reviews, otherwise their rating, area, or specialty.
-- Name the gap honestly but kindly — they have no website, an outdated one, or only a social/booking profile (e.g. Facebook, Booksy). Frame it as an opportunity, not a criticism.
-- Tell them you already built them a FREE preview of a modern site, and include the preview link on its OWN line so they can click it.
-- Offer simple pricing: ${MONTHLY_PRICE}, covering hosting plus any changes they ever need (no per-edit fees). Mention a one-time buyout is also possible, but most prefer the hands-off monthly option. One or two sentences.
-- End with a soft, low-pressure question.
+Personalization = research, NOT surveillance:
+- You may reference their public reputation: their rating, how established they are, and what customers CONSISTENTLY praise ("customers keep mentioning how easy it is to get an appointment").
+- If several customers praise a staff member by first name, you may mention that pattern ("your customers clearly think highly of Filip").
+- NEVER quote a review verbatim, never name or describe an individual reviewer, never say "I read a review where...". Summarized patterns feel like homework; quoted individuals feel like being watched.
 
-The FOLLOW-UPS (step 1, then step 2), each ~50-90 words, shorter than the initial:
-- Step 1: a brief, friendly nudge that re-shares the preview link and offers to tweak anything. No guilt.
-- Step 2: a gentle close — mention you'll take the demo down soon, and that if they want it live it's ${MONTHLY_PRICE}, cancel anytime. Still warm, never pushy.
+The INITIAL message (step 0), ~90-140 words:
+- Open with ONE genuine, specific observation about their business — then get to the point. No flattery padding.
+- Name the gap matter-of-factly and kindly — no website, an outdated one, or only a social/booking profile. One sentence; it's an observation, not a criticism.
+- Say you already built them a FREE preview of what their site could look like, and put the preview link on its OWN line.
+- Pricing in one sentence: ${MONTHLY_PRICE}, hosting plus any changes they ever need included (a one-time buyout is possible too).
+- End with a soft, low-pressure question they can answer in five seconds.
+
+The FOLLOW-UPS (step 1, then step 2), each ~40-80 words:
+- Step 1: a brief, friendly nudge — re-share the preview link, offer to change anything they don't like. No guilt, no "just checking in" filler.
+- Step 2: a gentle close — you'll take the demo down soon; if they'd like it live it's ${MONTHLY_PRICE}, cancel anytime. Warm, final, never pushy.
+
+If the channel is a Facebook/Instagram DM (you'll be told): make every message noticeably shorter and more conversational (initial ~50-80 words, follow-ups ~25-50) — DMs are read on phones. Keep the formal register. Still provide a subject line (used only as an internal label).
 
 Always:
 - Sign every message off with "[Your name]" as a literal placeholder.
@@ -77,6 +85,7 @@ function factsBlock(
   details: NormalizedPlaceDetails,
   previewUrl: string,
   languageName: string,
+  channel: string,
 ): string {
   // Surface the web-presence gap the qualifier already computed.
   let webPresence = "unknown";
@@ -97,15 +106,21 @@ function factsBlock(
 
   const reviews = details.reviewSnippets.filter((s) => s.trim().length > 15).slice(0, 3);
 
+  const channelLine =
+    channel === "facebook" || channel === "instagram"
+      ? `Channel: a ${channel === "facebook" ? "Facebook Messenger" : "Instagram"} direct message — write the shorter DM variant.`
+      : `Channel: email.`;
+
   return [
     `Language to write in: ${languageName}`,
+    channelLine,
     `Business name: ${lead.name}`,
     details.address ? `Address: ${details.address}` : "",
     lead.rating != null ? `Google rating: ${lead.rating} from ${lead.reviewCount} reviews` : "",
     `Web-presence gap: ${gap}`,
     lead.qualificationReason ? `Why they're a good fit: ${lead.qualificationReason}` : "",
     reviews.length
-      ? `Real customer reviews (open the initial message by referencing the most specific, flattering one — quote or paraphrase):\n${reviews
+      ? `Raw customer reviews — for YOUR research only. Distill the pattern of what customers praise; never quote these or refer to any individual reviewer:\n${reviews
           .map((r) => `- "${clip(r)}"`)
           .join("\n")}`
       : "",
@@ -130,6 +145,10 @@ export async function generateOutreachWithClaude(
   const languageName = LANGUAGE_NAME[locale] ?? "English";
   const client = new Anthropic({ apiKey: env.anthropicApiKey });
 
+  // Channel is OUR decision (email > social DM > call), made up front so the
+  // writing style can match the medium (DMs get the short variant).
+  const { channel, contact } = pickChannel(lead);
+
   try {
     const response = await client.messages.parse({
       model: env.anthropicModel,
@@ -140,9 +159,11 @@ export async function generateOutreachWithClaude(
       },
       system: SYSTEM,
       messages: [
-        { role: "user", content: factsBlock(lead, details, previewUrl, languageName) },
+        { role: "user", content: factsBlock(lead, details, previewUrl, languageName, channel) },
       ],
     });
+
+    await recordAiUsage("outreach_draft", env.anthropicModel, response.usage, lead.placeId);
 
     if (response.stop_reason === "refusal") return null;
     const out = response.parsed_output;
@@ -155,8 +176,6 @@ export async function generateOutreachWithClaude(
       .map((m, i) => ({ step: i, subject: m.subject?.trim() ?? "", body: m.body.trim() }));
     if (!messages.length) return null;
 
-    // Channel is OUR decision (email > call > manual), never cold WhatsApp.
-    const { channel, contact } = pickChannel(lead);
     return { channel, contact, messages };
   } catch (err) {
     console.error(`[outreach/claude] generation failed for lead ${lead.id}:`, err);

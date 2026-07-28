@@ -35,6 +35,10 @@ model Lead {
   // Artifacts -------------------------------------------------------------
   previewImagePath    String?  // /previews/{placeId}.png once generated
   previewHtmlPath     String?
+  previewEngine       String?  // "ai" | "template" — which engine actually produced the stored HTML.
+                               // Recorded because the AI path degrades to the template on any failure,
+                               // and without this a failed design is indistinguishable from a real one.
+  previewVariant      Int      @default(0) // bumped to re-roll the seeded art direction on regeneration
   deployedUrl         String?  // the live hosting URL (e.g. *.vercel.app) after deploy
   customDomain        String?  // a real domain attached to the deployed site, when configured
 
@@ -118,6 +122,12 @@ model PlaceCache {
   placeId   String   @id
   source    String   @default("google")
   raw       String   // raw JSON response for this place
+  // BCP-47 language this snapshot was fetched in (GOOGLE_PLACES_LANGUAGE at the
+  // time). Part of the cache identity: Google localizes review text, weekday
+  // descriptions and category labels, so a snapshot taken under a different
+  // language is stale even though the placeId matches. Null = fetched before
+  // this was tracked, i.e. unknown (in practice English).
+  language  String?
   createdAt DateTime @default(now())
 }
 
@@ -138,6 +148,23 @@ model SiteMessage {
   createdAt DateTime @default(now())
 
   @@index([leadId])
+}
+
+/// One billable Claude API call (preview generation, outreach drafting), with
+/// token counts and the computed USD cost — powers the unit-economics dashboard.
+model AiUsage {
+  id           String   @id @default(cuid())
+  purpose      String   // preview_vision | preview_reviews | preview_design | outreach_draft
+  model        String
+  placeId      String?  // which lead the spend belongs to (joins Lead.placeId)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([purpose])
+  @@index([placeId])
+  @@index([createdAt])
 }
 
 /// Per-SKU API call counter (one row per SKU per UTC day) for cost tracking.

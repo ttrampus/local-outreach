@@ -1,6 +1,12 @@
 // POST /api/preview/:leadId — generate a single-page site from data we already
 // have and capture a hero screenshot (the cheap artifact). Does NOT deploy.
+//
+// POST /api/preview/:leadId?reroll=1 additionally bumps the lead's art-direction
+// seed, so a rebuild produces a genuinely different palette/composition/motion
+// rather than reproducing the same one. Use it when a lead draws a direction that
+// doesn't suit the business.
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildAndStorePreview } from "@/lib/preview/generate";
 
@@ -9,7 +15,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 180; // bespoke AI generation streams a full HTML doc
 
 export async function POST(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
   const { leadId } = await params;
@@ -19,6 +25,11 @@ export async function POST(
   });
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  // Persisted by buildAndStorePreview alongside the rest of the preview state.
+  if (req.nextUrl.searchParams.get("reroll")) {
+    lead.previewVariant += 1;
   }
 
   try {

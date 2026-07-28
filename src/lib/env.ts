@@ -11,11 +11,17 @@ function num(value: string | undefined, fallback: number): number {
 export const env = {
   leadSource: (process.env.LEAD_SOURCE ?? "mock").toLowerCase(),
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
+  // BCP-47 language for Google Places responses (e.g. "sl"). Google defaults to
+  // English when this is unset, which comes back as machine-translated review
+  // text, English weekday names and English category labels — all of which then
+  // land verbatim on a non-English generated site. Set it to the market you
+  // actually sell into. Empty = Google's default.
+  googlePlacesLanguage: (process.env.GOOGLE_PLACES_LANGUAGE ?? "").trim(),
 
   // Claude — used to draft outreach in the business's own language. Optional:
   // when the key is absent, outreach falls back to the deterministic template.
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
-  anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
+  anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-opus-5",
   // Preview engine: "ai" (Claude designs a bespoke site per business) | "template"
   // (the free deterministic template). Empty → "ai" when a key is set, else "template".
   previewEngine: (process.env.PREVIEW_ENGINE ?? "").toLowerCase(),
@@ -39,6 +45,11 @@ export const env = {
   // replied / shown interest / converted). Used by the follow-up due queue.
   followupIntervalDays: num(process.env.FOLLOWUP_INTERVAL_DAYS, 3),
 
+  // Hands-off delivery of DUE follow-ups by email (initial sends stay manual).
+  // Requires SMTP below; DM/phone follow-ups always stay in the manual queue.
+  autoSendFollowups: (process.env.AUTO_SEND_FOLLOWUPS ?? "off").toLowerCase() === "on",
+  autoSendIntervalMin: num(process.env.AUTO_SEND_INTERVAL_MIN, 60),
+
   // SMTP — optional outbound email so a draft can be SENT from the app (with the
   // preview image attached) instead of copy-pasting into Gmail. When SMTP_HOST is
   // empty the send path degrades to "mark sent" + a Gmail compose deep-link. For
@@ -50,6 +61,10 @@ export const env = {
   // Defaults to SMTP_USER when unset. "Name <addr>" is allowed.
   smtpFrom: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "",
   smtpSecure: (process.env.SMTP_SECURE ?? "on").toLowerCase() !== "off",
+
+  // What one customer pays per month (the €50 in the pitch) — used by the
+  // unit-economics dashboard to turn active subscriptions into MRR/profit.
+  monthlyPriceEur: num(process.env.MONTHLY_PRICE_EUR, 50),
 
   // Cost safety stops (see .env.example for the cost-model rationale).
   maxDetailsPerDay: num(process.env.MAX_DETAILS_PER_DAY, 200),

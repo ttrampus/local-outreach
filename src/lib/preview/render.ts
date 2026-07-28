@@ -30,7 +30,9 @@ export async function renderPreview(
   const browser = await chromium.launch({ args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage({
-      viewport: { width: 1280, height: 820 },
+      // 1000px rather than 820: the hero composition varies well below the old
+      // fold, and the screenshot is what both the operator and the prospect judge.
+      viewport: { width: 1280, height: 1000 },
       deviceScaleFactor: 2, // crisp retina screenshot
       // The template's entrance/scroll animations are gated behind
       // `prefers-reduced-motion: no-preference`, so emulating "reduce" here makes

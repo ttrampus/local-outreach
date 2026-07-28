@@ -4,6 +4,7 @@
 // and which categories / regions / tiers convert best, so discovery spend can be
 // aimed. This computes that from the data already in the DB (no extra tracking).
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 
 const CUSTOMER_STATUSES = new Set(["customer", "deployed"]);
 const PAYING_SUBSCRIPTION = new Set(["active", "paid", "trialing"]);
@@ -21,12 +22,40 @@ export interface Segment {
   label: string;
   leads: number;
   sent: number;
+  replied: number;
   interested: number;
   customers: number;
+  /** Claude spend attributed to this segment's leads (previews + drafts), USD. */
+  aiCostUsd: number;
   /** interested / sent, 0–1 (null when nothing sent). */
   replyRate: number | null;
   /** customers / leads, 0–1. */
   winRate: number;
+}
+
+export interface PurposeSpend {
+  purpose: string;
+  calls: number;
+  costUsd: number;
+}
+
+export interface Economics {
+  /** All-time Claude spend in USD (from per-call token accounting). */
+  aiCostTotalUsd: number;
+  /** Claude spend this calendar month (UTC). */
+  aiCostMonthUsd: number;
+  aiCalls: number;
+  byPurpose: PurposeSpend[];
+  /** Average all-in AI cost of one generated preview (design + vision + reviews). */
+  costPerPreviewUsd: number | null;
+  /** AI spend divided over every lead that got an outreach email sent. */
+  costPerSentLeadUsd: number | null;
+  activeSubscriptions: number;
+  monthlyPriceEur: number;
+  /** Active subscriptions × monthly price. */
+  mrrEur: number;
+  /** MRR minus this month's AI spend (USD treated ≈ EUR — a conservative cut). */
+  profitMonthEur: number;
 }
 
 export interface Analytics {
@@ -42,6 +71,7 @@ export interface Analytics {
     previewViews: number;
   };
   funnel: FunnelStep[];
+  economics: Economics;
   byTier: Segment[];
   byCategory: Segment[];
   byRegion: Segment[];
@@ -59,6 +89,7 @@ interface LeadLite {
   query: string;
   location: string;
   sent: boolean;
+  aiCostUsd: number;
 }
 
 function isCustomer(l: { status: string; subscriptionStatus: string | null }): boolean {
@@ -84,8 +115,10 @@ function segment(label: string, leads: LeadLite[]): Segment {
     label,
     leads: leads.length,
     sent,
+    replied: leads.filter((l) => l.repliedAt != null).length,
     interested,
     customers,
+    aiCostUsd: leads.reduce((acc, l) => acc + l.aiCostUsd, 0),
     replyRate: sent > 0 ? div(interested, sent) : null,
     winRate: div(customers, leads.length),
   };
@@ -106,11 +139,65 @@ function groupSegments(leads: LeadLite[], key: (l: LeadLite) => string, minLeads
     .sort((a, b) => b.leads - a.leads);
 }
 
+const PREVIEW_PURPOSES = new Set(["preview_design", "preview_vision", "preview_reviews"]);
+
+/** Roll the per-call AiUsage rows up into the dashboard's economics block. */
+async function computeEconomics(
+  previews: number,
+  sentLeads: number,
+  activeSubscriptions: number,
+): Promise<Economics> {
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
+  const [byPurposeRaw, monthAgg] = await Promise.all([
+    prisma.aiUsage.groupBy({
+      by: ["purpose"],
+      _count: { _all: true },
+      _sum: { costUsd: true },
+    }),
+    prisma.aiUsage.aggregate({
+      where: { createdAt: { gte: monthStart } },
+      _sum: { costUsd: true },
+    }),
+  ]);
+
+  const byPurpose: PurposeSpend[] = byPurposeRaw
+    .map((r) => ({
+      purpose: r.purpose,
+      calls: r._count._all,
+      costUsd: r._sum.costUsd ?? 0,
+    }))
+    .sort((a, b) => b.costUsd - a.costUsd);
+
+  const aiCostTotalUsd = byPurpose.reduce((acc, p) => acc + p.costUsd, 0);
+  const aiCostMonthUsd = monthAgg._sum.costUsd ?? 0;
+  const previewSpend = byPurpose
+    .filter((p) => PREVIEW_PURPOSES.has(p.purpose))
+    .reduce((acc, p) => acc + p.costUsd, 0);
+
+  const mrrEur = activeSubscriptions * env.monthlyPriceEur;
+  return {
+    aiCostTotalUsd,
+    aiCostMonthUsd,
+    aiCalls: byPurpose.reduce((acc, p) => acc + p.calls, 0),
+    byPurpose,
+    costPerPreviewUsd: previews > 0 ? previewSpend / previews : null,
+    costPerSentLeadUsd: sentLeads > 0 ? aiCostTotalUsd / sentLeads : null,
+    activeSubscriptions,
+    monthlyPriceEur: env.monthlyPriceEur,
+    mrrEur,
+    profitMonthEur: mrrEur - aiCostMonthUsd,
+  };
+}
+
 export async function computeAnalytics(): Promise<Analytics> {
-  const [full, sentRows] = await Promise.all([
+  const [full, sentRows, costRows] = await Promise.all([
     prisma.lead.findMany({
       select: {
         id: true,
+        placeId: true,
         tier: true,
         status: true,
         previewImagePath: true,
@@ -127,9 +214,14 @@ export async function computeAnalytics(): Promise<Analytics> {
       select: { leadId: true },
       distinct: ["leadId"],
     }),
+    prisma.aiUsage.groupBy({
+      by: ["placeId"],
+      _sum: { costUsd: true },
+    }),
   ]);
 
   const sentLeadIds = new Set(sentRows.map((r) => r.leadId));
+  const costByPlace = new Map(costRows.map((r) => [r.placeId, r._sum.costUsd ?? 0]));
 
   const leads: LeadLite[] = full.map((l) => ({
     tier: l.tier,
@@ -143,6 +235,7 @@ export async function computeAnalytics(): Promise<Analytics> {
     query: l.searchRun?.query ?? "—",
     location: l.searchRun?.location ?? "—",
     sent: sentLeadIds.has(l.id),
+    aiCostUsd: costByPlace.get(l.placeId) ?? 0,
   }));
 
   const total = leads.length;
@@ -170,7 +263,13 @@ export async function computeAnalytics(): Promise<Analytics> {
     ofTotal: div(s.count, total),
   }));
 
+  const activeSubscriptions = leads.filter((l) =>
+    PAYING_SUBSCRIPTION.has((l.subscriptionStatus ?? "").toLowerCase()),
+  ).length;
+  const economics = await computeEconomics(previews, sent, activeSubscriptions);
+
   return {
+    economics,
     totals: {
       leads: total,
       withEmail: leads.filter((l) => l.email).length,

@@ -7,13 +7,29 @@
 //  - Safety stops: enforces per-SKU daily ceilings independently of GCP caps.
 //  - Resilient: a single dead site or API hiccup is caught per-lead; the batch
 //    continues. The whole run is wrapped so a fatal error is recorded, not thrown.
+//  - Concurrency-safe: runs for overlapping queries execute in parallel and can
+//    return the same place, so the placeId unique constraint — not the skip
+//    lookup — is what actually prevents duplicates.
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import { getLeadSource } from "@/lib/leadSource";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { recordCall, dailyLimitReached, monthlyLimitReached } from "@/lib/usage";
 import { analyzeSite, qualify, classifyWebPresence, presenceNeedsFetch } from "@/lib/qualify";
 
 const MAX_PAGES = 3; // Text Search returns up to ~20/page; 3 pages ≈ 60 places.
+
+/**
+ * True for Prisma's unique-constraint violation (P2002). Checked structurally so
+ * this module doesn't need to import the generated error class.
+ */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: unknown }).code === "P2002"
+  );
+}
 
 /** Create a SearchRun row in "running" state and return it. */
 export async function createSearchRun(query: string, location: string) {
@@ -74,7 +90,12 @@ export async function runDiscovery(
           where: { placeId: r.placeId },
         });
 
-        if (cached) {
+        // A snapshot taken under a different GOOGLE_PLACES_LANGUAGE is stale:
+        // Google localizes review text, weekday descriptions and category
+        // labels, and those strings go straight onto the generated site.
+        const cacheUsable = cached && cached.language === (env.googlePlacesLanguage || null);
+
+        if (cached && cacheUsable) {
           try {
             details = JSON.parse(cached.raw) as NormalizedPlaceDetails;
             cachedHits += 1;
@@ -100,11 +121,19 @@ export async function runDiscovery(
             await recordCall("PLACE_DETAILS");
             detailCalls += 1;
           }
-          await prisma.placeCache.create({
-            data: {
+          // upsert, not create: a stale-language row already exists when we get
+          // here after a language change.
+          await prisma.placeCache.upsert({
+            where: { placeId: r.placeId },
+            create: {
               placeId: r.placeId,
               source: source.name,
               raw: JSON.stringify(details),
+              language: env.googlePlacesLanguage || null,
+            },
+            update: {
+              raw: JSON.stringify(details),
+              language: env.googlePlacesLanguage || null,
             },
           });
         }
@@ -118,26 +147,38 @@ export async function runDiscovery(
             : undefined;
         const q = qualify(details, site);
 
-        await prisma.lead.create({
-          data: {
-            placeId: details.placeId,
-            source: source.name,
-            name: details.name,
-            address: details.address,
-            phone: details.phone,
-            email: site?.email ?? null,
-            website: details.website,
-            rating: details.rating ?? null,
-            reviewCount: details.reviewCount,
-            photoCount: details.photoCount,
-            tier: q.tier,
-            score: q.score,
-            qualificationReason: q.reason,
-            signals: JSON.stringify(q.signals),
-            status: "discovered",
-            searchRunId: runId,
-          },
-        });
+        // The findUnique at the top of this loop is a cheap skip, not a lock:
+        // ad-hoc pairs run in PARALLEL and overlapping queries ("hair salon" and
+        // "beauty salon" in one city) routinely return the same place, so another
+        // run can insert this placeId in between. The unique constraint is the
+        // real guard — losing that race means the other run owns the lead, which
+        // is exactly the outcome of the skip above. Swallow it; letting it escape
+        // would abort this entire run and discard every remaining result.
+        try {
+          await prisma.lead.create({
+            data: {
+              placeId: details.placeId,
+              source: source.name,
+              name: details.name,
+              address: details.address,
+              phone: details.phone,
+              email: site?.email ?? null,
+              website: details.website,
+              rating: details.rating ?? null,
+              reviewCount: details.reviewCount,
+              photoCount: details.photoCount,
+              tier: q.tier,
+              score: q.score,
+              qualificationReason: q.reason,
+              signals: JSON.stringify(q.signals),
+              status: "discovered",
+              searchRunId: runId,
+            },
+          });
+        } catch (err) {
+          if (isUniqueViolation(err)) continue;
+          throw err;
+        }
         newLeads += 1;
       }
     } while (pageToken && pages < MAX_PAGES);
@@ -277,10 +318,11 @@ export async function refreshLeadDetails(leadId: string): Promise<RefreshResult>
   if (billable) await recordCall("PLACE_DETAILS");
 
   // Overwrite the cached snapshot — it now carries photoRefs and fresh fields.
+  const language = env.googlePlacesLanguage || null;
   await prisma.placeCache.upsert({
     where: { placeId: lead.placeId },
-    update: { raw: JSON.stringify(details), source: source.name },
-    create: { placeId: lead.placeId, source: source.name, raw: JSON.stringify(details) },
+    update: { raw: JSON.stringify(details), source: source.name, language },
+    create: { placeId: lead.placeId, source: source.name, raw: JSON.stringify(details), language },
   });
 
   // Re-qualify from the fresh details and refresh the flat Lead fields.

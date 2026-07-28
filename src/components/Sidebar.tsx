@@ -49,7 +49,8 @@ export function Sidebar() {
       </nav>
 
       <div className="p-4 text-[11px] leading-relaxed text-[var(--muted)] border-t border-[var(--border)]">
-        Manual-send by design. You approve and send every message yourself.
+        Human-in-the-loop by design. You approve every message, and send the
+        first one yourself.
       </div>
     </aside>
   );

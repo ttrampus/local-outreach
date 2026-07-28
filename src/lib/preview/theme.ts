@@ -25,6 +25,12 @@ export interface Theme {
   // `accentText`.
   accents: string[];
   accentText: string;
+  // Palette allow-list (ids from designTokens.PALETTES). The per-theme colours
+  // above only vary by accent, so every salon in a sweep used to render in the
+  // same pink. Seeding a palette from this list instead gives each business its
+  // own ground while keeping the choice category-appropriate — a dentist can't
+  // draw oxblood, a barber can't draw clinical mint.
+  palettes: string[];
   // Hero band -------------------------------------------------------------
   heroBg: string; // base color the mesh is layered over
   heroText: string; // text color on the hero, chosen for contrast
@@ -47,6 +53,7 @@ const THEMES: Theme[] = [
     border: "#e6d8cd",
     accents: ["#b76e79", "#bd6a4c", "#9c5a78"],
     accentText: "#fffaf6",
+    palettes: ["plum-noir", "oxblood", "graphite-mono", "blush-ink", "lilac-graphite", "pure-mono", "violet-acid", "stone-oxide", "sunset-duo", "bone-forest"],
     heroBg: "#f3e7df",
     heroText: "#34261f",
     heroMesh2: "#e7c9cf",
@@ -66,6 +73,7 @@ const THEMES: Theme[] = [
     border: "#3a2c23",
     accents: ["#e0a458", "#d98756", "#c9994f"],
     accentText: "#1a1310",
+    palettes: ["carbon-ember", "oxblood", "forest-brass", "emerald-gold", "stone-oxide", "linen-navy", "sunset-duo", "electric-pop", "bone-forest", "abyss-coral"],
     heroBg: "#1a1310",
     heroText: "#f7efe5",
     heroMesh2: "#7a4a28",
@@ -85,6 +93,7 @@ const THEMES: Theme[] = [
     border: "#26313d",
     accents: ["#ff6a3d", "#ffb000", "#2f9bff"],
     accentText: "#0f1419",
+    palettes: ["obsidian-lime", "midnight-signal", "ink-cobalt", "carbon-ember", "graphite-mono", "paper-cobalt", "citrus-white", "electric-pop", "sapphire-ice"],
     heroBg: "#0f1419",
     heroText: "#ffffff",
     heroMesh2: "#1f3b57",
@@ -104,6 +113,7 @@ const THEMES: Theme[] = [
     border: "#d4e6e2",
     accents: ["#0fae96", "#1f8fb0", "#2f8f6f"],
     accentText: "#ffffff",
+    palettes: ["mint-clinic", "sky-slate", "paper-cobalt", "sapphire-ice", "neo-mint-black", "citrus-white", "pure-mono", "linen-navy"],
     heroBg: "#ecf6f4",
     heroText: "#0f2723",
     heroMesh2: "#bfe8df",
@@ -123,6 +133,7 @@ const THEMES: Theme[] = [
     border: "#dde2d0",
     accents: ["#5c8a3a", "#bd6a4c", "#9a7bb0"],
     accentText: "#fcfcf6",
+    palettes: ["blush-ink", "lilac-graphite", "bone-forest", "neo-mint-black", "mint-clinic", "stone-oxide", "sunset-duo", "emerald-gold"],
     heroBg: "#eef1e6",
     heroText: "#26301f",
     heroMesh2: "#cdddb6",
@@ -142,6 +153,7 @@ const THEMES: Theme[] = [
     border: "#262a2f",
     accents: ["#c6f53d", "#ff4d57", "#33d6a6"],
     accentText: "#0c0d0f",
+    palettes: ["obsidian-lime", "midnight-signal", "graphite-mono", "carbon-ember", "electric-pop", "violet-acid", "abyss-coral", "pure-mono", "ink-cobalt"],
     heroBg: "#0c0d0f",
     heroText: "#ffffff",
     heroMesh2: "#2a3a0e",
@@ -161,6 +173,7 @@ const THEMES: Theme[] = [
     border: "#282c33",
     accents: ["#e23b3b", "#f5a623", "#3a7bd5"],
     accentText: "#ffffff",
+    palettes: ["graphite-mono", "ink-cobalt", "carbon-ember", "obsidian-lime", "midnight-signal", "oxblood", "pure-mono", "sapphire-ice"],
     heroBg: "#101114",
     heroText: "#ffffff",
     heroMesh2: "#3a1414",
@@ -180,6 +193,7 @@ const THEMES: Theme[] = [
     border: "#dcdacf",
     accents: ["#1f3a5f", "#7a5b32", "#3a5a40"],
     accentText: "#fbfbf8",
+    palettes: ["linen-navy", "paper-cobalt", "sapphire-ice", "ink-cobalt", "stone-oxide", "pure-mono", "citrus-white", "emerald-gold", "graphite-mono"],
     heroBg: "#ecebe4",
     heroText: "#1b2330",
     heroMesh2: "#c9c6b4",
@@ -201,6 +215,7 @@ const DEFAULT_THEME: Theme = {
   border: "#262b38",
   accents: ["#6c5ce7", "#00b894", "#ff7675"],
   accentText: "#ffffff",
+    palettes: ["paper-cobalt", "midnight-signal", "stone-oxide", "sky-slate", "carbon-ember", "graphite-mono", "citrus-white", "linen-navy", "emerald-gold", "ink-cobalt"],
   heroBg: "#0d0f14",
   heroText: "#ffffff",
   heroMesh2: "#241f47",

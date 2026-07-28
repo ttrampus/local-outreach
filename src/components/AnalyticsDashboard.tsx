@@ -12,10 +12,29 @@ interface Segment {
   label: string;
   leads: number;
   sent: number;
+  replied: number;
   interested: number;
   customers: number;
+  aiCostUsd: number;
   replyRate: number | null;
   winRate: number;
+}
+interface PurposeSpend {
+  purpose: string;
+  calls: number;
+  costUsd: number;
+}
+interface Economics {
+  aiCostTotalUsd: number;
+  aiCostMonthUsd: number;
+  aiCalls: number;
+  byPurpose: PurposeSpend[];
+  costPerPreviewUsd: number | null;
+  costPerSentLeadUsd: number | null;
+  activeSubscriptions: number;
+  monthlyPriceEur: number;
+  mrrEur: number;
+  profitMonthEur: number;
 }
 interface Analytics {
   totals: {
@@ -30,6 +49,7 @@ interface Analytics {
     previewViews: number;
   };
   funnel: FunnelStep[];
+  economics: Economics;
   byTier: Segment[];
   byCategory: Segment[];
   byRegion: Segment[];
@@ -90,10 +110,84 @@ export function AnalyticsDashboard() {
         </div>
       </section>
 
+      <EconomicsSection eco={data.economics} />
+
       <SegmentTable title="By tier" rows={data.byTier} />
       <SegmentTable title="By category" rows={data.byCategory} note="Which searches produce buyers — aim discovery here." />
       <SegmentTable title="By region" rows={data.byRegion} />
     </div>
+  );
+}
+
+const usd = (n: number): string => (n < 10 ? `$${n.toFixed(2)}` : `$${n.toFixed(0)}`);
+const eur = (n: number): string => `€${n < 10 && n !== 0 ? n.toFixed(2) : Math.round(n)}`;
+
+const PURPOSE_LABELS: Record<string, string> = {
+  preview_design: "Preview — site design",
+  preview_vision: "Preview — photo analysis",
+  preview_reviews: "Preview — review mining",
+  outreach_draft: "Outreach drafting",
+};
+
+function EconomicsSection({ eco }: { eco: Economics }) {
+  return (
+    <section>
+      <h2 className="text-sm font-semibold mb-1">Unit economics</h2>
+      <p className="text-[12px] text-[var(--muted)] mb-2">
+        What acquiring customers costs vs. what they pay. AI spend is measured per call from
+        real token usage; profit treats $ ≈ € (slightly conservative).
+      </p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Stat
+          label="AI spend (month)"
+          value={usd(eco.aiCostMonthUsd)}
+          sub={`${usd(eco.aiCostTotalUsd)} all-time · ${eco.aiCalls} calls`}
+        />
+        <Stat
+          label="Cost / preview"
+          value={eco.costPerPreviewUsd == null ? "—" : usd(eco.costPerPreviewUsd)}
+          sub="design + photo + review calls"
+        />
+        <Stat
+          label="MRR"
+          value={eur(eco.mrrEur)}
+          sub={`${eco.activeSubscriptions} active @ €${eco.monthlyPriceEur}/mo`}
+        />
+        <Stat
+          label="Profit (month)"
+          value={eur(eco.profitMonthEur)}
+          sub="MRR − AI spend"
+          accent={eco.profitMonthEur > 0}
+        />
+      </div>
+
+      {eco.byPurpose.length > 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden mt-3">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wide text-[var(--muted)] border-b border-[var(--border)]">
+                <th className="px-4 py-2.5 font-medium">Where the AI spend goes</th>
+                <th className="px-4 py-2.5 font-medium text-right">Calls</th>
+                <th className="px-4 py-2.5 font-medium text-right">Cost</th>
+                <th className="px-4 py-2.5 font-medium text-right">Avg / call</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eco.byPurpose.map((p) => (
+                <tr key={p.purpose} className="border-b border-[var(--border)] last:border-0">
+                  <td className="px-4 py-2.5">{PURPOSE_LABELS[p.purpose] ?? p.purpose}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">{p.calls}</td>
+                  <td className="px-4 py-2.5 text-right font-mono">{usd(p.costUsd)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">
+                    {usd(p.calls > 0 ? p.costUsd / p.calls : 0)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -108,7 +202,7 @@ function Stat({
   accent,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   sub?: string;
   accent?: boolean;
 }) {
@@ -143,7 +237,9 @@ function SegmentTable({
             <tr className="text-left text-[11px] uppercase tracking-wide text-[var(--muted)] border-b border-[var(--border)]">
               <th className="px-4 py-2.5 font-medium">{title.replace("By ", "")}</th>
               <th className="px-4 py-2.5 font-medium text-right">Leads</th>
+              <th className="px-4 py-2.5 font-medium text-right">AI cost</th>
               <th className="px-4 py-2.5 font-medium text-right">Sent</th>
+              <th className="px-4 py-2.5 font-medium text-right">Replied</th>
               <th className="px-4 py-2.5 font-medium text-right">Interested</th>
               <th className="px-4 py-2.5 font-medium text-right">Reply rate</th>
               <th className="px-4 py-2.5 font-medium text-right">Customers</th>
@@ -155,7 +251,9 @@ function SegmentTable({
               <tr key={r.label} className="border-b border-[var(--border)] last:border-0">
                 <td className="px-4 py-2.5 truncate max-w-[220px]">{r.label}</td>
                 <td className="px-4 py-2.5 text-right font-mono">{r.leads}</td>
+                <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">{usd(r.aiCostUsd)}</td>
                 <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">{r.sent}</td>
+                <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">{r.replied}</td>
                 <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">{r.interested}</td>
                 <td className="px-4 py-2.5 text-right font-mono">{pct(r.replyRate)}</td>
                 <td className="px-4 py-2.5 text-right font-mono text-[var(--muted)]">{r.customers}</td>

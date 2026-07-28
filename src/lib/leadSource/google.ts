@@ -117,6 +117,7 @@ export const googleSource: LeadSource = {
   async search(query, location, pageToken) {
     const textQuery = location ? `${query} in ${location}` : query;
     const body: Record<string, unknown> = { textQuery };
+    if (env.googlePlacesLanguage) body.languageCode = env.googlePlacesLanguage;
     if (pageToken) body.pageToken = pageToken;
 
     const json = await googleFetch(
@@ -141,8 +142,14 @@ export const googleSource: LeadSource = {
   },
 
   async details(placeId) {
+    // languageCode localizes weekdayDescriptions, primaryTypeDisplayName and the
+    // translated review `text`. Without it Google answers in English, which is
+    // how "Monday: 6:00 AM – 7:00 PM" ended up on Slovenian sites.
+    const qs = env.googlePlacesLanguage
+      ? `?languageCode=${encodeURIComponent(env.googlePlacesLanguage)}`
+      : "";
     const p = (await googleFetch(
-      `/places/${encodeURIComponent(placeId)}`,
+      `/places/${encodeURIComponent(placeId)}${qs}`,
       { method: "GET" },
       DETAILS_FIELD_MASK,
     )) as GooglePlace;
@@ -150,8 +157,15 @@ export const googleSource: LeadSource = {
     const reviews = p.reviews ?? [];
     // Keep all available review text (Google returns up to 5, same SKU tier) —
     // the preview's review-insight pass mines them for specific praise/staff.
+    //
+    // `originalText` FIRST, deliberately: `text` is Google's machine translation
+    // into the requested language. Quoting a translation on the customer's own
+    // site means putting words in their reviewers' mouths, and round-tripping
+    // Slovene → English → Slovene mangles it. `originalText` is what the person
+    // actually wrote; it's absent only when the review was written in the
+    // requested language, in which case `text` is already the original.
     const reviewSnippets = reviews
-      .map((r) => r.text?.text ?? r.originalText?.text ?? "")
+      .map((r) => r.originalText?.text ?? r.text?.text ?? "")
       .map((t) => t.trim())
       .filter(Boolean)
       .slice(0, 5);

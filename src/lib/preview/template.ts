@@ -5,9 +5,10 @@
 // gives the hero a genuinely different composition, and a per-business seed varies
 // alignment / mesh / accent so a whole sweep of one category never looks cloned.
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
-import { pickTheme, GOOGLE_FONTS_HREF, type Theme, type Layout } from "./theme";
+import { pickTheme, GOOGLE_FONTS_HREF, type Theme } from "./theme";
 import { detectLocale, getStrings, type Locale, type LocaleStrings } from "./i18n";
 import { cleanDisplayName } from "./brand";
+import { paletteFor, pickAxis, readableOn, type Palette } from "./designTokens";
 
 function esc(s: string): string {
   return s
@@ -36,8 +37,36 @@ function neighborhood(address?: string): string | null {
   return part && part.length <= 40 ? part : null;
 }
 
+/**
+ * Hero archetypes. Every one of these renders BOTH with and without a photo —
+ * previously a single `heroPhoto` builder pre-empted all of them whenever the
+ * business had photography, which is nearly always, so the four archetypes only
+ * ever rendered for photo-less businesses and every real template site came out
+ * as the same dark-scrim photo hero.
+ */
+export type Archetype =
+  | "bold"
+  | "editorial"
+  | "warm"
+  | "clinical"
+  | "bleed"
+  | "frame"
+  | "horizon";
+
+const ARCHETYPES: Archetype[] = [
+  "bold",
+  "editorial",
+  "warm",
+  "clinical",
+  "bleed",
+  "frame",
+  "horizon",
+];
+
 interface Ctx {
   theme: Theme;
+  palette: Palette;
+  archetype: Archetype;
   t: LocaleStrings;
   seed: number;
   accent: string;
@@ -66,12 +95,18 @@ export function generateSiteHtml(
   searchHint = "",
   photos: string[] = [],
   mapUri: string | null = null,
+  variant = 0,
 ): string {
   const theme = pickTheme(place.categories, searchHint);
   const locale: Locale = detectLocale(place);
   const t = getStrings(locale);
-  const seed = seedFrom(place.placeId || place.name);
-  const accent = pick(theme.accents, seed, 0);
+  const seedKey = `${place.placeId || place.name}${variant > 0 ? `#${variant}` : ""}`;
+  const seed = seedFrom(seedKey);
+  // Ground colour comes from the category's palette allow-list rather than the
+  // theme's single hard-coded palette, so two salons in one sweep differ.
+  const palette = paletteFor(theme.palettes, seedKey);
+  const archetype = pickAxis(ARCHETYPES, seedKey, "archetype");
+  const accent = palette.accent;
   const area = neighborhood(place.address);
   const rawName = cleanDisplayName(place.name);
   const name = esc(rawName);
@@ -89,6 +124,8 @@ export function generateSiteHtml(
 
   const ctx: Ctx = {
     theme,
+    palette,
+    archetype,
     t,
     seed,
     accent,
@@ -114,8 +151,9 @@ export function generateSiteHtml(
 
   const seedClass = `seed-${["a", "b", "c"][seed % 3]}`;
   const photoClass = heroImg ? " has-photo" : "";
-  // A real photo always wins: it converts far better than a typographic hero.
-  const hero = heroImg ? heroPhoto(ctx) : HERO_BUILDERS[theme.layout](ctx);
+  // Every archetype handles the photo itself, so the composition varies whether
+  // or not the business has photography.
+  const hero = HERO_BUILDERS[archetype](ctx);
 
   return `<!doctype html>
 <html lang="${locale}">
@@ -126,9 +164,9 @@ export function generateSiteHtml(
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="${GOOGLE_FONTS_HREF}" />
-<style>${buildCss(theme, accent)}</style>
+<style>${buildCss(theme, palette)}</style>
 </head>
-<body class="layout-${theme.layout} ${seedClass}${photoClass}">
+<body class="layout-${archetype} ${seedClass} pal-${palette.mode}${photoClass}">
   ${nav(ctx)}
   ${hero}
   ${sections(ctx)}
@@ -156,28 +194,23 @@ function ratingChip(c: Ctx): string {
   }</span>`;
 }
 
-// ── Hero builders (one per layout archetype) ───────────────────────────────
+// ── Hero builders (one per archetype) ──────────────────────────────────────
+//
+// Each builder renders with OR without a photo. The old code short-circuited to
+// a single image-led hero whenever photos existed, which made the archetypes
+// dead code for virtually every real lead.
 
 type HeroBuilder = (c: Ctx) => string;
 
-// Image-led hero — used whenever the business has real photos. A dark scrim over
-// the photo keeps text legible across any image, while the brand accent + fonts
-// still carry the theme. This is the version that actually sells the mockup.
-const heroPhoto: HeroBuilder = (c) => `
-  <header class="hero">
-    <div class="hero-bg" style="background-image:url('${c.heroImg}')"></div>
-    <div class="scrim"></div>
-    <div class="wrap hero-inner">
-      <span class="eyebrow">${c.label.toUpperCase()} · ${c.eyebrow}</span>
-      <h1>${c.name}</h1>
-      <p class="lede">${c.tagline}</p>
-      <div class="cta-row">
-        <a class="btn" href="#contact">${c.t.bookNow}</a>
-        ${c.rating ? `<span class="chip"><span class="stars">★</span>${c.rating}${c.reviewCount ? ` · ${c.reviewCount} ${c.t.reviewsWord}` : ""}</span>` : ""}
-      </div>
-    </div>
-  </header>`;
+/** Rating chip + CTA pair, shared by most archetypes. */
+function ctaRow(c: Ctx, label = c.t.bookNow): string {
+  return `<div class="cta-row">
+      <a class="btn" href="#contact">${label}</a>
+      ${c.rating ? ratingChip(c) : ""}
+    </div>`;
+}
 
+/** BOLD — oversized type, stat bar, and (with a photo) a wide band beneath. */
 const heroBold: HeroBuilder = (c) => `
   <header class="hero">
     <div class="mesh"></div>
@@ -190,18 +223,23 @@ const heroBold: HeroBuilder = (c) => `
         <a class="btn" href="#contact">${c.t.bookNow}</a>
         <a class="btn-ghost" href="#services">${c.t.seeServices}</a>
       </div>
-      <div class="statbar">
+      ${
+        c.heroImg
+          ? `<div class="band" style="background-image:url('${c.heroImg}')"></div>`
+          : `<div class="statbar">
         ${c.rating ? `<div class="stat"><b>${c.rating}★</b><span>${c.reviewCount} ${c.t.reviewsWord}</span></div>` : ""}
         <div class="stat"><b>${c.t.local}</b><span>${c.area ?? c.t.independent}</span></div>
         <div class="stat"><b>${c.t.sameDay}</b><span>${c.t.fastResponse}</span></div>
-      </div>
+      </div>`
+      }
     </div>
   </header>`;
 
+/** EDITORIAL — asymmetric grid; the photo becomes a tall third column. */
 const heroEditorial: HeroBuilder = (c) => `
   <header class="hero">
     <span class="ghost" aria-hidden="true">${c.monogram}</span>
-    <div class="wrap hero-inner">
+    <div class="wrap hero-inner${c.heroImg ? " has-col" : ""}">
       <div class="hero-main">
         <span class="kicker">${c.eyebrow} — ${c.label}</span>
         <h1>${c.name}</h1>
@@ -209,6 +247,7 @@ const heroEditorial: HeroBuilder = (c) => `
         <p class="lede">${c.tagline}</p>
         <a class="btn" href="#contact">${c.t.makeBooking}</a>
       </div>
+      ${c.heroImg ? `<div class="hero-col" style="background-image:url('${c.heroImg}')"></div>` : ""}
       <aside class="hero-meta">
         ${c.rating ? `<div class="meta-row"><span class="meta-k">${c.t.rated}</span><span class="meta-v">${c.rating} ★</span></div>` : ""}
         ${c.reviewCount ? `<div class="meta-row"><span class="meta-k">${c.t.reviews}</span><span class="meta-v">${c.reviewCount}</span></div>` : ""}
@@ -218,10 +257,12 @@ const heroEditorial: HeroBuilder = (c) => `
     </div>
   </header>`;
 
+/** WARM — centred and symmetrical; the photo sits above as an arched panel. */
 const heroWarm: HeroBuilder = (c) => `
   <header class="hero">
     <div class="glow"></div>
     <div class="wrap hero-inner">
+      ${c.heroImg ? `<div class="arch" style="background-image:url('${c.heroImg}')"></div>` : ""}
       ${ratingChip(c)}
       <h1>${c.name}</h1>
       <p class="lede">${c.tagline}</p>
@@ -230,6 +271,7 @@ const heroWarm: HeroBuilder = (c) => `
     </div>
   </header>`;
 
+/** CLINICAL — practical info card; the photo fills the opposite column. */
 const heroClinical: HeroBuilder = (c) => `
   <header class="hero">
     <div class="dots" aria-hidden="true"></div>
@@ -242,11 +284,15 @@ const heroClinical: HeroBuilder = (c) => `
           <a class="btn" href="#contact">${c.t.bookOnline}</a>
           <a class="btn-ghost" href="#services">${c.t.ourServices}</a>
         </div>
-        <div class="trust">
+        ${
+          c.heroImg
+            ? `<div class="inline-photo" style="background-image:url('${c.heroImg}')"></div>`
+            : `<div class="trust">
           ${c.rating ? `<span class="tchip">${c.t.ratedChip(c.rating)}</span>` : ""}
           <span class="tchip">${c.t.onlineBooking}</span>
           <span class="tchip">${c.t.newPatients}</span>
-        </div>
+        </div>`
+        }
       </div>
       <aside class="info-card">
         <h3>${c.t.visitUs}</h3>
@@ -263,11 +309,58 @@ const heroClinical: HeroBuilder = (c) => `
     </div>
   </header>`;
 
-const HERO_BUILDERS: Record<Layout, HeroBuilder> = {
+/** BLEED — full-bleed image (or mesh field) with the copy anchored bottom-left. */
+const heroBleed: HeroBuilder = (c) => `
+  <header class="hero">
+    ${
+      c.heroImg
+        ? `<div class="hero-bg" style="background-image:url('${c.heroImg}')"></div><div class="scrim"></div>`
+        : `<div class="mesh"></div>`
+    }
+    <div class="wrap hero-inner">
+      <span class="eyebrow">${c.label.toUpperCase()} · ${c.eyebrow}</span>
+      <h1>${c.name}</h1>
+      <p class="lede">${c.tagline}</p>
+      ${ctaRow(c)}
+    </div>
+  </header>`;
+
+/** FRAME — everything inset behind a wide margin; the photo is a soft panel. */
+const heroFrame: HeroBuilder = (c) => `
+  <header class="hero">
+    <div class="frame">
+      <div class="frame-inner">
+        <span class="kicker">${c.label.toUpperCase()} · ${c.eyebrow}</span>
+        <h1>${c.name}</h1>
+        <p class="lede">${c.tagline}</p>
+        ${ctaRow(c)}
+        ${c.heroImg ? `<div class="panel" style="background-image:url('${c.heroImg}')"></div>` : ""}
+      </div>
+    </div>
+  </header>`;
+
+/** HORIZON — one hard horizontal edge: type above, photograph below. */
+const heroHorizon: HeroBuilder = (c) => `
+  <header class="hero">
+    <div class="horizon-top">
+      <div class="wrap hero-inner">
+        <span class="eyebrow">${c.label.toUpperCase()} · ${c.eyebrow}</span>
+        <h1>${c.name}</h1>
+        <p class="lede">${c.tagline}</p>
+        ${ctaRow(c)}
+      </div>
+    </div>
+    <div class="horizon-bottom"${c.heroImg ? ` style="background-image:url('${c.heroImg}')"` : ""}></div>
+  </header>`;
+
+const HERO_BUILDERS: Record<Archetype, HeroBuilder> = {
   bold: heroBold,
   editorial: heroEditorial,
   warm: heroWarm,
   clinical: heroClinical,
+  bleed: heroBleed,
+  frame: heroFrame,
+  horizon: heroHorizon,
 };
 
 // ── Shared lower sections (deployed/scrolled view; not in the hero shot) ────
@@ -367,6 +460,27 @@ function revealScript(): string {
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
   els.forEach(function (el) { io.observe(el); });
+
+  // Gallery parallax — a small counter-drift as tiles pass through the viewport.
+  // transform only (never layout), rAF-throttled, and skipped entirely under
+  // reduced motion so the screenshot is unaffected.
+  var par = document.querySelectorAll('.gal-item');
+  if (!par.length) return;
+  var ticking = false;
+  function drift() {
+    ticking = false;
+    var vh = window.innerHeight || 1;
+    for (var i = 0; i < par.length; i++) {
+      var r = par[i].getBoundingClientRect();
+      if (r.bottom < 0 || r.top > vh) continue;
+      var progress = (r.top + r.height / 2) / vh - 0.5; // -0.5 .. 0.5
+      par[i].style.transform = 'translateY(' + (progress * -18).toFixed(2) + 'px)';
+    }
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(drift); }
+  }, { passive: true });
+  drift();
 })();
 </script>`;
 }
@@ -377,13 +491,20 @@ function revealScript(): string {
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
 
-function buildCss(t: Theme, accent: string): string {
+function buildCss(t: Theme, p: Palette): string {
+  // Colours come from the seeded palette; the theme still supplies typography and
+  // the category-appropriate copy. `surface2` is derived so a palette only has to
+  // declare the tokens that are genuinely independent.
+  const surface2 = `color-mix(in srgb, ${p.surface} 72%, ${p.bg})`;
   return `
   :root{
-    --bg:${t.bg}; --surface:${t.surface}; --surface2:${t.surface2};
-    --text:${t.text}; --muted:${t.muted}; --border:${t.border};
-    --accent:${accent}; --accent-text:${t.accentText};
-    --hero-bg:${t.heroBg}; --hero-text:${t.heroText}; --mesh2:${t.heroMesh2};
+    --bg:${p.bg}; --surface:${p.surface}; --surface2:${surface2};
+    --text:${p.ink}; --muted:${p.muted}; --border:${p.border};
+    --accent:${p.accent}; --accent-text:${readableOn(p.accent)};
+    /* unmodified accent, kept so scopes that invert the ground (the bleed hero)
+       can derive a light-safe variant without a self-referential var() */
+    --accent-base:${p.accent}; --accent2:${p.accent2};
+    --hero-bg:${p.bg}; --hero-text:${p.ink}; --mesh2:${p.accent2};
     --nav-h:74px; --heading:${t.headingFont}; --body:${t.bodyFont};
   }
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -517,29 +638,71 @@ function buildCss(t: Theme, accent: string): string {
   .info-hours li{color:var(--text);}
   footer{padding:40px 0;text-align:center;color:var(--muted);font-size:13px;}
 
-  /* PHOTO hero — dark scrim + white text for legibility over any image.
+  /* BLEED archetype — dark scrim + white text for legibility over any image.
      The hero is pulled up under the sticky nav (negative margin) so the photo
      fills the whole band and the transparent white-text nav sits OVER the image,
-     not over the light page background above it. */
-  .has-photo .hero{background:#0b0c0e;min-height:100vh;margin-top:calc(-1 * var(--nav-h));}
+     not over the light page background above it.
+     Scoped to .layout-bleed: the other archetypes place photography inside their
+     own composition and keep the palette's own ink colour. */
+  .layout-bleed.has-photo .hero{background:#0b0c0e;min-height:100vh;margin-top:calc(-1 * var(--nav-h));}
+  /* A light palette's accent is tuned for a pale ground and goes muddy on the
+     dark scrim, so this archetype lightens it and flips the on-accent text.
+     Dark palettes already have bright accents and are left alone. */
+  .layout-bleed.has-photo.pal-light{
+    --accent:color-mix(in srgb,var(--accent-base) 40%,#fff);--accent-text:#0B0B0B;}
   .hero-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;transform:scale(1.03);}
   .scrim{position:absolute;inset:0;z-index:1;background:
     linear-gradient(180deg,rgba(8,9,11,.40) 0%,rgba(8,9,11,.18) 38%,rgba(8,9,11,.92) 100%),
     radial-gradient(80% 70% at 18% 92%,color-mix(in srgb,var(--accent) 32%,transparent),transparent 70%);}
   .seed-b .scrim{background:linear-gradient(75deg,rgba(8,9,11,.92) 0%,rgba(8,9,11,.42) 52%,rgba(8,9,11,.12) 100%),radial-gradient(70% 80% at 100% 0%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 68%);}
   .seed-c .scrim{background:linear-gradient(285deg,rgba(8,9,11,.92) 0%,rgba(8,9,11,.42) 52%,rgba(8,9,11,.12) 100%);}
-  .has-photo .hero-inner{align-self:flex-end;padding-bottom:8vh;max-width:880px;}
-  .has-photo.seed-b .hero-inner{align-self:center;}
-  .has-photo .eyebrow{color:color-mix(in srgb,var(--accent) 88%,#fff);}
-  .has-photo .hero h1{color:#fff;font-size:clamp(48px,7.6vw,104px);margin:16px 0 16px;text-shadow:0 2px 30px rgba(0,0,0,.35);}
-  .has-photo .lede{color:rgba(255,255,255,.9);font-size:clamp(18px,2vw,24px);max-width:48ch;}
-  .has-photo .chip{border-color:rgba(255,255,255,.4);color:#fff;}
-  .has-photo nav{background:transparent;border-bottom:1px solid rgba(255,255,255,.14);}
-  .has-photo .brand,.has-photo .navlinks a.navcta{color:#fff;}
-  .has-photo .navlinks a{color:rgba(255,255,255,.72);}
+  .layout-bleed.has-photo .hero-inner{align-self:flex-end;padding-bottom:8vh;max-width:880px;}
+  .layout-bleed.has-photo.seed-b .hero-inner{align-self:center;}
+  .layout-bleed.has-photo .eyebrow{color:color-mix(in srgb,var(--accent) 88%,#fff);}
+  .layout-bleed.has-photo .hero h1{color:#fff;font-size:clamp(48px,7.6vw,104px);margin:16px 0 16px;text-shadow:0 2px 30px rgba(0,0,0,.35);}
+  .layout-bleed.has-photo .lede{color:rgba(255,255,255,.9);font-size:clamp(18px,2vw,24px);max-width:48ch;}
+  .layout-bleed.has-photo .chip{border-color:rgba(255,255,255,.4);color:#fff;}
+  .layout-bleed.has-photo nav{background:transparent;border-bottom:1px solid rgba(255,255,255,.14);}
+  .layout-bleed.has-photo .brand,.layout-bleed.has-photo .navlinks a.navcta{color:#fff;}
+  .layout-bleed.has-photo .navlinks a{color:rgba(255,255,255,.72);}
   /* keep nav text legible over a bright photo (until the solid state kicks in) */
-  body.has-photo:not(.nav-solid) .brand,
-  body.has-photo:not(.nav-solid) .navlinks a{text-shadow:0 1px 14px rgba(0,0,0,.5);}
+  body.layout-bleed.has-photo:not(.nav-solid) .brand,
+  body.layout-bleed.has-photo:not(.nav-solid) .navlinks a{text-shadow:0 1px 14px rgba(0,0,0,.5);}
+  /* BLEED without a photo still needs a legible field. */
+  .layout-bleed:not(.has-photo) .hero h1{font-size:clamp(50px,8vw,112px);margin:18px 0 16px;max-width:15ch;}
+  .layout-bleed:not(.has-photo) .hero-inner{align-self:flex-end;padding-bottom:10vh;}
+
+  /* Per-archetype photo treatments — each composition holds its image its own way. */
+  .band{margin-top:44px;height:min(38vh,340px);border-radius:20px;border:1px solid var(--border);
+    background-size:cover;background-position:center;box-shadow:0 40px 80px -50px rgba(0,0,0,.7);}
+  .hero-col{border-radius:22px;border:1px solid var(--border);min-height:min(62vh,540px);
+    background-size:cover;background-position:center;box-shadow:0 40px 80px -50px rgba(0,0,0,.6);}
+  .layout-editorial .hero-inner.has-col{grid-template-columns:1.3fr .78fr .72fr;gap:40px;}
+  .arch{width:min(360px,64%);height:min(34vh,300px);margin:0 auto 28px;border-radius:999px 999px 22px 22px;
+    background-size:cover;background-position:center;border:1px solid var(--border);
+    box-shadow:0 40px 70px -44px rgba(0,0,0,.6);}
+  .inline-photo{margin-top:30px;height:min(30vh,260px);border-radius:18px;border:1px solid var(--border);
+    background-size:cover;background-position:center;}
+
+  /* FRAME archetype — a wide margin of page colour around an inset card. */
+  .layout-frame .hero{padding:clamp(18px,3.4vw,52px);align-items:stretch;}
+  .frame{flex:1;display:flex;align-items:center;border:1px solid var(--border);border-radius:28px;
+    background:var(--surface);padding:clamp(28px,4.4vw,72px);overflow:hidden;
+    box-shadow:0 50px 100px -60px rgba(0,0,0,.55);}
+  .frame-inner{width:100%;max-width:900px;margin:0 auto;}
+  .layout-frame .hero h1{font-size:clamp(42px,6.4vw,92px);margin:16px 0 16px;}
+  .layout-frame .lede{font-size:clamp(18px,1.9vw,23px);max-width:46ch;}
+  .panel{margin-top:38px;height:min(34vh,300px);border-radius:20px;background-size:cover;
+    background-position:center;border:1px solid var(--border);}
+
+  /* HORIZON archetype — one hard edge across the full width. */
+  .layout-horizon .hero{display:block;padding:0;min-height:calc(100vh - var(--nav-h));}
+  .horizon-top{background:var(--bg);padding:clamp(48px,8vh,110px) 0 clamp(38px,6vh,72px);
+    border-bottom:2px solid var(--accent);}
+  .layout-horizon .hero h1{font-size:clamp(44px,7vw,100px);margin:16px 0 16px;max-width:16ch;}
+  .layout-horizon .lede{font-size:clamp(18px,2vw,23px);max-width:46ch;}
+  .horizon-bottom{height:min(46vh,420px);background-size:cover;background-position:center;
+    background-color:color-mix(in srgb,var(--accent) 22%,var(--surface));}
 
   /* Scrolled nav: once you leave the hero, the sticky bar gains a solid,
      theme-correct background + dark-on-light text. Without this a transparent
@@ -568,19 +731,31 @@ function buildCss(t: Theme, accent: string): string {
     @keyframes heroRise{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:none;}}
     @keyframes kenburns{from{transform:scale(1.04);}to{transform:scale(1.13);}}
 
+    @keyframes maskUp{from{clip-path:inset(0 0 100% 0);transform:translateY(14px);}
+                      to{clip-path:inset(0 0 -12% 0);transform:none;}}
+    @keyframes panelIn{from{opacity:0;transform:translateY(34px) scale(.985);}to{opacity:1;transform:none;}}
+    @keyframes ruleDraw{from{transform:scaleX(0);}to{transform:scaleX(1);}}
+
     nav{animation:heroRise .6s both cubic-bezier(.2,.75,.25,1);}
-    .hero-inner .eyebrow,.hero-inner .kicker,.hero-inner h1,.hero-inner .lede,
-    .hero-inner .rule,.hero-inner .divider,.hero-inner .chip,.hero-inner .cta-row,
+    .hero-inner .eyebrow,.hero-inner .kicker,.hero-inner .lede,
+    .hero-inner .divider,.hero-inner .chip,.hero-inner .cta-row,
     .hero-inner .btn,.hero-inner .statbar,.hero-inner .trust,
     .hero-inner .hero-meta,.hero-inner .info-card{
       animation:heroRise .85s both cubic-bezier(.2,.75,.25,1);}
-    .hero-inner h1{animation-delay:.12s;}
-    .hero-inner .rule,.hero-inner .divider{animation-delay:.2s;}
-    .hero-inner .lede{animation-delay:.24s;}
-    .hero-inner .hero-meta,.hero-inner .info-card{animation-delay:.3s;}
-    .hero-inner .cta-row,.hero-inner .btn,.hero-inner .chip{animation-delay:.36s;}
-    .hero-inner .statbar,.hero-inner .trust{animation-delay:.46s;}
-    /* slow, infinite Ken-Burns drift on the real photo hero */
+    /* the headline gets a mask wipe rather than a plain rise — it reads as
+       designed motion instead of a generic fade */
+    .hero h1{animation:maskUp .78s .1s both cubic-bezier(.16,1,.3,1);}
+    .hero .rule{transform-origin:left center;animation:ruleDraw .6s .22s both ease-in-out;}
+    .hero-inner .divider{animation-delay:.2s;}
+    .hero-inner .lede{animation-delay:.26s;}
+    .hero-inner .hero-meta,.hero-inner .info-card{animation-delay:.32s;}
+    .hero-inner .cta-row,.hero-inner .btn,.hero-inner .chip{animation-delay:.38s;}
+    .hero-inner .statbar,.hero-inner .trust{animation-delay:.48s;}
+    /* every archetype's photo element settles in after the copy */
+    .band,.hero-col,.arch,.inline-photo,.panel,.horizon-bottom{
+      animation:panelIn .95s .34s both cubic-bezier(.16,1,.3,1);}
+    .frame{animation:panelIn 1s both cubic-bezier(.16,1,.3,1);}
+    /* slow, infinite Ken-Burns drift on the full-bleed photo hero */
     .hero-bg{animation:kenburns 22s ease-in-out infinite alternate;transform-origin:60% 40%;}
 
     /* scroll-reveal for the lower sections (toggled by the inline observer) */
@@ -596,12 +771,24 @@ function buildCss(t: Theme, accent: string): string {
     .card:hover{transform:translateY(-4px);box-shadow:0 24px 50px -30px color-mix(in srgb,#000 70%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--border));}
     .gal-item{transition:transform .4s cubic-bezier(.2,.7,.2,1);}
     .gal-item:hover{transform:scale(1.02);}
+    /* accent underline sweeping in from the left on nav + footer links */
+    .navlinks a:not(.navcta){position:relative;}
+    .navlinks a:not(.navcta)::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:1.5px;
+      background:var(--accent);transform:scaleX(0);transform-origin:left center;transition:transform .22s ease-out;}
+    .navlinks a:not(.navcta):hover::after{transform:scaleX(1);}
+    /* gentle parallax drift, driven by the inline script's --par variable */
+    .gal-item,.contact-map img{will-change:transform;}
   }
 
   @media(max-width:880px){
     .gal-grid{grid-template-columns:repeat(2,1fr);}
     .gal-item:first-child{grid-column:span 2;}
-    .hero-inner,.layout-editorial .hero-inner,.layout-clinical .hero-inner{grid-template-columns:1fr!important;}
+    .hero-inner,.layout-editorial .hero-inner,.layout-editorial .hero-inner.has-col,
+    .layout-clinical .hero-inner{grid-template-columns:1fr!important;}
+    .hero-col{min-height:min(38vh,320px);}
+    .layout-frame .hero{padding:16px;}
+    .frame{padding:28px 22px;}
+    .horizon-bottom{height:min(34vh,280px);}
     .hero-meta{border-left:none;padding-left:0;}
     .grid{grid-template-columns:1fr;}.navlinks{display:none;}
     .contact-grid:has(.contact-map){grid-template-columns:1fr;text-align:center;}

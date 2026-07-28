@@ -5,6 +5,7 @@
 import type { Lead } from "@/generated/prisma/client";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme } from "@/lib/preview/theme";
+import { classifyWebPresence } from "@/lib/qualify";
 
 /** One message in an outreach sequence. step 0 = initial; 1.. = follow-ups. */
 export interface OutreachMessage {
@@ -21,16 +22,48 @@ export interface OutreachDraft {
 }
 
 /**
- * Decide the first-touch channel. We deliberately avoid defaulting to WhatsApp:
- * cold WhatsApp messaging breaches WhatsApp Business policy and risks a ban. Prefer
- * a real email when we extracted one, else a phone call; WhatsApp is only sensible
- * once the prospect has replied (the operator can switch it then).
+ * Build a direct-message deep link for a Facebook/Instagram page URL, if possible.
+ * m.me/<page> opens the page's Messenger thread; ig.me/m/<user> opens an IG DM.
+ * These are OPEN-a-chat links — actually sending the DM stays a human click,
+ * because neither platform has an API for cold DMs (automating them via bots
+ * violates Meta's ToS and gets the sending account banned).
  */
-export function pickChannel(lead: Pick<Lead, "email" | "phone">): {
+function socialDmLink(website: string): { channel: string; contact: string } | null {
+  const { presence, platform } = classifyWebPresence(website);
+  if (presence !== "social" || !platform) return null;
+  try {
+    const u = new URL(website);
+    const path = u.pathname.split("/").filter(Boolean);
+    if (platform === "Facebook") {
+      // facebook.com/<page> or facebook.com/profile.php?id=<id> — m.me takes both.
+      const id = path[0] === "profile.php" ? u.searchParams.get("id") : path[0];
+      if (id) return { channel: "facebook", contact: `https://m.me/${id}` };
+    }
+    if (platform === "Instagram") {
+      const user = path[0];
+      if (user && !["p", "reel", "reels", "explore", "stories"].includes(user)) {
+        return { channel: "instagram", contact: `https://ig.me/m/${user}` };
+      }
+    }
+  } catch {
+    /* unparseable URL — fall through to the next channel */
+  }
+  return null;
+}
+
+/**
+ * Decide the first-touch channel: email (automatable) > Facebook/Instagram DM
+ * (one-click semi-manual — often the ONLY channel for social-only businesses, and
+ * locals answer DMs readily) > phone > manual. We deliberately avoid WhatsApp:
+ * cold WhatsApp messaging breaches WhatsApp Business policy and risks a ban.
+ */
+export function pickChannel(lead: Pick<Lead, "email" | "phone" | "website">): {
   channel: string;
   contact: string | null;
 } {
   if (lead.email) return { channel: "email", contact: lead.email };
+  const dm = lead.website ? socialDmLink(lead.website) : null;
+  if (dm) return dm;
   if (lead.phone) return { channel: "phone", contact: lead.phone };
   return { channel: "manual", contact: null };
 }

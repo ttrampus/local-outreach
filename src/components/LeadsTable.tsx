@@ -20,6 +20,7 @@ export interface Lead {
   signals: string | null;
   status: string;
   previewImagePath: string | null;
+  previewEngine: string | null;
   deployedUrl: string | null;
   previewViews: number;
   firstViewedAt: string | null;
@@ -543,8 +544,20 @@ function LeadDetail({
         {/* Preview + actions */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">
-              Website preview
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] uppercase tracking-wide text-[var(--muted)]">
+                Website preview
+              </div>
+              {/* The AI engine falls back to the template on any failure, so a
+                  template site otherwise looks exactly like a successful design. */}
+              {lead.previewEngine === "template" && (
+                <span
+                  title="Claude was unavailable when this was built — this is the deterministic template. Regenerate to get a bespoke design."
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-500 border border-amber-500/30"
+                >
+                  template fallback
+                </span>
+              )}
             </div>
             {hasPreview && (
               <div className="flex rounded-md border border-[var(--border)] overflow-hidden text-[11px]">
@@ -572,7 +585,7 @@ function LeadDetail({
                 src={`/api/preview/${lead.id}/html?v=${previewNonce}`}
                 title={`${lead.name} live preview`}
                 loading="lazy"
-                className="w-full aspect-[1280/820] rounded-lg border border-[var(--border)] bg-white"
+                className="w-full aspect-[1280/1000] rounded-lg border border-[var(--border)] bg-white"
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
@@ -615,6 +628,15 @@ function LeadDetail({
             >
               {hasPreview ? "Regenerate preview" : "Generate preview"}
             </ActionBtn>
+            {hasPreview && (
+              <ActionBtn
+                busy={busy === "reroll"}
+                onClick={() => act("reroll", `/api/preview/${lead.id}?reroll=1`)}
+                title="Rebuild with a different palette, hero composition and motion style"
+              >
+                New design
+              </ActionBtn>
+            )}
             <ActionBtn
               busy={busy === "draft"}
               onClick={() => act("draft", `/api/outreach/${lead.id}`)}

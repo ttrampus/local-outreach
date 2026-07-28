@@ -9,11 +9,21 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
+import { recordAiUsage } from "@/lib/aiUsage";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme } from "./theme";
 import { detectLocale } from "./i18n";
+import { artDirectionFor, type ArtDirection } from "./designTokens";
 
 const LANGUAGE_NAME: Record<string, string> = { sl: "Slovenian", en: "English" };
+
+// Design effort. "high" is the sweet spot for this kind of build: the model has
+// room to actually execute the motion choreography and a full multi-section
+// page, without the overthinking that shows up at xhigh on simple businesses.
+// max_tokens covers thinking + output on this model family, so it needs real
+// headroom — 32k truncated mid-page once effort went up.
+const DESIGN_EFFORT = "high";
+const DESIGN_MAX_TOKENS = 64000;
 
 const SYSTEM = `You are an award-winning web designer. You hand-build a single, complete, production-grade marketing website for ONE local business — the kind of site that would make the owner say "this looks expensive, I want it." It is shown to them in a cold outreach as a free mockup, so it must look bespoke and credible, never templated.
 
@@ -23,15 +33,28 @@ OUTPUT CONTRACT (strict):
 - The ONLY images you may reference are the placeholders given to you: the photo placeholders (e.g. {{PHOTO_0}}) and, when offered, a single location-map placeholder {{MAP}}. Use them in CSS background-image or <img src>. Never reference any other image URL. If given zero photos, build a striking type-led / illustrative design instead — do not leave broken image holes.
 - You MAY load distinctive fonts from Google Fonts via a <link> to fonts.googleapis.com. Do not reference any other external resource.
 
-DESIGN BAR (this is the whole point):
-- A CREATIVE BRIEF is provided below with a specific aesthetic direction, font pairing, colour mood and hero layout for THIS business. FOLLOW IT — it exists to make every site look different. Execute that direction with conviction and taste.
-- ANTI-CONVERGENCE — you have a strong, well-known default you MUST resist: a near-black hero with a gold/amber accent, big condensed ALL-CAPS type, and a serif like Fraunces/Playfair. Do NOT produce that unless the brief explicitly asks for a dark/cinematic mood. If the brief says light/airy, pastel, or warm, the page must genuinely be light/airy, pastel, or warm — not dark with a light section bolted on. A second default to resist: a horizontal scrolling marquee / ticker-tape band of service keywords near the hero — do NOT add one. It has become an instantly-recognisable AI-site tell and reads as templated, the opposite of bespoke.
-- Use the EXACT fonts named in the brief (load them from Google Fonts with sensible weights). NEVER use Inter, Roboto, Arial, system-ui, or Space Grotesk.
+THE ART DIRECTION BELOW IS A SPECIFICATION, NOT A SUGGESTION:
+- The PALETTE gives exact hex values. Use them verbatim as your CSS custom properties. Do not tint, shade-shift, substitute, or "improve" them, and do not introduce a background colour that is not derived from them. If the palette is dark, the page is dark; if it is light, the page is light.
+- The TYPE SET names exact families and weights. Load exactly those from Google Fonts and use them. NEVER use Inter, Roboto, Arial, Helvetica, system-ui, or Space Grotesk.
+- The COMPOSITION defines the structure of the first screen, including where photography goes. Build that structure. Its "forbids" line is absolute.
+- The MOTION signature defines the animation choreography. Implement it as written, with those durations and easing curves.
+
+ANTI-CONVERGENCE — resist your own defaults. You have a strong, persistent house style that you must NOT fall back into:
+- A warm cream / off-white / bone background in the #F0EDE4–#F7F4EC range. Do not use any background in that range unless the palette below explicitly specifies one.
+- Oversized near-black display type on the left with a photograph filling the right half, and a dark pill-shaped CTA button at the top right of the nav. This exact composition is your default and it is banned unless the composition below actually asks for a split.
+- Terracotta, rust, burnt-orange or amber accents on a cream ground.
+- A serif display face with one word italicised for emphasis.
+- A horizontal scrolling marquee / ticker-tape band of service keywords. This is an instantly recognisable AI-site tell.
+These are not stylistic preferences — they are the specific fingerprints that make generated sites look mass-produced. The palette and composition you are given exist to move you off them. Follow those instead.
+
+DESIGN BAR:
 - Make it memorable and cohesive — two businesses must never feel like the same template.
-- NEVER use generic AI-slop aesthetics: no purple-on-white gradients, no cookie-cutter three-equal-cards layout unless you make it genuinely interesting, no centered-everything. Use asymmetry, overlap, generous negative space or controlled density, real hierarchy.
-- Build atmosphere: layered backgrounds, texture/grain, considered shadows, tasteful motion. Animations are welcome for the scrolled sections, BUT the hero must be fully visible immediately (it becomes a screenshot) — gate any entrance/scroll animation behind \`@media (prefers-reduced-motion: no-preference)\` so a reduced-motion render shows the finished state, never blank.
+- NEVER use generic AI-slop aesthetics: no purple-on-white gradients, no cookie-cutter three-equal-cards layout unless you make it genuinely interesting, no centered-everything (unless the composition calls for it). Use asymmetry, overlap, generous negative space or controlled density, real hierarchy.
+- Build atmosphere: layered backgrounds, texture/grain, considered shadows.
+- MOTION IS REQUIRED, not optional, and it is a headline feature of this site. Implement the given motion signature: the hero entrance, the scroll behaviour, and the hover feedback. Use CSS transitions/animations and a small IntersectionObserver where needed; keep it smooth (transform and opacity only — never animate layout properties).
+- CRITICAL MOTION CONSTRAINT: the hero is screenshotted with \`prefers-reduced-motion: reduce\`. Gate EVERY entrance and scroll animation behind \`@media (prefers-reduced-motion: no-preference)\` and author the base (un-animated) CSS as the finished, settled state described in the signature. A reduced-motion render must show a complete, fully-visible hero — never blank, never mid-fade, never at opacity 0.
 - Fully responsive (looks right at 1280px and on mobile).
-- PHOTOS — you cannot see the photos; a short caption for each is provided in the brief below. Use the captions to place images well: {{PHOTO_0}} has been pre-selected as the most representative, hero-worthy shot — use it as the hero/most prominent image. Never put a photo whose caption is a close-up of equipment, a logo, a sign, a menu/receipt, or anything unflattering into a hero or full-bleed position. Whatever photo fills a hero or banner: use \`background-size:cover\` with a sensible focal point (\`background-position\`), give it real height, and NEVER let an overlapping badge, card, or text block clip the photo's main subject or get clipped itself — keep overlays clear of the focal area.
+- PHOTOS — you cannot see the photos; a short caption for each is provided below. Place them where the COMPOSITION says they go — that instruction outranks any instinct to lead with a big photo. Never put a photo whose caption is a close-up of equipment, a logo, a sign, a menu/receipt, or anything unflattering into a hero or full-bleed position. Whatever photo fills a hero or banner: use \`background-size:cover\` with a sensible focal point (\`background-position\`), give it real height, and NEVER let an overlapping badge, card, or text block clip the photo's main subject or get clipped itself — keep overlays clear of the focal area.
 
 CONTENT RULES:
 - Write EVERY visible word in the business's language (given below). It must be grammatically correct and idiomatic — sound like a native speaker wrote it, not translated. Get agreement, case, and number right (e.g. in Slovenian the natural word for hair is the plural "lasje", not the singular "las"). Before finalizing, re-read every headline and tagline and fix any grammatical slip: a wrong word in a giant hero headline instantly destroys credibility.
@@ -86,6 +109,7 @@ async function describePhotos(
   client: Anthropic,
   photos: string[],
   businessType: string,
+  placeId: string,
 ): Promise<PhotoNotes | null> {
   const parsed = photos.map(dataUriParts);
   // Only proceed if every photo decoded — keeps caption/photo indices aligned.
@@ -116,6 +140,7 @@ async function describePhotos(
       max_tokens: 1024,
       messages: [{ role: "user", content }],
     });
+    await recordAiUsage("preview_vision", VISION_MODEL, msg.usage, placeId);
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -154,6 +179,7 @@ async function analyzeReviews(
   snippets: string[],
   businessType: string,
   languageName: string,
+  placeId: string,
 ): Promise<ReviewInsight | null> {
   const usable = snippets.map((s) => s.trim()).filter((s) => s.length > 15);
   if (usable.length < 2) return null; // too little signal to be worth a call
@@ -177,6 +203,7 @@ async function analyzeReviews(
         },
       ],
     });
+    await recordAiUsage("preview_reviews", VISION_MODEL, msg.usage, placeId);
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -209,92 +236,38 @@ const PRICE_LABEL: Record<string, string> = {
   PRICE_LEVEL_VERY_EXPENSIVE: "high-end (€€€€)",
 };
 
-// ── Creative brief: deterministic per-business variation ────────────────────
+// ── Art direction: deterministic per-business variation ────────────────────
 // The single biggest cause of "every site looks the same" is the model relaxing
-// to its house style. We counter it by seeding a DIFFERENT aesthetic direction,
-// font pairing, colour mood and hero layout for each business (from its placeId),
-// and instructing the model to follow it. Stable across regenerations of one lead.
-function seedFrom(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-function pick<T>(arr: T[], seed: number, salt: number): T {
-  return arr[(seed + salt * 2654435761) % arr.length];
-}
-
-// All fonts below exist on Google Fonts; pairs are display / body.
-const FONT_PAIRS = [
-  "Fraunces (display) + Hanken Grotesk (body)",
-  "Playfair Display (display) + Work Sans (body)",
-  "Cormorant Garamond (display) + Mulish (body)",
-  "Bricolage Grotesque (display) + DM Sans (body)",
-  "Syne (display) + Public Sans (body)",
-  "Anton (display) + Hanken Grotesk (body)",
-  "DM Serif Display (display) + Work Sans (body)",
-  "Unbounded (display) + DM Sans (body)",
-  "Big Shoulders Display (display) + Public Sans (body)",
-  "Instrument Serif (display) + Work Sans (body)",
-  "Archivo Black (display) + Manrope (body)",
-  "Italiana (display) + Manrope (body)",
-  "Libre Caslon Display (display) + Mulish (body)",
-  "Bebas Neue (display) + Hanken Grotesk (body)",
-];
-
-const DIRECTIONS = [
-  "Editorial magazine — oversized type, asymmetric columns, hairline rules and captions, confident whitespace",
-  "Luxe minimal — restrained and refined, small-caps labels, thin rules, lots of calm space, premium feel",
-  "Brutalist — raw and high-contrast, an exposed grid, huge type, monospace accents, hard edges",
-  "Warm organic — earthy and handcrafted, soft rounded shapes, cozy texture, inviting",
-  "Retro nostalgia — 70s/80s flavour, warm groovy palette, badges, characterful type",
-  "Bold & energetic — dynamic angles, heavy type, one punchy accent, lots of motion",
-  "Art-deco elegance — symmetry and geometric ornament, refined metallic-on-deep details",
-  "Soft boutique — delicate and pretty, fine serif, generous airy spacing, gentle palette",
-  "Industrial / utilitarian — structured, technical labels, monospace touches, gritty texture",
-  "High-fashion contrast — stark black & white, dramatic imagery, fashion-magazine confidence",
-  "Fresh & clean — light, calm and trustworthy, lots of white, crisp grid",
-  "Cinematic premium — moody and atmospheric, one luminous accent (use only when this direction is chosen)",
-];
-
-const MOODS = [
-  "Light & airy — off-white or cream base, dark ink text, a single saturated accent",
-  "Warm & earthy — sand, terracotta, ochre, deep brown",
-  "Cool & fresh — sage, teal, stone, soft white",
-  "Mono + one pop — black & white with a single vivid accent colour",
-  "Jewel tones — deep emerald / burgundy / navy with a metallic detail",
-  "Soft pastel — blush, sky, butter, warm grey",
-  "High-contrast neutral — bold black on bright paper, minimal colour",
-  "Dark & cinematic — near-black base with a luminous accent",
-];
-
-const LAYOUTS = [
-  "Full-bleed hero image with overlaid text",
-  "Split hero — headline + CTA on one side, image on the other",
-  "Type-first hero — an oversized headline dominates, image is a secondary band below",
-  "Centered editorial hero framed by fine rules",
-  "Offset / asymmetric hero with a floating info card",
-  "Magazine-grid hero with overlapping blocks",
-];
-
-function creativeBrief(seedKey: string, hasPhotos: boolean): string {
-  const seed = seedFrom(seedKey);
-  const direction = pick(DIRECTIONS, seed, 1);
-  const fonts = pick(FONT_PAIRS, seed, 2);
-  const mood = pick(MOODS, seed, 3);
-  let layout = pick(LAYOUTS, seed, 4);
-  // No photo → don't pick image-led hero layouts.
-  if (!hasPhotos && /image|full-bleed/i.test(layout)) {
-    layout = "Type-first hero — an oversized headline dominates, with strong graphic/typographic treatment instead of a photo";
-  }
+// to its house style. Adjectival briefs ("light & airy", "warm organic") do NOT
+// prevent that — the model resolves them straight back into cream-and-terracotta.
+// So the brief below is literal: exact hex, exact families, exact structure,
+// exact animation timings, all seeded per business from `designTokens.ts`.
+function artDirectionBrief(d: ArtDirection): string {
+  const p = d.palette;
   return [
-    `CREATIVE BRIEF (follow this exactly — it is what makes this site unique):`,
-    `• Aesthetic direction: ${direction}`,
-    `• Fonts to use: ${fonts}`,
-    `• Colour mood: ${mood}`,
-    `• Hero layout: ${layout}`,
+    `ART DIRECTION — this is a specification. Follow it exactly; it is what makes this site unlike any other.`,
+    ``,
+    `PALETTE "${p.id}" (${p.mode} theme) — use these exact hex values:`,
+    `  background: ${p.bg}   surface/cards: ${p.surface}   border/rules: ${p.border}`,
+    `  primary text: ${p.ink}   secondary text: ${p.muted}`,
+    `  accent: ${p.accent}   secondary accent: ${p.accent2}`,
+    `  Set these as CSS custom properties on :root and build the entire page from them.`,
+    `  The page background MUST be ${p.bg}. Do not substitute a lighter, warmer, or "safer" ground.`,
+    ``,
+    `TYPE SET — load exactly these from Google Fonts:`,
+    `  display face: ${d.type.display}`,
+    `  body face: ${d.type.body}`,
+    `  treatment: ${d.type.treatment}`,
+    ``,
+    `HERO COMPOSITION "${d.composition.id}":`,
+    `  ${d.composition.structure}`,
+    `  FORBIDDEN here: ${d.composition.forbids}`,
+    ``,
+    `MOTION SIGNATURE "${d.motion.id}" — implement this choreography:`,
+    `  entrance: ${d.motion.entrance}`,
+    `  on scroll: ${d.motion.scroll}`,
+    `  on hover: ${d.motion.hover}`,
+    `  SETTLED STATE (what the un-animated / reduced-motion CSS must show): ${d.motion.settled}`,
   ].join("\n");
 }
 
@@ -306,6 +279,7 @@ function buildUserPrompt(
   photoCaptions: string[],
   insight: ReviewInsight | null,
   hasMap: boolean,
+  direction: ArtDirection,
 ): string {
   const theme = pickTheme(details.categories, searchHint);
   const reviews = details.reviewSnippets
@@ -339,42 +313,52 @@ function buildUserPrompt(
     ? `A map image of the exact location is available as the placeholder {{MAP}}. Place it ONCE in the contact/location section (an <img> in a framed/rounded container, or a CSS background with real height) so visitors can see where the business is. If there is genuinely no suitable spot, you may omit it.`
     : "";
   const placeholders = Array.from({ length: photoCount }, (_, i) => `{{PHOTO_${i}}}`).join(", ");
-  // When captions are available, PHOTO_0 has already been reordered to the
-  // hero-worthy shot; otherwise PHOTO_0 is just the first Google photo.
+  // Placement follows the COMPOSITION, not a blanket "photo must be the hero"
+  // rule. That rule is what previously collapsed every layout into the same
+  // text-left / photo-right split. {{PHOTO_0}} is only the *strongest* shot —
+  // where it belongs is the composition's call, and some compositions
+  // deliberately want no photograph above the fold at all.
+  const placementRule = direction.composition.photoAboveFold
+    ? `Place the photos where the hero composition says they go. {{PHOTO_0}} is the strongest, most representative shot, so give it the most important image slot that composition defines.`
+    : `This composition has NO photograph above the fold — that is deliberate. Do not put any image in the hero. Open with {{PHOTO_0}} in the first section below the fold and place the rest in supporting sections.`;
+
   const photoBlock =
     photoCount > 0 && photoCaptions.length === photoCount
       ? `You have ${photoCount} real photo(s) of this business. Here is what each one shows (you cannot see them):\n` +
         photoCaptions.map((c, i) => `- {{PHOTO_${i}}}: ${c || "(no caption)"}`).join("\n") +
-        `\nUse these EXACT placeholder tokens where you want each image; each is replaced with the real photo. ` +
-        `{{PHOTO_0}} is the pre-selected hero shot — use it as the hero/most prominent image, and put the rest in a gallery or supporting sections. Choose crops/focal points that flatter each photo's subject.`
+        `\nUse these EXACT placeholder tokens; each is replaced with the real photo. ${placementRule} ` +
+        `Choose crops and focal points that flatter each photo's subject.`
       : photoCount > 0
-        ? `You have ${photoCount} real photo(s) of this business. Use these EXACT placeholder tokens where you want them (hero background, gallery, etc.): ${placeholders}. Each will be replaced with the real image. Use the first one ({{PHOTO_0}}) as the hero/most prominent image.`
+        ? `You have ${photoCount} real photo(s) of this business. Use these EXACT placeholder tokens where you want them: ${placeholders}. Each will be replaced with the real image. ${placementRule}`
         : `No photos are available — design a strong type-led hero with no image holes.`;
 
+  // `null` marks a line that dropped out because its data is missing; `""` is a
+  // deliberate blank separator. Filtering only nulls keeps the section breaks,
+  // which matters now that the brief carries most of the design instruction.
   return [
-    creativeBrief(details.placeId || details.name, photoCount > 0),
+    artDirectionBrief(direction),
     ``,
     `LANGUAGE (write everything in this): ${languageName}`,
     ``,
     `Business name (raw, from Google): ${details.name}`,
     `Business type: ${theme.label}${details.primaryTypeDisplayName ? ` (${details.primaryTypeDisplayName})` : ""}`,
-    details.categories.length ? `Google categories: ${details.categories.slice(0, 6).join(", ")}` : "",
-    details.address ? `Address: ${details.address}` : "",
-    details.phone ? `Phone (use in a tel: link CTA): ${details.phone}` : "",
+    details.categories.length ? `Google categories: ${details.categories.slice(0, 6).join(", ")}` : null,
+    details.address ? `Address: ${details.address}` : null,
+    details.phone ? `Phone (use in a tel: link CTA): ${details.phone}` : null,
     details.rating != null
       ? `Google rating: ${details.rating} from ${details.reviewCount} reviews (use as social proof)`
-      : "",
-    priceLabel ? `Price positioning (a tone hint — do NOT print a price): ${priceLabel}` : "",
-    hoursBlock,
+      : null,
+    priceLabel ? `Price positioning (a tone hint — do NOT print a price): ${priceLabel}` : null,
+    hoursBlock || null,
     ``,
     insightBlock,
     ``,
     photoBlock,
-    mapBlock,
+    mapBlock || null,
     ``,
-    `Now design and return the complete HTML document for this business. Make it genuinely distinctive — not a template.`,
+    `Now design and return the complete HTML document for this business, executing the art direction above exactly — the palette hex values, the named typefaces, the hero composition, and the motion choreography.`,
   ]
-    .filter((l) => l !== "")
+    .filter((l): l is string => l !== null)
     .join("\n");
 }
 
@@ -397,8 +381,14 @@ export async function generateAiSiteHtml(
   searchHint: string,
   photos: string[],
   mapUri: string | null = null,
+  variant = 0,
 ): Promise<string | null> {
   if (!env.anthropicApiKey) return null;
+
+  // Seeded per business so a lead's site is stable across rebuilds, but `variant`
+  // lets a manual regeneration re-roll it — previously the direction was a pure
+  // function of placeId, so an unlucky draw could never be escaped.
+  const direction = artDirectionFor(details.placeId || details.name, variant, photos.length > 0);
 
   const locale = detectLocale(details);
   const languageName = LANGUAGE_NAME[locale] ?? "English";
@@ -411,8 +401,10 @@ export async function generateAiSiteHtml(
   //  - text: mine the reviews for the specifics that make the copy feel bespoke.
   // Both are best-effort — each degrades independently to its fallback.
   const [notes, insight] = await Promise.all([
-    photos.length ? describePhotos(client, photos, theme.label) : Promise.resolve(null),
-    analyzeReviews(client, details.reviewSnippets, theme.label, languageName),
+    photos.length
+      ? describePhotos(client, photos, theme.label, details.placeId)
+      : Promise.resolve(null),
+    analyzeReviews(client, details.reviewSnippets, theme.label, languageName, details.placeId),
   ]);
 
   // Reorder so the chosen hero is PHOTO_0.
@@ -429,9 +421,9 @@ export async function generateAiSiteHtml(
     // Stream — a full HTML doc is long output; streaming avoids HTTP timeouts.
     const stream = client.messages.stream({
       model: env.anthropicModel,
-      max_tokens: 32000,
+      max_tokens: DESIGN_MAX_TOKENS,
       thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
+      output_config: { effort: DESIGN_EFFORT },
       system: SYSTEM,
       messages: [
         {
@@ -444,13 +436,25 @@ export async function generateAiSiteHtml(
             photoCaptions,
             insight,
             Boolean(mapUri),
+            direction,
           ),
         },
       ],
     });
     const message = await stream.finalMessage();
+    await recordAiUsage("preview_design", env.anthropicModel, message.usage, details.placeId);
 
-    if (message.stop_reason === "refusal") return null;
+    if (message.stop_reason === "refusal") {
+      console.warn(
+        `[aiSite] design refused for ${details.placeId} (${message.stop_details?.category ?? "no category"}) — falling back to template`,
+      );
+      return null;
+    }
+    if (message.stop_reason === "max_tokens") {
+      console.warn(
+        `[aiSite] design hit max_tokens for ${details.placeId} — HTML is likely truncated; raise DESIGN_MAX_TOKENS`,
+      );
+    }
     const text = message.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

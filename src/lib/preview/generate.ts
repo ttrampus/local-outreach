@@ -4,7 +4,8 @@
 // on-disk cache, so regenerating never re-bills any Google SKU.
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-import { getCachedDetails } from "@/lib/places";
+import { getCachedDetails, isCachedLanguageStale } from "@/lib/places";
+import { refreshLeadDetails } from "@/lib/discovery";
 import { generateSiteHtml } from "@/lib/preview/template";
 import { generateAiSiteHtml } from "@/lib/preview/aiSite";
 import { renderPreview } from "@/lib/preview/render";
@@ -19,6 +20,21 @@ type LeadWithRun = Prisma.LeadGetPayload<{ include: { searchRun: true } }>;
 
 /** Build + screenshot + persist a preview for one already-loaded lead. */
 export async function buildAndStorePreview(lead: LeadWithRun) {
+  // Heal a snapshot cached under a different Places language before building.
+  // Reviews, opening hours and the category label are all localized by Google
+  // and land verbatim on the page, so a stale row silently ships an English site
+  // for a non-English business. Re-fetching costs one Place Details call and
+  // respects the existing daily/monthly ceilings (it returns "capped" instead of
+  // spending), so a capped run just proceeds on the older snapshot.
+  if (await isCachedLanguageStale(lead.placeId)) {
+    const res = await refreshLeadDetails(lead.id);
+    if (res.status !== "ok") {
+      console.warn(
+        `[preview] lead ${lead.id} (${lead.name}) has details cached in a different language and the refresh did not run (${res.status}) — the site may contain English copy`,
+      );
+    }
+  }
+
   // Prefer the cached normalized details (review snippets, categories, photoRefs);
   // fall back to the flat Lead fields if the cache row is missing.
   const details: NormalizedPlaceDetails =
@@ -42,10 +58,25 @@ export async function buildAndStorePreview(lead: LeadWithRun) {
   // Engine: "ai" → Claude designs a bespoke site (falls back to the template on any
   // failure); "template" → the free deterministic generator. Default to AI when an
   // Anthropic key is configured, since bespoke sites are what make outreach land.
-  const engine = env.previewEngine || (env.anthropicApiKey ? "ai" : "template");
-  const rawHtml =
-    (engine === "ai" ? await generateAiSiteHtml(details, searchHint, photos, mapUri) : null) ??
-    generateSiteHtml(details, searchHint, photos, mapUri);
+  const requested = env.previewEngine || (env.anthropicApiKey ? "ai" : "template");
+
+  // Record which engine actually produced the HTML rather than collapsing the two
+  // with `??`. The AI path returns null on any failure, so without this a silently
+  // failed design is indistinguishable from a real one in the previews directory.
+  // `?? 0` because callers hand us a Lead object they loaded themselves, which
+  // may predate this column or come from a narrower select.
+  const variant = lead.previewVariant ?? 0;
+  const aiHtml =
+    requested === "ai"
+      ? await generateAiSiteHtml(details, searchHint, photos, mapUri, variant)
+      : null;
+  if (requested === "ai" && aiHtml === null) {
+    console.warn(
+      `[preview] AI design unavailable for lead ${lead.id} (${lead.name}) — served the deterministic template instead`,
+    );
+  }
+  const engine = aiHtml ? "ai" : "template";
+  const rawHtml = aiHtml ?? generateSiteHtml(details, searchHint, photos, mapUri, variant);
 
   // Swap in a real, working contact form (posts enquiries back to this app). It
   // lives below the hero, so the outreach screenshot stays clean; on the live /p/
@@ -59,6 +90,8 @@ export async function buildAndStorePreview(lead: LeadWithRun) {
     data: {
       previewImagePath: imagePath,
       previewHtmlPath: htmlPath,
+      previewEngine: engine,
+      previewVariant: variant,
       // Advance the funnel only if we haven't moved past this stage already.
       status: lead.status === "discovered" ? "preview_ready" : lead.status,
     },

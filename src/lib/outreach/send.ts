@@ -56,6 +56,11 @@ export async function deliverOutreach(outreachId: string): Promise<DeliverResult
     }
   } else if (to) {
     composeUrl = gmailComposeUrl(to, subject, body);
+  } else if ((o.channel === "facebook" || o.channel === "instagram") && o.contact) {
+    // Social DM: the contact IS the message thread deep-link (m.me / ig.me). There
+    // is no legitimate API to auto-send cold DMs, so the operator clicks through
+    // and pastes the drafted message; the app records the send like any other.
+    composeUrl = o.contact;
   }
 
   await prisma.outreach.update({
