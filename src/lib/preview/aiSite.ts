@@ -10,6 +10,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
 import { recordAiUsage } from "@/lib/aiUsage";
+import { describePhotoShapes } from "./photos";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme } from "./theme";
 import { detectLocale } from "./i18n";
@@ -278,6 +279,7 @@ function buildUserPrompt(
   photoCount: number,
   languageName: string,
   photoCaptions: string[],
+  photoShapes: string[],
   insight: ReviewInsight | null,
   hasMap: boolean,
   direction: ArtDirection,
@@ -323,14 +325,25 @@ function buildUserPrompt(
     ? `Place the photos where the hero composition says they go. {{PHOTO_0}} is the strongest, most representative shot, so give it the most important image slot that composition defines.`
     : `This composition has NO photograph above the fold — that is deliberate. Do not put any image in the hero. Open with {{PHOTO_0}} in the first section below the fold and place the rest in supporting sections.`;
 
+  // Shape matters as much as subject: these are phone photos from Google, usually
+  // TALL. Stretched across a full-bleed band they upscale into mush and crop the
+  // subject out. The designer cannot see them, so it must be told.
+  const shapeFor = (i: number) => (photoShapes[i] ? ` [${photoShapes[i]}]` : "");
+  const shapeRule =
+    `RESPECT EACH PHOTO'S SHAPE. A portrait photo belongs in a portrait-shaped slot — a tall column, a side-by-side pair, an offset card, a framed inset. Do NOT stretch one across a wide full-bleed band: it will be upscaled far past its pixel width and its subject cropped away. Only a landscape photo may fill a wide banner. If every photo is portrait and the composition wants a wide band, use a row of tall frames instead of one stretched image, or let the band be type/colour led with the photos beside it.`;
+
   const photoBlock =
     photoCount > 0 && photoCaptions.length === photoCount
-      ? `You have ${photoCount} real photo(s) of this business. Here is what each one shows (you cannot see them):\n` +
-        photoCaptions.map((c, i) => `- {{PHOTO_${i}}}: ${c || "(no caption)"}`).join("\n") +
-        `\nUse these EXACT placeholder tokens; each is replaced with the real photo. ${placementRule} ` +
+      ? `You have ${photoCount} real photo(s) of this business. Here is what each shows and its shape in pixels (you cannot see them):\n` +
+        photoCaptions
+          .map((c, i) => `- {{PHOTO_${i}}}${shapeFor(i)}: ${c || "(no caption)"}`)
+          .join("\n") +
+        `\nUse these EXACT placeholder tokens; each is replaced with the real photo. ${placementRule} ${shapeRule} ` +
         `Choose crops and focal points that flatter each photo's subject.`
       : photoCount > 0
-        ? `You have ${photoCount} real photo(s) of this business. Use these EXACT placeholder tokens where you want them: ${placeholders}. Each will be replaced with the real image. ${placementRule}`
+        ? `You have ${photoCount} real photo(s) of this business, with these shapes:\n` +
+          Array.from({ length: photoCount }, (_, i) => `- {{PHOTO_${i}}}${shapeFor(i)}`).join("\n") +
+          `\nUse these EXACT placeholder tokens where you want them. Each will be replaced with the real image. ${placementRule} ${shapeRule}`
         : `No photos are available — design a strong type-led hero with no image holes.`;
 
   // `null` marks a line that dropped out because its data is missing; `""` is a
@@ -375,15 +388,25 @@ function buildUserPrompt(
 export function buildManualDesignPrompt(
   details: NormalizedPlaceDetails,
   searchHint: string,
-  photoCount: number,
+  photos: string[],
   hasMap: boolean,
   variant = 0,
 ): { system: string; user: string } {
-  const direction = artDirectionFor(details.placeId || details.name, variant, photoCount > 0);
+  const direction = artDirectionFor(details.placeId || details.name, variant, photos.length > 0);
   const languageName = LANGUAGE_NAME[detectLocale(details)] ?? "English";
   return {
     system: SYSTEM,
-    user: buildUserPrompt(details, searchHint, photoCount, languageName, [], null, hasMap, direction),
+    user: buildUserPrompt(
+      details,
+      searchHint,
+      photos.length,
+      languageName,
+      [],
+      describePhotoShapes(photos),
+      null,
+      hasMap,
+      direction,
+    ),
   };
 }
 
@@ -478,6 +501,7 @@ export async function generateAiSiteHtml(
             orderedPhotos.length,
             languageName,
             photoCaptions,
+            describePhotoShapes(orderedPhotos),
             insight,
             Boolean(mapUri),
             direction,

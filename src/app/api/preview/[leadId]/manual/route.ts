@@ -74,7 +74,7 @@ export async function GET(
   const { system, user } = buildManualDesignPrompt(
     details,
     lead.searchRun?.query ?? "",
-    photos.length,
+    photos,
     Boolean(mapUri),
     lead.previewVariant ?? 0,
   );

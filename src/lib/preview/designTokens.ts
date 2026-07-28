@@ -142,8 +142,8 @@ export const COMPOSITIONS: Composition[] = [
   },
   {
     id: "stacked-editorial",
-    structure: "A full-width headline block occupies the top of the page on flat colour, followed by a hairline rule, then a full-bleed photo band BELOW it. CTA sits between the rule and the photo.",
-    forbids: "The photo must NOT sit beside the headline. No two-column hero.",
+    structure: "A full-width headline block occupies the TOP HALF of the first screen on flat colour — no more than ~55vh, so it never fills the screen on its own — followed by a hairline rule, then a photo band BELOW it that is clearly visible above the fold. CTA sits between the rule and the photo.",
+    forbids: "The photo must NOT sit beside the headline. No two-column hero. The headline block must not occupy the whole first screen, leaving a slab of empty colour.",
     photoAboveFold: true,
   },
   {

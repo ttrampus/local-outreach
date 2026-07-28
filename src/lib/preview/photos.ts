@@ -19,6 +19,70 @@ function safe(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+/**
+ * Pixel dimensions of an inline image, read from its header. Returns null for a
+ * format we don't parse — the caller must treat shape as simply unknown.
+ *
+ * Needed because the designer cannot see the photos: without a shape it will
+ * happily stretch a tall portrait shot across a full-bleed banner, which both
+ * upscales it into mush and crops the subject out.
+ */
+export function imageSize(dataUri: string): { w: number; h: number } | null {
+  const comma = dataUri.indexOf(",");
+  if (comma === -1) return null;
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(dataUri.slice(comma + 1), "base64");
+  } catch {
+    return null;
+  }
+  if (buf.length < 24) return null;
+
+  // PNG: IHDR width/height are the first two big-endian u32 after the signature.
+  if (buf[0] === 0x89 && buf[1] === 0x50) {
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  }
+
+  // JPEG: scan segments for a Start-Of-Frame marker, which carries the size.
+  if (buf[0] === 0xff && buf[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < buf.length) {
+      if (buf[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      const marker = buf[i + 1];
+      // SOF0/1/2/3 and 5..7, 9..11, 13..15 all carry frame dimensions.
+      if (
+        (marker >= 0xc0 && marker <= 0xc3) ||
+        (marker >= 0xc5 && marker <= 0xc7) ||
+        (marker >= 0xc9 && marker <= 0xcb) ||
+        (marker >= 0xcd && marker <= 0xcf)
+      ) {
+        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+      }
+      if (marker === 0xd8 || marker === 0xd9) {
+        i += 2;
+        continue;
+      }
+      i += 2 + buf.readUInt16BE(i + 2);
+    }
+  }
+  return null;
+}
+
+/** Human-readable shape hint per photo, e.g. "portrait 900x1200". */
+export function describePhotoShapes(photos: string[]): string[] {
+  return photos.map((p) => {
+    const size = imageSize(p);
+    if (!size) return "shape unknown";
+    const { w, h } = size;
+    const ratio = w / h;
+    const kind = ratio > 1.15 ? "landscape" : ratio < 0.87 ? "portrait" : "square-ish";
+    return `${kind} ${w}x${h}`;
+  });
+}
+
 function mimeForExt(ext: string): string {
   if (ext === ".png") return "image/png";
   if (ext === ".webp") return "image/webp";
