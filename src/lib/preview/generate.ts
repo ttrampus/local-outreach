@@ -75,15 +75,15 @@ export async function buildAndStorePreview(lead: LeadWithRun) {
       `[preview] AI design unavailable for lead ${lead.id} (${lead.name}) — served the deterministic template instead`,
     );
 
-    // ...unless this lead already HAS an AI design. Falling back would repoint
-    // previewHtmlPath at a fresh template and orphan a site that cost real money
-    // and cannot be reproduced (the design is non-deterministic). That is exactly
-    // how the first AI batch was lost: a regenerate-all sweep ran with no API key,
-    // every AI design silently degraded to a template, and the originals were
+    // ...unless this lead already has an unreproducible design. Falling back would
+    // repoint previewHtmlPath at a fresh template and orphan a site that cost real
+    // money (ai) or real human effort (manual) and cannot be recreated. That is
+    // exactly how the first AI batch was lost: a regenerate-all sweep ran with no
+    // API key, every design silently degraded to a template, and the originals were
     // overwritten. Keep what we have and let the caller see it as a no-op.
-    if (lead.previewEngine === "ai" && lead.previewHtmlPath) {
+    if (lead.previewEngine && lead.previewEngine !== "template" && lead.previewHtmlPath) {
       console.warn(
-        `[preview] keeping the existing AI preview for lead ${lead.id} (${lead.name}) rather than downgrading it to a template`,
+        `[preview] keeping the existing ${lead.previewEngine} preview for lead ${lead.id} (${lead.name}) rather than downgrading it to a template`,
       );
       return lead;
     }

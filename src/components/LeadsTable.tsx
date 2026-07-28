@@ -306,6 +306,122 @@ function LeadRow({
   );
 }
 
+/**
+ * Free alternative to the billed AI design: hand the brief to a chat UI yourself,
+ * paste the HTML back. Two copy-pastes, no API key, no spend.
+ *
+ * Deliberately stops at the clipboard and a new tab. Filling in the chat box,
+ * pressing send and reading the answer back out are yours to do — scripting the
+ * chat UI is not something this app does.
+ */
+function ManualDesign({
+  lead,
+  onUpdate,
+}: {
+  lead: Lead;
+  onUpdate: (u: Partial<Lead> & { id: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [html, setHtml] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function copyPromptAndOpen() {
+    setErr(null);
+    setNote(null);
+    try {
+      const res = await fetch(`/api/preview/${lead.id}/manual`);
+      if (!res.ok) throw new Error(`Could not build the prompt (${res.status})`);
+      const text = await res.text();
+      // The response is a copy-paste document with instruction banners; the model
+      // only needs the two prompt sections, so drop the trailing "what to do next".
+      const brief = text.split("===== AFTER YOU GET THE HTML =====")[0].trim();
+      await navigator.clipboard.writeText(brief);
+      window.open("https://claude.ai/new", "_blank", "noopener");
+      setNote("Prompt copied. Paste it in the new tab, then paste the HTML back below.");
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  async function save() {
+    setBusy(true);
+    setErr(null);
+    setNote(null);
+    try {
+      const res = await fetch(`/api/preview/${lead.id}/manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Save failed (${res.status})`);
+      const fresh = await fetch(`/api/leads/${lead.id}`).then((r) => r.json());
+      if (fresh.lead) onUpdate(fresh.lead);
+      setHtml("");
+      setNote(
+        `Saved — ${data.photosFilled} photo${data.photosFilled === 1 ? "" : "s"} filled in${
+          data.mapFilled ? " and the map" : ""
+        }. Reopen the preview to see it.`,
+      );
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel)]">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-3 py-2 text-left text-xs text-[var(--muted)] hover:text-[var(--text)]"
+      >
+        {open ? "▾" : "▸"} Design by hand — free, no API key
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          <button
+            type="button"
+            onClick={copyPromptAndOpen}
+            className="rounded-md px-3 py-1.5 text-xs bg-[var(--accent,#7c3aed)] text-white hover:opacity-90"
+          >
+            1 · Copy prompt &amp; open Claude
+          </button>
+
+          <textarea
+            value={html}
+            onChange={(e) => setHtml(e.target.value)}
+            placeholder="2 · Paste Claude's HTML here…"
+            spellCheck={false}
+            className="w-full h-28 rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5 font-mono text-[11px] outline-none focus:border-[var(--accent,#7c3aed)]"
+          />
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy || html.trim().length === 0}
+              className="rounded-md px-3 py-1.5 text-xs bg-[var(--accent,#7c3aed)] text-white disabled:opacity-40 hover:opacity-90"
+            >
+              {busy ? "Saving…" : "3 · Save as preview"}
+            </button>
+            <span className="text-[11px] text-[var(--muted)]">
+              Photo and map placeholders are filled in for you.
+            </span>
+          </div>
+
+          {note && <p className="text-[11px] text-[#4ade80]">{note}</p>}
+          {err && <p className="text-[11px] text-[var(--warm,#f59e0b)]">{err}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LeadDetail({
   lead,
   onUpdate,
@@ -558,6 +674,14 @@ function LeadDetail({
                   template fallback
                 </span>
               )}
+              {lead.previewEngine === "manual" && (
+                <span
+                  title="Designed by hand through a chat UI and pasted back — cost nothing in API spend."
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-400 border border-sky-500/30"
+                >
+                  hand-made
+                </span>
+              )}
             </div>
             {hasPreview && (
               <div className="flex rounded-md border border-[var(--border)] overflow-hidden text-[11px]">
@@ -663,6 +787,8 @@ function LeadDetail({
               Payment link
             </ActionBtn>
           </div>
+
+          <ManualDesign lead={lead} onUpdate={onUpdate} />
 
           {/* Reply / lost status — pauses or resumes the follow-up sequence. */}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">

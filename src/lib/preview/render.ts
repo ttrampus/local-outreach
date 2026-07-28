@@ -16,24 +16,26 @@ export interface RenderResult {
 /**
  * Where this render's artifacts go.
  *
- * AI output is expensive and unreproducible — the design is non-deterministic, so
- * a regenerated site is a DIFFERENT site, not the same one rebuilt. It therefore
- * gets a unique name (engine + variant + UTC timestamp) and is never written
- * over: not by a later AI run, and — the case that actually bit us — not by a
+ * The template is the ONLY engine whose output is cheap and reproducible: same
+ * inputs, same page, for free. So it keeps the stable `{placeId}` name and
+ * overwrites in place — nothing of value is lost.
+ *
+ * Everything else is unreproducible. An AI design is non-deterministic, so a
+ * rebuild is a DIFFERENT site rather than the same one recreated, and it cost
+ * money; a manual paste-back cost human effort. Both get a unique name (engine +
+ * variant + UTC timestamp + random suffix) and are never written over: not by a
+ * later run of the same engine, and — the case that actually bit us — not by a
  * `regenerate-all` sweep falling back to the template because the API key was
  * missing or out of credit.
- *
- * Template output is deterministic and free, so it keeps the stable
- * `{placeId}.html` name and overwrites in place. Nothing of value is lost.
  */
 function artifactBase(safeId: string, engine: string, variant: number): string {
-  if (engine !== "ai") return safeId;
+  if (engine === "template") return safeId;
   const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
   // The timestamp is second-resolution and a design takes minutes, so a clash is
   // already unlikely — but "unlikely" is not what this function is for. The suffix
   // makes the name unconditionally unique.
   const suffix = Math.random().toString(16).slice(2, 6);
-  return `${safeId}--ai-v${variant}-${stamp}-${suffix}`;
+  return `${safeId}--${engine}-v${variant}-${stamp}-${suffix}`;
 }
 
 export async function renderPreview(

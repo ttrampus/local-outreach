@@ -362,8 +362,51 @@ function buildUserPrompt(
     .join("\n");
 }
 
+/**
+ * The exact design brief the API path sends, assembled with NO API calls so it can
+ * be pasted into a chat UI by hand.
+ *
+ * It deliberately skips the two Haiku enrichment passes (photo captioning, review
+ * mining) because those are themselves billable calls. The prompt degrades to raw
+ * review snippets and uncaptioned photo placeholders — precisely what the API path
+ * produces when those passes fail, so the output contract is unchanged.
+ */
+export function buildManualDesignPrompt(
+  details: NormalizedPlaceDetails,
+  searchHint: string,
+  photoCount: number,
+  hasMap: boolean,
+  variant = 0,
+): { system: string; user: string } {
+  const direction = artDirectionFor(details.placeId || details.name, variant, photoCount > 0);
+  const languageName = LANGUAGE_NAME[detectLocale(details)] ?? "English";
+  return {
+    system: SYSTEM,
+    user: buildUserPrompt(details, searchHint, photoCount, languageName, [], null, hasMap, direction),
+  };
+}
+
+/**
+ * Swap photo/map placeholders for real data URIs, blanking any token the model
+ * invented or left unused so no broken image reference ships. Shared by the API
+ * path and the manual paste-back route.
+ */
+export function applyPlaceholders(
+  html: string,
+  photos: string[],
+  mapUri: string | null,
+): string {
+  let out = html;
+  photos.forEach((uri, i) => {
+    out = out.split(`{{PHOTO_${i}}}`).join(uri);
+  });
+  out = out.replace(/\{\{PHOTO_\d+\}\}/g, "");
+  if (mapUri) out = out.split("{{MAP}}").join(mapUri);
+  return out.split("{{MAP}}").join("");
+}
+
 /** Strip accidental markdown fences / preamble and return the raw HTML document. */
-function extractHtml(text: string): string | null {
+export function extractHtml(text: string): string | null {
   let t = text.trim();
   const fence = t.match(/```(?:html)?\s*([\s\S]*?)```/i);
   if (fence) t = fence[1].trim();
@@ -460,23 +503,11 @@ export async function generateAiSiteHtml(
       .map((b) => b.text)
       .join("");
 
-    let html = extractHtml(text);
+    const html = extractHtml(text);
     if (!html) return null;
 
-    // Swap photo placeholders for the real data URIs; blank any the model didn't use
-    // or invented beyond what we provided (so no broken/empty image references ship).
-    // Use orderedPhotos so {{PHOTO_0}} resolves to the hero we selected above.
-    orderedPhotos.forEach((uri, i) => {
-      html = html!.split(`{{PHOTO_${i}}}`).join(uri);
-    });
-    html = html.replace(/\{\{PHOTO_\d+\}\}/g, "");
-
-    // Swap the location map, then strip the token if the model didn't place it (or
-    // we had no map) so no literal {{MAP}} ever ships.
-    if (mapUri) html = html.split("{{MAP}}").join(mapUri);
-    html = html.split("{{MAP}}").join("");
-
-    return html;
+    // orderedPhotos, so {{PHOTO_0}} resolves to the hero the vision pass selected.
+    return applyPlaceholders(html, orderedPhotos, mapUri);
   } catch (err) {
     console.error(`[aiSite] generation failed for ${details.placeId}:`, err);
     return null;

@@ -24,8 +24,23 @@ payment → deploy, in one dashboard, with per-call cost accounting at every ste
 
 | | |
 | --- | --- |
-| ![Leads dashboard](docs/screenshots/leads.png) **Leads** — scored by how much each business needs a site, with live per-SKU API budget above. | ![Analytics](docs/screenshots/analytics.png) **Analytics** — funnel, conversion at each stage, and what a customer actually costs in AI spend. |
+| ![Leads dashboard](docs/screenshots/leads.png) **Leads** — scored by how much each business needs a site, with live per-SKU API budget above. | ![Discovery](docs/screenshots/discovery.png) **Discovery** — queue `(category, location)` pairs or sweep a whole region; runs in the background with live progress. |
 | ![Outreach queue](docs/screenshots/outreach.png) **Outreach** — review, edit, approve, send. Each draft carries two queued follow-ups. | ![Follow-ups](docs/screenshots/followups.png) **Follow-ups** — due, scheduled, and paused, with the reason a sequence stopped. |
+
+![Lead detail](docs/screenshots/lead-detail.png)
+
+**Lead detail** — the qualifier's reasoning made auditable: the tier explanation in
+plain language, the raw signals that produced it (here: a Wix subdomain with no
+custom domain, and a homepage returning 404), the generated site, and every action
+for that lead in one place. The `template fallback` badge is deliberate — it marks
+a site the AI engine did *not* produce, so a failed design can never quietly pass
+as a real one.
+
+![Analytics](docs/screenshots/analytics.png)
+
+**Analytics** — conversion at each funnel stage plus unit economics: AI spend per
+preview against subscription revenue, and segment breakdowns by category and
+region so discovery can be aimed at what actually converts.
 
 ### Generated sites — template engine
 
@@ -37,6 +52,25 @@ localized from the business's country (these are Slovene).
 
 The AI engine (`PREVIEW_ENGINE=ai`, described above) designs each page from
 scratch with Claude instead, at roughly $0.45 per site.
+
+### A third path: design by hand, for free
+
+![Design by hand](docs/screenshots/manual-design.png)
+
+Not every site needs to be worth an API call. `GET /api/preview/:leadId/manual`
+assembles the *exact* brief the paid path would send — art direction, business
+data, real review quotes — and hands it back as plain text. Paste it into any
+chat UI, paste the HTML back, and the app finishes the job: photo and map
+placeholders filled from the on-disk cache, contact form injected, hero
+screenshot rendered, everything stored.
+
+This works because photos never enter the prompt. The design references
+`{{PHOTO_0}}…` and the real bytes are substituted afterwards, so the brief is
+~9 KB of pure text and the pasted HTML stays small.
+
+Two copy-pastes, no API key, no spend. It is recorded as
+`previewEngine="manual"` — deliberately not `"ai"`, since folding it in would
+corrupt the cost-per-preview figure on the analytics page.
 
 | | | |
 | --- | --- | --- |
@@ -231,8 +265,9 @@ src/
     analytics/        # funnel + segment dashboard
     p/[leadId]/       # public demo site link (view tracking)
     pay/              # Stripe success / cancelled
-    api/              # route handlers: discover, leads, preview, outreach,
-                      #   followups(+auto), deploy, stripe/webhook, analytics, usage
+    api/              # route handlers: discover, leads, preview(+/manual),
+                      #   outreach, followups(+auto), deploy, stripe/webhook,
+                      #   analytics, usage
   components/         # LeadsTable, SearchLauncher, OutreachReview, FollowupsQueue,
                       #   AnalyticsDashboard, FunnelStatus, UsageBar, TierBadge, Sidebar
   lib/
