@@ -19,18 +19,24 @@ payment → deploy, in one dashboard, with per-call cost accounting at every ste
 ## Screenshots
 
 > The dashboard shots run on the bundled **mock data source** — the businesses
-> shown are fictional. The generated sites are real output from the AI engine.
+> shown are fictional. The generated-site shots are real output for real
+> businesses, from the template engine (see below).
 
 | | |
 | --- | --- |
 | ![Leads dashboard](docs/screenshots/leads.png) **Leads** — scored by how much each business needs a site, with live per-SKU API budget above. | ![Analytics](docs/screenshots/analytics.png) **Analytics** — funnel, conversion at each stage, and what a customer actually costs in AI spend. |
 | ![Outreach queue](docs/screenshots/outreach.png) **Outreach** — review, edit, approve, send. Each draft carries two queued follow-ups. | ![Follow-ups](docs/screenshots/followups.png) **Follow-ups** — due, scheduled, and paused, with the reason a sequence stopped. |
 
-### Sites designed by Claude
+### Generated sites — template engine
 
-Three different businesses, same code path — no shared template. Art direction
-is seeded per business and the prompt actively bans the model's default look.
-Copy is localized from the business's country (these are Slovene).
+Three real businesses, produced by the **deterministic template** engine
+(`PREVIEW_ENGINE=template`) — no AI, no per-preview cost. They look this
+different because palette and layout axis are seeded per business from
+`designTokens.ts`, so the template is parameterized rather than fixed. Copy is
+localized from the business's country (these are Slovene).
+
+The AI engine (`PREVIEW_ENGINE=ai`, described above) designs each page from
+scratch with Claude instead, at roughly $0.45 per site.
 
 | | | |
 | --- | --- | --- |
