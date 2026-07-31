@@ -57,6 +57,12 @@ model Lead {
   interestedAt        DateTime?             // prospect clicked "I'm interested" on the demo
   repliedAt           DateTime?             // operator marked the prospect replied — pauses the follow-up sequence
 
+  // Portfolio -------------------------------------------------------------
+  // Hand-picked for the public /examples page. A flag rather than a curated id
+  // list in config, because ids are cuids minted at discovery — a config file
+  // would mean a rebuild every time the portfolio changes.
+  showcase            Boolean  @default(false)
+
   // Billing (Stripe) ------------------------------------------------------
   stripeCustomerId     String?
   stripeSubscriptionId String?
@@ -72,6 +78,7 @@ model Lead {
 
   @@index([tier])
   @@index([status])
+  @@index([showcase])
 }
 
 /// A drafted outreach message awaiting manual review + send. Never auto-sent.
@@ -93,6 +100,11 @@ model Outreach {
   // the follow-up "due" queue surfaces queued rows whose scheduledAt has passed.
   scheduledAt DateTime?
   sentAt    DateTime?
+  // Stamped when the operator ticked off the pre-send checklist (business name,
+  // phone, address, hours, no hallucinations, mobile, contact form, preview
+  // loads) and approved. Approval requires it — a broken generated site is far
+  // more expensive to send than 30 seconds of checking is to spend.
+  reviewedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -148,6 +160,7 @@ model SiteMessage {
   message   String
 
   notified  Boolean  @default(false) // whether we managed to email the owner
+  readAt    DateTime?                // operator opened it in the inbox
   createdAt DateTime @default(now())
 
   @@index([leadId])
