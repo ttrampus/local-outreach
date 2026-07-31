@@ -3,6 +3,7 @@
 // background and writes progress to the DB. The UI polls /api/search-runs.
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireSession } from "@/lib/auth/guard";
 import { createSearchRun, runDiscovery, runDiscoveryBatch } from "@/lib/discovery";
 import { SWEEP_REGIONS, SWEEP_NAMES } from "@/lib/regions";
 
@@ -29,6 +30,9 @@ const BodySchema = z.union([
 ]);
 
 export async function POST(req: Request) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   let json: unknown;
   try {
     json = await req.json();

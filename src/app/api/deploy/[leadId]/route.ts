@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
+import { requireSession } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import { deploySite, attachDomain, DeployError, type DomainResult } from "@/lib/deploy";
 
@@ -18,6 +19,9 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
   const body = BodySchema.safeParse(await req.json().catch(() => ({})));
   const customDomain = body.success ? body.data.customDomain : undefined;

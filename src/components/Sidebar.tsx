@@ -54,6 +54,16 @@ export function Sidebar() {
       <div className="p-4 text-[11px] leading-relaxed text-[var(--muted)] border-t border-[var(--border)]">
         Human-in-the-loop by design. You approve every message, and send the
         first one yourself.
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+          }}
+          className="mt-3 block hover:text-[var(--text)] underline"
+        >
+          Sign out
+        </button>
       </div>
     </aside>
   );

@@ -7,6 +7,7 @@
 // doesn't suit the business.
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { requireSession } from "@/lib/auth/guard";
 import { prisma } from "@/lib/prisma";
 import { buildAndStorePreview } from "@/lib/preview/generate";
 
@@ -18,6 +19,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },

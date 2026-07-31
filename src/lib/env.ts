@@ -36,6 +36,14 @@ export const env = {
   // (e.g. https://your-app.example.com/p/<leadId>). Defaults to local dev.
   appBaseUrl: (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, ""),
 
+  // Console auth. One operator, one shared password, no user table. Both must be
+  // set or the app refuses to serve anything private — see src/proxy.ts. Read
+  // directly from process.env in src/lib/auth/session.ts, since that module is
+  // imported by the proxy and this file is "server-only"; mirrored here so the
+  // console can tell you what is missing.
+  authPassword: process.env.AUTH_PASSWORD ?? "",
+  authSecret: process.env.AUTH_SECRET ?? "",
+
   // Owner identity surfaced on the public preview's "owner bar" CTA, so a prospect
   // who likes the demo can reach you directly. All optional — the bar still records
   // interest without them; provide at least one to give the prospect a way to reply.
