@@ -23,6 +23,9 @@ export async function GET(req: Request) {
           tier: true,
           website: true,
           previewImagePath: true,
+          // The phone shot, so "mobile looks right" on the pre-send checklist is
+          // something the operator can actually see rather than assume.
+          previewMobileImagePath: true,
           deployedUrl: true,
           status: true,
         },

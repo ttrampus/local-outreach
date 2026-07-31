@@ -20,10 +20,31 @@ interface OutreachItem {
     tier: string;
     website: string | null;
     previewImagePath: string | null;
+    previewMobileImagePath: string | null;
     deployedUrl: string | null;
     status: string;
   };
 }
+
+/**
+ * The last thing between a generated site and a real business owner's inbox.
+ *
+ * Thirty seconds per lead, and it catches the failures that cost the most: a
+ * wrong phone number, a hallucinated service, a hero that collapses on a phone.
+ * None of those show up as errors anywhere — the send just quietly burns the
+ * one first impression that prospect will ever give.
+ */
+const CHECKLIST = [
+  { key: "name", label: "Business name is correct" },
+  { key: "phone", label: "Phone number is correct" },
+  { key: "address", label: "Address is correct" },
+  { key: "hours", label: "Opening hours are correct" },
+  { key: "logo", label: "Logo / branding looks okay" },
+  { key: "facts", label: "No invented services, awards or claims" },
+  { key: "mobile", label: "Looks right on mobile" },
+  { key: "form", label: "Contact form works" },
+  { key: "loads", label: "Preview page loads" },
+] as const;
 
 const FILTERS = [
   { value: "", label: "All" },
@@ -101,6 +122,13 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
   const [error, setError] = useState<string | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  const allChecked = CHECKLIST.every((c) => checked[c.key]);
+
+  function toggleCheck(key: string) {
+    setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   const sent = item.status === "sent";
   const dirty =
@@ -198,6 +226,57 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
           </p>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
+            {item.status === "draft" && (
+              <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-4 mb-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium">Before you send</span>
+                  <span className="text-[11px] text-[var(--muted)]">
+                    {CHECKLIST.filter((c) => checked[c.key]).length} / {CHECKLIST.length}
+                  </span>
+                </div>
+
+                <div className="mt-1 flex flex-wrap gap-3 text-[11px]">
+                  {item.lead.previewImagePath && (
+                    <a
+                      href={`/p/${item.leadId}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-[var(--accent)] hover:underline"
+                    >
+                      open the live preview ↗
+                    </a>
+                  )}
+                  {item.lead.previewMobileImagePath && (
+                    <a
+                      href={item.lead.previewMobileImagePath}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-[var(--accent)] hover:underline"
+                    >
+                      phone screenshot ↗
+                    </a>
+                  )}
+                </div>
+
+                <div className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                  {CHECKLIST.map((c) => (
+                    <label
+                      key={c.key}
+                      className="flex items-center gap-2 text-[13px] cursor-pointer select-none text-[var(--muted)] hover:text-[var(--text)]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(checked[c.key])}
+                        onChange={() => toggleCheck(c.key)}
+                        className="accent-[var(--accent)]"
+                      />
+                      {c.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               onClick={() => patch({ subject, body, channel, contact: contact || null }, "save")}
               disabled={busy !== null || !dirty}
@@ -208,8 +287,21 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
 
             {item.status === "draft" ? (
               <button
-                onClick={() => patch({ subject, body, channel, contact: contact || null, action: "approve" }, "approve")}
-                disabled={busy !== null}
+                onClick={() =>
+                  patch(
+                    {
+                      subject,
+                      body,
+                      channel,
+                      contact: contact || null,
+                      action: "approve",
+                      reviewed: true,
+                    },
+                    "approve",
+                  )
+                }
+                disabled={busy !== null || !allChecked}
+                title={allChecked ? undefined : "Complete the checklist above first"}
                 className="px-3 py-1.5 rounded-lg text-sm bg-[var(--accent)] text-white disabled:opacity-40"
               >
                 {busy === "approve" ? "Approving…" : "Approve"}

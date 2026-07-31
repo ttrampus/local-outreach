@@ -89,6 +89,8 @@ const PatchSchema = z.object({
   channel: z.string().optional(),
   contact: z.string().nullable().optional(),
   action: z.enum(["approve", "send", "unapprove"]).optional(),
+  // Set by the pre-send checklist in OutreachReview. Required to approve.
+  reviewed: z.boolean().optional(),
 });
 
 // PATCH — edit the current draft and/or transition its status.
@@ -124,7 +126,7 @@ export async function PATCH(
     );
   }
 
-  const { body, subject, channel, contact, action } = parsed.data;
+  const { body, subject, channel, contact, action, reviewed } = parsed.data;
   const data: Record<string, unknown> = {};
   if (body !== undefined) data.body = body;
   if (subject !== undefined) data.subject = subject;
@@ -157,10 +159,23 @@ export async function PATCH(
 
   let leadStatus: string | null = null;
   if (action === "approve") {
+    // Enforced here and not only in the UI. A disabled button is a convenience;
+    // this is the actual gate. Sending a site with the wrong phone number costs
+    // the prospect's trust permanently, and the check takes half a minute.
+    if (reviewed !== true) {
+      return NextResponse.json(
+        { error: "Complete the pre-send checklist before approving." },
+        { status: 409 },
+      );
+    }
     data.status = "approved";
+    data.reviewedAt = new Date();
     leadStatus = "approved";
   } else if (action === "unapprove") {
     data.status = "draft";
+    // Back to draft means the message is about to change, so the previous
+    // review no longer describes what would be sent.
+    data.reviewedAt = null;
   }
 
   const outreach = await prisma.outreach.update({ where: { id: current.id }, data });
