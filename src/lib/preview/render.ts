@@ -10,8 +10,13 @@ const PREVIEW_HTML_DIR = path.join(process.cwd(), "data", "previews");
 
 export interface RenderResult {
   imagePath: string; // web path under /public, e.g. /previews/{placeId}.png
+  mobileImagePath: string | null; // same, at a phone viewport; null if that shot failed
   htmlPath: string; // absolute path to stored HTML on disk
 }
+
+// iPhone-class portrait viewport. Most prospects open a cold-outreach link on a
+// phone, so the desktop shot alone was never evidence the page actually holds up.
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
 /**
  * Where this render's artifacts go.
@@ -52,6 +57,8 @@ export async function renderPreview(
   const htmlPath = path.join(PREVIEW_HTML_DIR, `${base}.html`);
   const imgFsPath = path.join(PREVIEW_IMG_DIR, `${base}.png`);
   const imgWebPath = `/previews/${base}.png`;
+  const mobileFsPath = path.join(PREVIEW_IMG_DIR, `${base}--mobile.png`);
+  const mobileWebPath = `/previews/${base}--mobile.png`;
 
   await writeFile(htmlPath, html, "utf8");
 
@@ -77,7 +84,22 @@ export async function renderPreview(
 
     // Hero screenshot = the above-the-fold viewport (nav + hero band).
     await page.screenshot({ path: imgFsPath, fullPage: false });
-    return { imagePath: imgWebPath, htmlPath };
+
+    // Then the same page at phone width. Reusing the page rather than launching a
+    // second browser keeps this nearly free; the context's deviceScaleFactor of 2
+    // carries over, so the phone shot is retina too. Best-effort: a layout that
+    // breaks the resize must not cost us the desktop artifact we already have.
+    let mobileImagePath: string | null = null;
+    try {
+      await page.setViewportSize(MOBILE_VIEWPORT);
+      await page.waitForTimeout(500); // let the responsive reflow settle
+      await page.screenshot({ path: mobileFsPath, fullPage: false });
+      mobileImagePath = mobileWebPath;
+    } catch {
+      // leave null — the panel simply won't offer a Mobile toggle for this render
+    }
+
+    return { imagePath: imgWebPath, mobileImagePath, htmlPath };
   } finally {
     await browser.close().catch(() => {});
   }

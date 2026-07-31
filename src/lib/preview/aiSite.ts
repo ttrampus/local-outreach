@@ -10,7 +10,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "@/lib/env";
 import { recordAiUsage } from "@/lib/aiUsage";
-import { describePhotoShapes } from "./photos";
+import { photoShapes, describeShape, hasLandscape } from "./photos";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme } from "./theme";
 import { detectLocale } from "./i18n";
@@ -42,11 +42,14 @@ THE ART DIRECTION BELOW IS A SPECIFICATION, NOT A SUGGESTION:
 - The MOTION signature defines the animation choreography. Implement it as written, with those durations and easing curves.
 
 ANTI-CONVERGENCE — resist your own defaults. You have a strong, persistent house style that you must NOT fall back into:
+- THE EDITORIAL TRAP: cream ground + serif display + terracotta accent. This is a legitimate direction for a hospitality or portfolio brief chosen deliberately — but it is also the current default-template look, and reaching for it by reflex is what makes a page read as generated. Only build it if the palette below actually specifies it.
 - A warm cream / off-white / bone background in the #F0EDE4–#F7F4EC range. Do not use any background in that range unless the palette below explicitly specifies one.
 - Oversized near-black display type on the left with a photograph filling the right half, and a dark pill-shaped CTA button at the top right of the nav. This exact composition is your default and it is banned unless the composition below actually asks for a split.
 - Terracotta, rust, burnt-orange or amber accents on a cream ground.
 - A serif display face with one word italicised for emphasis.
 - A horizontal scrolling marquee / ticker-tape band of service keywords. This is an instantly recognisable AI-site tell.
+- A hairline-thin high-contrast "fashion editorial" serif (Didone) headline over a rounded geometric sans, with tiny wide-tracked caps labels and vast empty margins. Use the type set you are given, at the weights given, and set it with confidence rather than preciousness.
+- A first screen that is 60% empty ground with one line of type floating in the middle of it. Emptiness is not sophistication. Every screen must carry its weight: the fold should hold the name, the value proposition, the CTA, the rating AND either photography or real supporting detail (hours, location, proof points).
 These are not stylistic preferences — they are the specific fingerprints that make generated sites look mass-produced. The palette and composition you are given exist to move you off them. Follow those instead.
 
 DESIGN BAR:
@@ -65,7 +68,28 @@ CONTENT RULES:
 - Include clear conversion elements: a prominent primary CTA (book/call — use the phone number in a tel: link), the services a business of this type offers, location/area, opening hours (use the REAL hours when they are provided below — verbatim, do not invent different ones; otherwise "by appointment"), and a contact section.
 - WORKING CONTACT FORM: place the literal token {{CONTACT_FORM}} exactly once, inside your contact section, where a "get in touch" form belongs. It is replaced with a real, functioning enquiry form. Do NOT build your own <form> — just output the {{CONTACT_FORM}} token in the right spot (you may still keep tel:/email CTAs alongside it).
 - When a list of what customers actually praise is provided, weave those real specifics into the headlines, about copy and service blurbs — that is what makes the site feel written for THIS business. Mention named staff naturally if given. Still invent nothing factual beyond what's provided.
-- The hero is the most important thing: the business name, a sharp one-line value proposition, the CTA, and the rating — strong above the fold.`;
+- The HERO PATTERN below decides what the first screen says and in what order. Build that, including the thing it omits — the omission is the point. Do not reinstate a missing element "for completeness": anything the pattern leaves out belongs further down the page, or nowhere.
+
+BANNED HERO FURNITURE — these six things appeared, together and in this order, on every site this system has produced. They are the reason the output reads as machine-made even when the palette and typeface change. Do not use them unless the hero pattern explicitly calls for one:
+- A small wide-tracked uppercase eyebrow line above the headline carrying the category and address ("SALON · NA JAMI 20"). Never open with one.
+- A two-line headline whose second line is set in the accent colour.
+- A headline that ends in a full stop for punch, or that is built as two terse fragments ("Well cut. Every time.").
+- A supporting paragraph with exactly one phrase bolded in the middle of it.
+- A filled primary button paired with a ghost/outline secondary carrying an arrow glyph.
+- A rating stat block — big number, star row, review count — parked in a corner of the fold.
+Vary the shape of the copy as well as its content: not every business gets a headline, not every fold needs a button, and the rating does not have to appear above the fold at all.
+
+CRAFT DISCIPLINE — the difference between a designed page and a generated one is usually measurable, not mystical:
+- SPACING SCALE. Every margin, padding and gap comes from one scale: 4, 8, 16, 24, 40, 64, 96, 160px (clamp() between scale values for fluid sections is fine). Arbitrary values — 7px, 18px, 22px — are the single clearest tell that spacing was improvised per element rather than designed as a system.
+- TYPE SCALE. Body and UI text come from a fixed ramp: 14, 16, 18, 20, 24, 30, 36, 48px. The display face is the ONE exception and may scale fluidly above it per the treatment given. Body text is never below 16px, on any viewport. Similar sizes flatten hierarchy — if two things matter differently, size them differently.
+- TONED NEUTRALS. Never pure #FFFFFF on pure #000000. Use the palette's values as given; they are already toned.
+- ONE PRIMARY ACTION per screen. A first-time visitor must know what to do within five seconds. Competing equal-weight CTAs cause hesitation and are why so many of these pages feel busy but inert.
+- RHYTHM, NOT REPETITION. Three sections sharing a layout and a fourth that deliberately breaks it creates rhythm. Four identical sections is monotony; four unrelated ones is chaos.
+- Set \`text-wrap: pretty\` on headlines and \`text-wrap: balance\` on short centred text so nothing ends in a widow.
+- FILL THE FOLD VERTICALLY. Content must be distributed across the whole first screen, not anchored to one edge of it. No single empty band taller than about a quarter of the viewport anywhere in the hero — top, middle or bottom. If your composition anchors the headline low, something real (nav, meta, photography, hours, a rating line) has to occupy the space above it. A hero that opens on a third of a screen of untouched background looks unfinished, not confident, and it is the most common way these pages fail even when every other rule is followed.
+- CUT FILLER. No decorative dividers that separate nothing, no "learn more" that goes nowhere, no headline and subheading restating each other, no invented statistics, no emoji used as decoration. If a section looks empty, that is a composition problem — fix the layout, do not pad it with invented content. Oversized whitespace is procrastination, not breathing room.
+
+VOICE — write like the owner would, not like an agency pitching them. Concrete over abstract: opening hours, the street, what a cut costs, how long the wait is, who does the work. Ban the agency register entirely — no "elevate", "crafted", "experience" as a noun, "where X meets Y", "your journey", "redefining", "excellence". A sentence that could sit on any other business's site in this category is a failed sentence.`;
 
 function clip(text: string, max = 180): string {
   const t = text.trim().replace(/\s+/g, " ");
@@ -261,9 +285,14 @@ function artDirectionBrief(d: ArtDirection): string {
     `  body face: ${d.type.body}`,
     `  treatment: ${d.type.treatment}`,
     ``,
-    `HERO COMPOSITION "${d.composition.id}":`,
+    `HERO COMPOSITION "${d.composition.id}" — the STRUCTURE of the first screen:`,
     `  ${d.composition.structure}`,
     `  FORBIDDEN here: ${d.composition.forbids}`,
+    ``,
+    `HERO PATTERN "${d.hero.id}" — what the first screen SAYS, and what it leaves out:`,
+    `  ${d.hero.content}`,
+    `  DELIBERATELY OMITTED: ${d.hero.omits}`,
+    `  Build the omission. Do not add the missing element back.`,
     ``,
     `MOTION SIGNATURE "${d.motion.id}" — implement this choreography:`,
     `  entrance: ${d.motion.entrance}`,
@@ -322,8 +351,8 @@ function buildUserPrompt(
   // where it belongs is the composition's call, and some compositions
   // deliberately want no photograph above the fold at all.
   const placementRule = direction.composition.photoAboveFold
-    ? `Place the photos where the hero composition says they go. {{PHOTO_0}} is the strongest, most representative shot, so give it the most important image slot that composition defines.`
-    : `This composition has NO photograph above the fold — that is deliberate. Do not put any image in the hero. Open with {{PHOTO_0}} in the first section below the fold and place the rest in supporting sections.`;
+    ? `Place the photos where the hero composition says they go. {{PHOTO_0}} is the strongest, most representative shot, so give it the most important image slot that composition defines. NON-NEGOTIABLE: {{PHOTO_0}} must be visibly rendered within the first screen — inside the top 1000px at a 1280px-wide viewport, and still visible on a 390x844 phone. The owner opens this mockup and has to see their own place immediately; a hero they have to scroll to find reads as a stock placeholder. It must be a real, substantial image area, not a thumbnail tucked into a corner.`
+    : `This business has no usable photography, so the composition is deliberately type-led. Do not leave any broken or empty image holes — carry the first screen with type, colour and texture.`;
 
   // Shape matters as much as subject: these are phone photos from Google, usually
   // TALL. Stretched across a full-bleed band they upscale into mush and crop the
@@ -385,14 +414,21 @@ function buildUserPrompt(
  * review snippets and uncaptioned photo placeholders — precisely what the API path
  * produces when those passes fail, so the output contract is unchanged.
  */
-export function buildManualDesignPrompt(
+export async function buildManualDesignPrompt(
   details: NormalizedPlaceDetails,
   searchHint: string,
   photos: string[],
   hasMap: boolean,
   variant = 0,
-): { system: string; user: string } {
-  const direction = artDirectionFor(details.placeId || details.name, variant, photos.length > 0);
+): Promise<{ system: string; user: string }> {
+  const shapes = await photoShapes(photos);
+  const theme = pickTheme(details.categories, searchHint);
+  const direction = artDirectionFor(details.placeId || details.name, variant, {
+    palettes: theme.palettes,
+    typeSets: theme.typeSets,
+    hasAny: photos.length > 0,
+    hasLandscape: hasLandscape(shapes),
+  });
   const languageName = LANGUAGE_NAME[detectLocale(details)] ?? "English";
   return {
     system: SYSTEM,
@@ -402,7 +438,7 @@ export function buildManualDesignPrompt(
       photos.length,
       languageName,
       [],
-      describePhotoShapes(photos),
+      shapes.map(describeShape),
       null,
       hasMap,
       direction,
@@ -452,15 +488,24 @@ export async function generateAiSiteHtml(
 ): Promise<string | null> {
   if (!env.anthropicApiKey) return null;
 
-  // Seeded per business so a lead's site is stable across rebuilds, but `variant`
-  // lets a manual regeneration re-roll it — previously the direction was a pure
-  // function of placeId, so an unlucky draw could never be escaped.
-  const direction = artDirectionFor(details.placeId || details.name, variant, photos.length > 0);
-
   const locale = detectLocale(details);
   const languageName = LANGUAGE_NAME[locale] ?? "English";
   const client = new Anthropic({ apiKey: env.anthropicApiKey });
   const theme = pickTheme(details.categories, searchHint);
+
+  // Shapes gate the direction as well as brief the designer: a composition that
+  // demands a wide full-bleed image must not be drawn when every photo is portrait.
+  const shapes = await photoShapes(photos);
+
+  // Seeded per business so a lead's site is stable across rebuilds, but `variant`
+  // lets a manual regeneration re-roll it — previously the direction was a pure
+  // function of placeId, so an unlucky draw could never be escaped.
+  const direction = artDirectionFor(details.placeId || details.name, variant, {
+    palettes: theme.palettes,
+    typeSets: theme.typeSets,
+    hasAny: photos.length > 0,
+    hasLandscape: hasLandscape(shapes),
+  });
 
   // Two cheap Haiku passes in parallel:
   //  - vision: caption the photos and pick the best hero (fixes a wrong/poorly-
@@ -476,12 +521,16 @@ export async function generateAiSiteHtml(
 
   // Reorder so the chosen hero is PHOTO_0.
   let orderedPhotos = photos;
+  let orderedShapes = shapes;
   let photoCaptions: string[] = [];
   if (notes) {
     const { hero, captions } = notes;
-    const rest = (arr: string[]) => arr.filter((_, i) => i !== hero);
-    orderedPhotos = [photos[hero], ...rest(photos)];
-    photoCaptions = [captions[hero], ...rest(captions)];
+    // Shapes are per-photo, so they must ride along with the reorder — otherwise
+    // the brief would describe each slot with the wrong photo's dimensions.
+    const heroFirst = <T,>(arr: T[]) => [arr[hero], ...arr.filter((_, i) => i !== hero)];
+    orderedPhotos = heroFirst(photos);
+    orderedShapes = heroFirst(shapes);
+    photoCaptions = heroFirst(captions);
   }
 
   try {
@@ -501,7 +550,7 @@ export async function generateAiSiteHtml(
             orderedPhotos.length,
             languageName,
             photoCaptions,
-            describePhotoShapes(orderedPhotos),
+            orderedShapes.map(describeShape),
             insight,
             Boolean(mapUri),
             direction,

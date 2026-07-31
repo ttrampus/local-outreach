@@ -7,80 +7,115 @@
 //   - GUARDED: respects the same per-SKU daily/monthly ceilings as the other calls.
 // Photos are returned as inline data URIs so the headless screenshot (and any
 // deployed HTML) is fully self-contained with no external image origin to resolve.
+//
+// Two copies are kept per place:
+//   {placeId}/00.jpg          the original bytes exactly as Google returned them
+//   {placeId}/display/00.webp a resized, EXIF-corrected WebP — the one we inline
+// The original is the archive: Photos bills per REQUEST, not per pixel, so we ask
+// for Google's maximum and pay nothing extra for it. The display copy exists
+// because inlining a 4800px JPEG as base64 would produce a page too heavy to send
+// to a prospect's phone.
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 import { env } from "@/lib/env";
 import { recordCall, dailyLimitReached, monthlyLimitReached } from "@/lib/usage";
 
 const PHOTO_DIR = path.join(process.cwd(), "data", "place-photos");
 const BASE = "https://places.googleapis.com/v1";
+const DISPLAY_SUBDIR = "display";
+const DISPLAY_QUALITY = 82;
 
 function safe(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/**
- * Pixel dimensions of an inline image, read from its header. Returns null for a
- * format we don't parse — the caller must treat shape as simply unknown.
- *
- * Needed because the designer cannot see the photos: without a shape it will
- * happily stretch a tall portrait shot across a full-bleed banner, which both
- * upscales it into mush and crops the subject out.
- */
-export function imageSize(dataUri: string): { w: number; h: number } | null {
+export type PhotoOrientation = "landscape" | "portrait" | "square-ish" | "unknown";
+
+export interface PhotoShape {
+  w: number;
+  h: number;
+  orientation: PhotoOrientation;
+}
+
+/** Decode a data URI's payload back to bytes. */
+function bytesOf(dataUri: string): Buffer | null {
   const comma = dataUri.indexOf(",");
   if (comma === -1) return null;
-  let buf: Buffer;
   try {
-    buf = Buffer.from(dataUri.slice(comma + 1), "base64");
+    return Buffer.from(dataUri.slice(comma + 1), "base64");
   } catch {
     return null;
   }
-  if (buf.length < 24) return null;
-
-  // PNG: IHDR width/height are the first two big-endian u32 after the signature.
-  if (buf[0] === 0x89 && buf[1] === 0x50) {
-    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
-  }
-
-  // JPEG: scan segments for a Start-Of-Frame marker, which carries the size.
-  if (buf[0] === 0xff && buf[1] === 0xd8) {
-    let i = 2;
-    while (i + 9 < buf.length) {
-      if (buf[i] !== 0xff) {
-        i++;
-        continue;
-      }
-      const marker = buf[i + 1];
-      // SOF0/1/2/3 and 5..7, 9..11, 13..15 all carry frame dimensions.
-      if (
-        (marker >= 0xc0 && marker <= 0xc3) ||
-        (marker >= 0xc5 && marker <= 0xc7) ||
-        (marker >= 0xc9 && marker <= 0xcb) ||
-        (marker >= 0xcd && marker <= 0xcf)
-      ) {
-        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
-      }
-      if (marker === 0xd8 || marker === 0xd9) {
-        i += 2;
-        continue;
-      }
-      i += 2 + buf.readUInt16BE(i + 2);
-    }
-  }
-  return null;
 }
 
-/** Human-readable shape hint per photo, e.g. "portrait 900x1200". */
-export function describePhotoShapes(photos: string[]): string[] {
-  return photos.map((p) => {
-    const size = imageSize(p);
-    if (!size) return "shape unknown";
-    const { w, h } = size;
-    const ratio = w / h;
-    const kind = ratio > 1.15 ? "landscape" : ratio < 0.87 ? "portrait" : "square-ish";
-    return `${kind} ${w}x${h}`;
-  });
+/**
+ * Pixel dimensions and orientation of each inline photo.
+ *
+ * The designer cannot see the photos, so without this it will happily stretch a
+ * tall portrait shot across a full-bleed banner — upscaling it into mush and
+ * cropping the subject out. Orientation also gates which compositions may be
+ * chosen at all (see designTokens.artDirectionFor).
+ *
+ * Uses sharp rather than a hand-rolled header parser, so WebP (what the display
+ * copies are) is read as easily as JPEG.
+ *
+ * EXIF orientation is applied by hand: `metadata()` reports the dimensions as
+ * STORED, and neither `.rotate()` nor the `autoOrient` option changes that. A
+ * quarter-turn tag means the stored axes are transposed relative to how the image
+ * displays — so a 900x1600 file that displays 1600x900 must be reported as the
+ * landscape it is. The display copies are written through `.rotate()`, which bakes
+ * the turn in and clears the tag, so this matters for the fallback path that
+ * inlines an unconverted original.
+ */
+export async function photoShapes(photos: string[]): Promise<PhotoShape[]> {
+  return Promise.all(
+    photos.map(async (p): Promise<PhotoShape> => {
+      const unknown: PhotoShape = { w: 0, h: 0, orientation: "unknown" };
+      const buf = bytesOf(p);
+      if (!buf) return unknown;
+      try {
+        const meta = await sharp(buf).metadata();
+        // Orientations 5-8 are the quarter-turns; 1-4 leave the axes alone.
+        const turned = (meta.orientation ?? 1) >= 5;
+        const w = turned ? meta.height : meta.width;
+        const h = turned ? meta.width : meta.height;
+        if (!w || !h) return unknown;
+        const ratio = w / h;
+        return {
+          w,
+          h,
+          orientation: ratio > 1.15 ? "landscape" : ratio < 0.87 ? "portrait" : "square-ish",
+        };
+      } catch {
+        return unknown;
+      }
+    }),
+  );
+}
+
+/** Human-readable shape hint for the prompt, e.g. "portrait 1500x2000". */
+export function describeShape(s: PhotoShape): string {
+  return s.orientation === "unknown" ? "shape unknown" : `${s.orientation} ${s.w}x${s.h}`;
+}
+
+/** True when at least one photo is wide enough to fill a full-bleed banner. */
+export function hasLandscape(shapes: PhotoShape[]): boolean {
+  return shapes.some((s) => s.orientation === "landscape");
+}
+
+/**
+ * Resize + re-encode for inlining: EXIF orientation applied (phone photos
+ * frequently carry it), long edge capped, WebP for the size win that lets us
+ * ship far more resolution at roughly the old byte cost.
+ */
+async function toDisplayCopy(buf: Buffer): Promise<Buffer> {
+  const max = Math.max(320, env.previewPhotoMaxPx);
+  return sharp(buf)
+    .rotate() // honour EXIF; without this a portrait shot can render sideways
+    .resize({ width: max, height: max, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: DISPLAY_QUALITY })
+    .toBuffer();
 }
 
 function mimeForExt(ext: string): string {
@@ -89,28 +124,68 @@ function mimeForExt(ext: string): string {
   return "image/jpeg";
 }
 
-async function readCached(dir: string): Promise<string[] | null> {
-  let files: string[];
+function asDataUri(buf: Buffer, ext: string): string {
+  return `data:${mimeForExt(ext)};base64,${buf.toString("base64")}`;
+}
+
+async function imageFilesIn(dir: string): Promise<string[] | null> {
   try {
-    files = (await readdir(dir)).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).sort();
+    return (await readdir(dir)).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).sort();
   } catch {
     return null; // no dir yet
   }
-  if (!files.length) return null;
-  const out: string[] = [];
-  for (const f of files) {
-    const buf = await readFile(path.join(dir, f));
-    out.push(`data:${mimeForExt(path.extname(f).toLowerCase())};base64,${buf.toString("base64")}`);
+}
+
+/**
+ * Serve a place's photos from disk, preferring the display copies.
+ *
+ * When only originals exist — every place cached before display copies were
+ * introduced — they are converted and written on first use. That upgrade is
+ * local work, so an old cache improves without re-billing Google. It cannot
+ * recover detail the original never had: places fetched under the old 1200px cap
+ * stay capped until their directory is cleared and re-fetched.
+ */
+async function readCached(dir: string): Promise<string[] | null> {
+  const displayDir = path.join(dir, DISPLAY_SUBDIR);
+
+  const ready = await imageFilesIn(displayDir);
+  if (ready?.length) {
+    return Promise.all(
+      ready.map(async (f) =>
+        asDataUri(await readFile(path.join(displayDir, f)), path.extname(f).toLowerCase()),
+      ),
+    );
   }
-  return out;
+
+  const originals = await imageFilesIn(dir);
+  if (!originals?.length) return null;
+
+  await mkdir(displayDir, { recursive: true });
+  const out: string[] = [];
+  for (const f of originals) {
+    const raw = await readFile(path.join(dir, f));
+    try {
+      const display = await toDisplayCopy(raw);
+      await writeFile(path.join(displayDir, `${path.parse(f).name}.webp`), display);
+      out.push(asDataUri(display, ".webp"));
+    } catch {
+      // Unconvertible (truncated download, odd format) — inline the original
+      // rather than dropping a photo the page is counting on.
+      out.push(asDataUri(raw, path.extname(f).toLowerCase()));
+    }
+  }
+  return out.length ? out : null;
 }
 
 /** Download one Place Photo's bytes; returns the buffer + a file extension. */
 async function fetchOne(photoName: string): Promise<{ buf: Buffer; ext: string } | null> {
+  // Google's ceiling on both axes. Billing is per request, so asking for the
+  // largest available image costs exactly what a small one costs — and the old
+  // maxHeightPx=1200 was the reason tall phone photos arrived only ~900px wide.
   const url =
-    `${BASE}/${photoName}/media?maxHeightPx=1200&maxWidthPx=1600&skipHttpRedirect=false`;
+    `${BASE}/${photoName}/media?maxHeightPx=4800&maxWidthPx=4800&skipHttpRedirect=false`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 30_000); // larger images, longer download
   try {
     const res = await fetch(url, {
       signal: controller.signal,
@@ -146,7 +221,8 @@ export async function fetchPreviewPhotos(
 
   const want = Math.max(1, env.previewPhotoCount);
   const refs = photoRefs.slice(0, want);
-  await mkdir(dir, { recursive: true });
+  const displayDir = path.join(dir, DISPLAY_SUBDIR);
+  await mkdir(displayDir, { recursive: true });
 
   const out: string[] = [];
   for (let i = 0; i < refs.length; i++) {
@@ -156,8 +232,16 @@ export async function fetchPreviewPhotos(
     const got = await fetchOne(refs[i]);
     if (!got) continue;
     await recordCall("PLACE_PHOTOS");
-    await writeFile(path.join(dir, `${String(i).padStart(2, "0")}${got.ext}`), got.buf);
-    out.push(`data:${mimeForExt(got.ext)};base64,${got.buf.toString("base64")}`);
+
+    const stem = String(i).padStart(2, "0");
+    await writeFile(path.join(dir, `${stem}${got.ext}`), got.buf); // archive the original
+    try {
+      const display = await toDisplayCopy(got.buf);
+      await writeFile(path.join(displayDir, `${stem}.webp`), display);
+      out.push(asDataUri(display, ".webp"));
+    } catch {
+      out.push(asDataUri(got.buf, got.ext)); // conversion failed; ship what we have
+    }
   }
   return out;
 }

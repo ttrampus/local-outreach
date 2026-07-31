@@ -96,12 +96,18 @@ export async function buildAndStorePreview(lead: LeadWithRun) {
   // page and the deployed customer site it's a functioning enquiry form.
   const html = injectContactForm(rawHtml, lead.id, detectLocale(details));
 
-  const { imagePath, htmlPath } = await renderPreview(lead.placeId, html, engine, variant);
+  const { imagePath, mobileImagePath, htmlPath } = await renderPreview(
+    lead.placeId,
+    html,
+    engine,
+    variant,
+  );
 
   return prisma.lead.update({
     where: { id: lead.id },
     data: {
       previewImagePath: imagePath,
+      previewMobileImagePath: mobileImagePath,
       previewHtmlPath: htmlPath,
       previewEngine: engine,
       previewVariant: variant,

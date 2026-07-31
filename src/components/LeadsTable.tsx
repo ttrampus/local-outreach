@@ -20,6 +20,7 @@ export interface Lead {
   signals: string | null;
   status: string;
   previewImagePath: string | null;
+  previewMobileImagePath: string | null;
   previewEngine: string | null;
   deployedUrl: string | null;
   previewViews: number;
@@ -473,7 +474,7 @@ function LeadDetail({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<"image" | "live">("image");
+  const [view, setView] = useState<"image" | "mobile" | "live">("image");
   // Bumped whenever the preview is regenerated, to bust the live iframe's cache.
   const [previewNonce, setPreviewNonce] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -650,6 +651,9 @@ function LeadDetail({
   }
 
   const hasPreview = Boolean(lead.previewImagePath);
+  // Previews rendered before the phone shot existed have no mobile artifact, so
+  // the toggle is offered only when there is actually something behind it.
+  const hasMobile = Boolean(lead.previewMobileImagePath);
   const messages = lead.siteMessages ?? [];
 
   return (
@@ -727,20 +731,22 @@ function LeadDetail({
             </div>
             {hasPreview && (
               <div className="flex rounded-md border border-[var(--border)] overflow-hidden text-[11px]">
-                {(["image", "live"] as const).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setView(v)}
-                    className={`px-2.5 py-1 capitalize transition-colors ${
-                      view === v
-                        ? "bg-[var(--accent,#7c3aed)] text-white"
-                        : "text-[var(--muted)] hover:text-[var(--text)]"
-                    }`}
-                  >
-                    {v === "image" ? "Image" : "Live"}
-                  </button>
-                ))}
+                {(["image", ...(hasMobile ? (["mobile"] as const) : []), "live"] as const).map(
+                  (v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setView(v)}
+                      className={`px-2.5 py-1 capitalize transition-colors ${
+                        view === v
+                          ? "bg-[var(--accent,#7c3aed)] text-white"
+                          : "text-[var(--muted)] hover:text-[var(--text)]"
+                      }`}
+                    >
+                      {v === "image" ? "Image" : v === "mobile" ? "Mobile" : "Live"}
+                    </button>
+                  ),
+                )}
               </div>
             )}
           </div>
@@ -753,6 +759,17 @@ function LeadDetail({
                 loading="lazy"
                 className="w-full aspect-[1280/1000] rounded-lg border border-[var(--border)] bg-white"
               />
+            ) : view === "mobile" && hasMobile ? (
+              // Shown at its true 390px width rather than stretched, so the
+              // judgement being made is the one a prospect's phone would produce.
+              <div className="flex justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`${lead.previewMobileImagePath!}?v=${previewNonce}`}
+                  alt={`${lead.name} preview on a phone`}
+                  className="w-full max-w-[390px] rounded-lg border border-[var(--border)]"
+                />
+              </div>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img

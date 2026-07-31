@@ -31,6 +31,12 @@ export interface Theme {
   // own ground while keeping the choice category-appropriate — a dentist can't
   // draw oxblood, a barber can't draw clinical mint.
   palettes: string[];
+  // Type-set allow-list (ids from designTokens.TYPE_SETS), same idea as
+  // `palettes` and for the same reason: a barber shouldn't be set in the clinical
+  // geometric sans a dental practice wants, and a dentist shouldn't get a
+  // condensed gym-poster face. Every theme keeps at least five so businesses
+  // within one category still differ from each other.
+  typeSets: string[];
   // Hero band -------------------------------------------------------------
   heroBg: string; // base color the mesh is layered over
   heroText: string; // text color on the hero, chosen for contrast
@@ -54,6 +60,7 @@ const THEMES: Theme[] = [
     accents: ["#b76e79", "#bd6a4c", "#9c5a78"],
     accentText: "#fffaf6",
     palettes: ["plum-noir", "oxblood", "graphite-mono", "blush-ink", "lilac-graphite", "pure-mono", "violet-acid", "stone-oxide", "sunset-duo", "bone-forest"],
+    typeSets: ["fraunces-hanken", "instrument-figtree", "outfit-karla", "newsreader-plex", "petrona-franklin", "familjen-literata", "syne-epilogue"],
     heroBg: "#f3e7df",
     heroText: "#34261f",
     heroMesh2: "#e7c9cf",
@@ -74,6 +81,7 @@ const THEMES: Theme[] = [
     accents: ["#e0a458", "#d98756", "#c9994f"],
     accentText: "#1a1310",
     palettes: ["carbon-ember", "oxblood", "forest-brass", "emerald-gold", "stone-oxide", "linen-navy", "sunset-duo", "electric-pop", "bone-forest", "abyss-coral"],
+    typeSets: ["dmserif-worksans", "youngserif-public", "fraunces-hanken", "zillaslab-barlow", "instrument-figtree", "bricolage-hanken", "outfit-karla"],
     heroBg: "#1a1310",
     heroText: "#f7efe5",
     heroMesh2: "#7a4a28",
@@ -94,6 +102,7 @@ const THEMES: Theme[] = [
     accents: ["#ff6a3d", "#ffb000", "#2f9bff"],
     accentText: "#0f1419",
     palettes: ["obsidian-lime", "midnight-signal", "ink-cobalt", "carbon-ember", "graphite-mono", "paper-cobalt", "citrus-white", "electric-pop", "sapphire-ice"],
+    typeSets: ["anton-karla", "bebas-figtree", "bigshoulders-public", "archivo-commissioner", "bricolage-hanken", "jetbrains-lexend"],
     heroBg: "#0f1419",
     heroText: "#ffffff",
     heroMesh2: "#1f3b57",
@@ -114,6 +123,7 @@ const THEMES: Theme[] = [
     accents: ["#0fae96", "#1f8fb0", "#2f8f6f"],
     accentText: "#ffffff",
     palettes: ["mint-clinic", "sky-slate", "paper-cobalt", "sapphire-ice", "neo-mint-black", "citrus-white", "pure-mono", "linen-navy"],
+    typeSets: ["archivo-commissioner", "sora-rethink", "outfit-karla", "syne-epilogue", "jetbrains-lexend", "instrument-figtree"],
     heroBg: "#ecf6f4",
     heroText: "#0f2723",
     heroMesh2: "#bfe8df",
@@ -123,7 +133,7 @@ const THEMES: Theme[] = [
     match: ["florist", "flower", "garden", "nursery", "plant", "landscaping"],
     label: "studio",
     layout: "editorial",
-    headingFont: "'Cormorant Garamond', Georgia, serif",
+    headingFont: "'Newsreader', Georgia, serif",
     bodyFont: "'Work Sans', system-ui, sans-serif",
     bg: "#f5f6ef",
     surface: "#fcfcf6",
@@ -134,6 +144,7 @@ const THEMES: Theme[] = [
     accents: ["#5c8a3a", "#bd6a4c", "#9a7bb0"],
     accentText: "#fcfcf6",
     palettes: ["blush-ink", "lilac-graphite", "bone-forest", "neo-mint-black", "mint-clinic", "stone-oxide", "sunset-duo", "emerald-gold"],
+    typeSets: ["newsreader-plex", "fraunces-hanken", "petrona-franklin", "youngserif-public", "familjen-literata", "instrument-figtree"],
     heroBg: "#eef1e6",
     heroText: "#26301f",
     heroMesh2: "#cdddb6",
@@ -154,6 +165,7 @@ const THEMES: Theme[] = [
     accents: ["#c6f53d", "#ff4d57", "#33d6a6"],
     accentText: "#0c0d0f",
     palettes: ["obsidian-lime", "midnight-signal", "graphite-mono", "carbon-ember", "electric-pop", "violet-acid", "abyss-coral", "pure-mono", "ink-cobalt"],
+    typeSets: ["anton-karla", "bebas-figtree", "bigshoulders-public", "archivo-commissioner", "unbounded-dmsans", "syne-epilogue"],
     heroBg: "#0c0d0f",
     heroText: "#ffffff",
     heroMesh2: "#2a3a0e",
@@ -174,6 +186,7 @@ const THEMES: Theme[] = [
     accents: ["#e23b3b", "#f5a623", "#3a7bd5"],
     accentText: "#ffffff",
     palettes: ["graphite-mono", "ink-cobalt", "carbon-ember", "obsidian-lime", "midnight-signal", "oxblood", "pure-mono", "sapphire-ice"],
+    typeSets: ["archivo-commissioner", "anton-karla", "bebas-figtree", "bigshoulders-public", "jetbrains-lexend", "sora-rethink"],
     heroBg: "#101114",
     heroText: "#ffffff",
     heroMesh2: "#3a1414",
@@ -183,7 +196,7 @@ const THEMES: Theme[] = [
     match: ["lawyer", "legal", "attorney", "accountant", "notary", "consultant", "real_estate", "insurance", "architect", "agency", "finance"],
     label: "practice",
     layout: "editorial",
-    headingFont: "'Playfair Display', Georgia, serif",
+    headingFont: "'Petrona', Georgia, serif",
     bodyFont: "'Work Sans', system-ui, sans-serif",
     bg: "#f4f3ef",
     surface: "#fbfbf8",
@@ -194,6 +207,7 @@ const THEMES: Theme[] = [
     accents: ["#1f3a5f", "#7a5b32", "#3a5a40"],
     accentText: "#fbfbf8",
     palettes: ["linen-navy", "paper-cobalt", "sapphire-ice", "ink-cobalt", "stone-oxide", "pure-mono", "citrus-white", "emerald-gold", "graphite-mono"],
+    typeSets: ["newsreader-plex", "zillaslab-barlow", "fraunces-hanken", "sora-rethink", "outfit-karla", "spacemono-worksans", "instrument-figtree"],
     heroBg: "#ecebe4",
     heroText: "#1b2330",
     heroMesh2: "#c9c6b4",
@@ -215,7 +229,10 @@ const DEFAULT_THEME: Theme = {
   border: "#262b38",
   accents: ["#6c5ce7", "#00b894", "#ff7675"],
   accentText: "#ffffff",
-    palettes: ["paper-cobalt", "midnight-signal", "stone-oxide", "sky-slate", "carbon-ember", "graphite-mono", "citrus-white", "linen-navy", "emerald-gold", "ink-cobalt"],
+  palettes: ["paper-cobalt", "midnight-signal", "stone-oxide", "sky-slate", "carbon-ember", "graphite-mono", "citrus-white", "linen-navy", "emerald-gold", "ink-cobalt"],
+  // No category matched, so nothing is ruled out on category grounds — this list
+  // is a spread across the families rather than a curation.
+  typeSets: ["bricolage-hanken", "outfit-karla", "sora-rethink", "syne-epilogue", "familjen-literata", "archivo-commissioner", "jetbrains-lexend"],
   heroBg: "#0d0f14",
   heroText: "#ffffff",
   heroMesh2: "#241f47",
@@ -243,8 +260,8 @@ export const GOOGLE_FONTS_HREF =
   "https://fonts.googleapis.com/css2?" +
   [
     "family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700",
-    "family=Playfair+Display:wght@500;600;700;800",
-    "family=Cormorant+Garamond:wght@500;600;700",
+    "family=Petrona:wght@500;600;700;800",
+    "family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700",
     "family=DM+Serif+Display:ital@0;1",
     "family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800",
     "family=Syne:wght@600;700;800",

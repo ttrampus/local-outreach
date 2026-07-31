@@ -34,6 +34,9 @@ model Lead {
 
   // Artifacts -------------------------------------------------------------
   previewImagePath    String?  // /previews/{placeId}.png once generated
+  // The same render captured at a 390x844 phone viewport. Null for previews
+  // generated before this existed, and for renders whose phone shot failed.
+  previewMobileImagePath String?
   previewHtmlPath     String?
   previewEngine       String?  // "ai" | "template" — which engine actually produced the stored HTML.
                                // Recorded because the AI path degrades to the template on any failure,

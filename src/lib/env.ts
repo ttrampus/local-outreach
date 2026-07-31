@@ -79,6 +79,12 @@ export const env = {
   maxPhotosPerDay: num(process.env.MAX_PHOTOS_PER_DAY, 100),
   // How many of a business's photos to pull into one preview (hero + gallery).
   previewPhotoCount: num(process.env.PREVIEW_PHOTO_COUNT, 4),
+  // Long-edge cap, in pixels, for the WebP copy of each photo that gets inlined
+  // into the generated page. Originals are archived at Google's full size; this
+  // only bounds what ships. 2000 is ~2.2x the old resolution at roughly the old
+  // byte cost, because WebP replaces JPEG. Raising it makes pages heavier fast —
+  // they are inlined as base64, and a prospect may open the link on mobile data.
+  previewPhotoMaxPx: num(process.env.PREVIEW_PHOTO_MAX_PX, 2000),
   // Static Maps is its own billable SKU; like photos it's fetched lazily at preview
   // time, inlined as a data URI (so no API key leaks into deployed HTML), and cached.
   // Set PREVIEW_MAP=off to disable rendering a location map entirely.

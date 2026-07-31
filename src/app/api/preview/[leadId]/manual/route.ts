@@ -71,7 +71,7 @@ export async function GET(
   if (!ctx) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
   const { lead, details, photos, mapUri } = ctx;
-  const { system, user } = buildManualDesignPrompt(
+  const { system, user } = await buildManualDesignPrompt(
     details,
     lead.searchRun?.query ?? "",
     photos,
@@ -162,7 +162,7 @@ export async function POST(
   // collapsing it into "ai" would corrupt the cost-per-preview figure in analytics
   // (this one cost nothing). It also keeps the AI-preservation guard in generate.ts
   // from mistaking it for an API-produced design.
-  const { imagePath, htmlPath } = await renderPreview(
+  const { imagePath, mobileImagePath, htmlPath } = await renderPreview(
     lead.placeId,
     finalHtml,
     "manual",
@@ -173,6 +173,7 @@ export async function POST(
     where: { id: lead.id },
     data: {
       previewImagePath: imagePath,
+      previewMobileImagePath: mobileImagePath,
       previewHtmlPath: htmlPath,
       previewEngine: "manual",
       status: lead.status === "discovered" ? "preview_ready" : lead.status,
