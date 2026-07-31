@@ -4,6 +4,7 @@
 // on-disk cache, so regenerating never re-bills any Google SKU.
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import { createSemaphore } from "@/lib/concurrency";
 import { getCachedDetails, isCachedLanguageStale } from "@/lib/places";
 import { refreshLeadDetails } from "@/lib/discovery";
 import { generateSiteHtml } from "@/lib/preview/template";
@@ -18,8 +19,28 @@ import type { Prisma } from "@/generated/prisma/client";
 
 type LeadWithRun = Prisma.LeadGetPayload<{ include: { searchRun: true } }>;
 
-/** Build + screenshot + persist a preview for one already-loaded lead. */
+// Module-level, so every caller shares one queue. Gating here rather than in the
+// route covers the bulk regenerator too — it is already sequential by hand, and
+// this makes that guarantee structural instead of a comment someone can miss.
+const previewSemaphore = createSemaphore(env.previewConcurrency);
+
+/**
+ * Build + screenshot + persist a preview for one already-loaded lead.
+ *
+ * Queued rather than run immediately: see src/lib/concurrency.ts. A caller may
+ * wait minutes for a slot, which is why the HTTP path in front of this needs a
+ * generous proxy timeout.
+ */
 export async function buildAndStorePreview(lead: LeadWithRun) {
+  if (previewSemaphore.pending > 0) {
+    console.log(
+      `[preview] lead ${lead.id} queued behind ${previewSemaphore.pending} other build(s)`,
+    );
+  }
+  return previewSemaphore.withSlot(() => buildAndStore(lead));
+}
+
+async function buildAndStore(lead: LeadWithRun) {
   // Heal a snapshot cached under a different Places language before building.
   // Reviews, opening hours and the category label are all localized by Google
   // and land verbatim on the page, so a stale row silently ships an English site
@@ -96,12 +117,22 @@ export async function buildAndStorePreview(lead: LeadWithRun) {
   // page and the deployed customer site it's a functioning enquiry form.
   const html = injectContactForm(rawHtml, lead.id, detectLocale(details));
 
-  const { imagePath, mobileImagePath, htmlPath } = await renderPreview(
-    lead.placeId,
-    html,
-    engine,
-    variant,
-  );
+  // Retry the render once, and only the render. Launching Chromium is the step
+  // that fails transiently (a slow page, a browser that didn't come up), and
+  // repeating it costs nothing but time. The AI design above is deliberately not
+  // retried: it already degrades to the template internally on failure, and a
+  // second attempt would bill another full generation.
+  let rendered;
+  try {
+    rendered = await renderPreview(lead.placeId, html, engine, variant);
+  } catch (err) {
+    console.warn(
+      `[preview] render failed for lead ${lead.id} (${lead.name}), retrying once:`,
+      err,
+    );
+    rendered = await renderPreview(lead.placeId, html, engine, variant);
+  }
+  const { imagePath, mobileImagePath, htmlPath } = rendered;
 
   return prisma.lead.update({
     where: { id: lead.id },
