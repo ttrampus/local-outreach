@@ -176,7 +176,7 @@ export function LeadsTable() {
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-[var(--muted)]">
                   No leads yet. Head to{" "}
-                  <a href="/search" className="text-[var(--accent)] underline">
+                  <a href="/app/search" className="text-[var(--accent)] underline">
                     Discovery
                   </a>{" "}
                   to run a search.
@@ -975,7 +975,7 @@ function LeadDetail({
           {lead.outreach.length > 0 && (
             <p className="mt-3 text-[11px] text-[var(--muted)]">
               Draft saved.{" "}
-              <a href="/outreach" className="text-[var(--accent)] underline">
+              <a href="/app/outreach" className="text-[var(--accent)] underline">
                 Review &amp; send in Outreach →
               </a>
             </p>

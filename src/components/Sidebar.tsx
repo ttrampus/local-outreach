@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/", label: "Leads", icon: "◧" },
-  { href: "/search", label: "Discovery", icon: "⌕" },
-  { href: "/outreach", label: "Outreach", icon: "✎" },
-  { href: "/followups", label: "Follow-ups", icon: "↻" },
-  { href: "/analytics", label: "Analytics", icon: "▤" },
+  { href: "/app", label: "Leads", icon: "◧" },
+  { href: "/app/search", label: "Discovery", icon: "⌕" },
+  { href: "/app/outreach", label: "Outreach", icon: "✎" },
+  { href: "/app/followups", label: "Follow-ups", icon: "↻" },
+  { href: "/app/analytics", label: "Analytics", icon: "▤" },
 ];
 
 export function Sidebar() {
@@ -30,7 +30,10 @@ export function Sidebar() {
 
       <nav className="flex-1 p-3 space-y-1">
         {NAV.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          // /app is a prefix of every other nav href, so it only counts as active
+          // on an exact match — otherwise Leads lights up on every console page.
+          const active =
+            item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
