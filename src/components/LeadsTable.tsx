@@ -28,6 +28,7 @@ export interface Lead {
   lastViewedAt: string | null;
   interestedAt: string | null;
   repliedAt: string | null;
+  showcase: boolean;
   email: string | null;
   customDomain: string | null;
   subscriptionStatus: string | null;
@@ -650,6 +651,26 @@ function LeadDetail({
     }
   }
 
+  // Feature this preview on the public /examples portfolio (or take it off).
+  async function toggleShowcase() {
+    setBusy("showcase");
+    setError(null);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ showcase: !lead.showcase }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+      if (data.lead) onUpdate(data.lead);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const hasPreview = Boolean(lead.previewImagePath);
   // Previews rendered before the phone shot existed have no mobile artifact, so
   // the toggle is offered only when there is actually something behind it.
@@ -887,6 +908,23 @@ function LeadDetail({
               >
                 Mark lost
               </button>
+            )}
+            {hasPreview && (
+              <>
+                <span className="text-[var(--border)]">·</span>
+                <button
+                  onClick={toggleShowcase}
+                  disabled={busy !== null}
+                  title="Feature this preview on the public /examples page"
+                  className={
+                    lead.showcase
+                      ? "text-[var(--warm)] hover:underline"
+                      : "text-[var(--muted)] hover:text-[var(--text)]"
+                  }
+                >
+                  {lead.showcase ? "★ In portfolio" : "☆ Add to portfolio"}
+                </button>
+              </>
             )}
           </div>
 

@@ -21,6 +21,12 @@ interface Strings {
   call: string;
   email: string;
   book: string;
+  // Shown instead of the above when the page is reached from the public
+  // portfolio rather than from a prospect's own outreach email.
+  showcaseBadge: string;
+  showcaseTitle: string;
+  showcaseSub: string;
+  showcaseCta: string;
 }
 
 const SL: Strings = {
@@ -34,6 +40,10 @@ const SL: Strings = {
   call: "Pokličite",
   email: "E-pošta",
   book: "Rezervirajte klic",
+  showcaseBadge: "Primer iz portfelja",
+  showcaseTitle: "Želite takšno spletno stran?",
+  showcaseSub: "Za vaše podjetje jo pripravimo brezplačno — plačate šele, če vam je všeč.",
+  showcaseCta: "Želim takšno",
 };
 
 const EN: Strings = {
@@ -47,6 +57,10 @@ const EN: Strings = {
   call: "Call",
   email: "Email",
   book: "Book a call",
+  showcaseBadge: "Portfolio example",
+  showcaseTitle: "Want a site like this?",
+  showcaseSub: "We build one for your business free — you only pay if you like it.",
+  showcaseCta: "I want one",
 };
 
 function esc(s: string): string {
@@ -73,10 +87,17 @@ function contactLinks(t: Strings): string {
  * Return `html` with the owner bar inserted before </body>. Off (returns html
  * unchanged) when OWNER_BAR=off. The bar self-hides if the visitor previously
  * dismissed it (localStorage), and posts interest to /api/p/:leadId/interest.
+ *
+ * `showcase` swaps that for a generic CTA. The same preview is reachable two
+ * ways — from the prospect's own outreach email, and from the public portfolio —
+ * and only the first of those is the business being pitched. Leaving the real
+ * bar on the portfolio route would let any passing stranger mark someone else's
+ * live prospect as interested.
  */
 export function injectOwnerBar(
   html: string,
   lead: { id: string; name: string; address: string | null },
+  opts: { showcase?: boolean } = {},
 ): string {
   if (!env.ownerBar) return html;
 
@@ -84,6 +105,8 @@ export function injectOwnerBar(
   const name = esc(cleanDisplayName(lead.name));
   const hasContact = Boolean(env.ownerEmail || env.ownerPhone || env.ownerBookingUrl);
   const thanks = hasContact ? t.thanksWithContact : t.thanksNoContact;
+
+  if (opts.showcase) return injectShowcaseBar(html, t);
 
   // Scoped under #__lo so nothing clashes with the generated site's own styles.
   const bar = `
@@ -148,6 +171,44 @@ export function injectOwnerBar(
   });
 })();
 </script>`;
+
+  return html.includes("</body>") ? html.replace("</body>", `${bar}\n</body>`) : html + bar;
+}
+
+/**
+ * The portfolio variant: no lead id, no interest endpoint, no localStorage — a
+ * plain link back to the marketing page. Deliberately scriptless, since there is
+ * nothing here to record.
+ */
+function injectShowcaseBar(html: string, t: Strings): string {
+  const bar = `
+<div id="__lo" role="dialog" aria-label="${esc(t.showcaseBadge)}">
+  <style>
+    #__lo{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147483000;
+      width:min(680px,calc(100% - 24px));box-sizing:border-box;
+      background:#0d0f14;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:16px;
+      box-shadow:0 24px 60px -20px rgba(0,0,0,.6);
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      padding:16px 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;
+      animation:__loUp .5s cubic-bezier(.2,.75,.25,1) both;}
+    @keyframes __loUp{from{opacity:0;transform:translate(-50%,16px);}to{opacity:1;transform:translate(-50%,0);}}
+    #__lo .__lo-badge{display:inline-block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+      color:#9aa3b2;margin-bottom:4px;}
+    #__lo .__lo-title{font-weight:700;font-size:15px;line-height:1.25;}
+    #__lo .__lo-sub{font-size:13px;color:rgba(255,255,255,.74);line-height:1.4;margin-top:3px;}
+    #__lo .__lo-yes{display:inline-block;text-decoration:none;background:#fff;color:#0d0f14;
+      font-weight:600;font-size:14px;padding:11px 20px;border-radius:999px;white-space:nowrap;flex-shrink:0;}
+    @media(max-width:620px){#__lo{flex-direction:column;align-items:stretch;gap:12px;}
+      #__lo .__lo-yes{text-align:center;}}
+    @media print{#__lo{display:none;}}
+  </style>
+  <div class="__lo-txt">
+    <span class="__lo-badge">${esc(t.showcaseBadge)}</span>
+    <div class="__lo-title">${esc(t.showcaseTitle)}</div>
+    <div class="__lo-sub">${esc(t.showcaseSub)}</div>
+  </div>
+  <a class="__lo-yes" href="/#contact">${esc(t.showcaseCta)} →</a>
+</div>`;
 
   return html.includes("</body>") ? html.replace("</body>", `${bar}\n</body>`) : html + bar;
 }

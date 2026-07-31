@@ -9,10 +9,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
   const { leadId } = await params;
+
+  // Reached from the public /examples portfolio rather than from this business's
+  // own outreach email. Same page, but none of the per-lead signals apply.
+  const fromShowcase =
+    new URL(req.url).searchParams.get("src") === "examples";
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
     select: { id: true, name: true, address: true, previewHtmlPath: true, firstViewedAt: true },
@@ -37,20 +42,27 @@ export async function GET(
 
   // Record the open so a viewed-but-silent lead becomes a known-warm lead. Best
   // effort — a tracking write must never break serving the preview.
-  try {
-    await prisma.lead.update({
-      where: { id: lead.id },
-      data: {
-        previewViews: { increment: 1 },
-        lastViewedAt: new Date(),
-        ...(lead.firstViewedAt ? {} : { firstViewedAt: new Date() }),
-      },
-    });
-  } catch {
-    /* ignore */
+  //
+  // Skipped for portfolio traffic: those views are strangers browsing examples,
+  // not the business opening its own proposal. Counting them would make every
+  // showcased lead look hot and quietly corrupt the funnel in analytics.ts —
+  // which is the number the whole operation is steered by.
+  if (!fromShowcase) {
+    try {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: {
+          previewViews: { increment: 1 },
+          lastViewedAt: new Date(),
+          ...(lead.firstViewedAt ? {} : { firstViewedAt: new Date() }),
+        },
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
-  return new Response(injectOwnerBar(html, lead), {
+  return new Response(injectOwnerBar(html, lead, { showcase: fromShowcase }), {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",

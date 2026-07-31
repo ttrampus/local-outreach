@@ -28,7 +28,17 @@ export async function GET(
   return NextResponse.json({ lead });
 }
 
-const PatchSchema = z.object({ action: z.enum(["replied", "lost", "reopen"]) });
+// Either a funnel transition, or the portfolio flag, or both. `showcase` is not
+// a funnel action — a lead can be featured on /examples at any stage — so it
+// rides alongside rather than joining the enum.
+const PatchSchema = z
+  .object({
+    action: z.enum(["replied", "lost", "reopen"]).optional(),
+    showcase: z.boolean().optional(),
+  })
+  .refine((v) => v.action !== undefined || v.showcase !== undefined, {
+    message: "Nothing to update",
+  });
 
 export async function PATCH(
   req: Request,
@@ -44,6 +54,9 @@ export async function PATCH(
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
   const data: Record<string, unknown> = {};
+
+  if (parsed.data.showcase !== undefined) data.showcase = parsed.data.showcase;
+
   switch (parsed.data.action) {
     case "replied":
       data.repliedAt = new Date();
