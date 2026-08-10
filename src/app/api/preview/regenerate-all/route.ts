@@ -7,10 +7,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { regenerateExistingPreviews } from "@/lib/preview/generate";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const queued = await prisma.lead.count({ where: { previewHtmlPath: { not: null } } });
   if (queued === 0) {
     return NextResponse.json({ queued: 0 });

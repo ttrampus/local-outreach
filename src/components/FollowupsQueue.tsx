@@ -101,7 +101,7 @@ function FollowupCard({ item, onChanged }: { item: FollowupItem; onChanged: () =
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  async function act(action: "send" | "skip") {
+  async function act(action: "send" | "mark-sent" | "skip") {
     setBusy(action);
     setError(null);
     setNote(null);
@@ -113,9 +113,19 @@ function FollowupCard({ item, onChanged }: { item: FollowupItem; onChanged: () =
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? `Request failed (${res.status})`);
-      if (action === "send" && d.delivery?.method === "manual" && d.delivery?.composeUrl) {
+      // Assisted channels: copy the body first (still inside the click gesture),
+      // then open the thread / messaging app / dialer for the operator to finish.
+      if (d.delivery?.copyBody) {
+        try {
+          await navigator.clipboard.writeText(d.delivery.copyBody);
+        } catch {
+          /* clipboard blocked — the body is on screen to copy by hand */
+        }
+      }
+      if (d.delivery?.method === "manual" && d.delivery?.composeUrl) {
         window.open(d.delivery.composeUrl, "_blank", "noopener");
       }
+      if (d.delivery?.note) setNote(d.delivery.note);
       onChanged();
     } catch (e) {
       setError((e as Error).message);
@@ -173,6 +183,14 @@ function FollowupCard({ item, onChanged }: { item: FollowupItem; onChanged: () =
             className="px-3 py-1.5 rounded-lg text-sm bg-[#16a34a] text-white disabled:opacity-40"
           >
             {busy === "send" ? "Sending…" : "Send follow-up"}
+          </button>
+          <button
+            onClick={() => act("mark-sent")}
+            disabled={busy !== null}
+            title="I already sent this myself — just record it"
+            className="px-3 py-1.5 rounded-lg text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-40"
+          >
+            {busy === "mark-sent" ? "Recording…" : "Sent by hand"}
           </button>
           <button
             onClick={markReplied}

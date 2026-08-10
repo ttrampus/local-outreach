@@ -46,6 +46,52 @@ const CHECKLIST = [
   { key: "loads", label: "Preview page loads" },
 ] as const;
 
+/**
+ * The channels the send path can actually act on — these strings are what
+ * `pickChannel` produces and what `deliverOutreach` switches over, so the dropdown
+ * can never offer something that silently does nothing. WhatsApp is deliberately
+ * absent: cold WhatsApp messaging breaches WhatsApp Business policy.
+ */
+const CHANNELS = [
+  { value: "email", label: "email", hint: "Delivered by the app when SMTP is set, else opens Gmail." },
+  { value: "sms", label: "sms", hint: "Delivered by the app when Twilio is set, else opens your messaging app." },
+  { value: "facebook", label: "facebook DM", hint: "Opens the Messenger thread; the message is copied for you to paste." },
+  { value: "instagram", label: "instagram DM", hint: "Opens the Instagram thread; the message is copied for you to paste." },
+  { value: "phone", label: "phone call", hint: "Opens your dialer and logs the touch — the call is yours to make." },
+  { value: "manual", label: "manual", hint: "No automatic delivery. Use “Sent by hand” after you've made contact." },
+];
+
+// Printable ASCII + newlines + the accented characters GSM-7 encodes directly.
+// Anything else (an em dash, a €, Slovene č/š/ž) forces UCS-2. Written with
+// escapes rather than a literal range so no control byte ends up in the source.
+const GSM7 = /^[\n\r\x20-\x7E£¥èéùìòÇØøÅåÆæßÉ¤¡ÄÖÑÜ§¿äöñüà]*$/;
+
+/**
+ * Roughly what a carrier will bill for this text. A draft written AS an SMS is
+ * short by construction, but switching an email-length draft over to SMS by hand
+ * quietly turns one message into five — visible here before it's sent, not after.
+ * Non-GSM-7 characters force UCS-2, which cuts a segment from 160 characters to
+ * 70; our own drafts contain an em dash and a €, so that is the common case.
+ */
+function smsSegments(body: string): { chars: number; segments: number; unicode: boolean } {
+  const unicode = !GSM7.test(body);
+  const single = unicode ? 70 : 160;
+  const multi = unicode ? 67 : 153;
+  const chars = body.length;
+  const segments = chars <= single ? Math.max(1, Math.ceil(chars / single)) : Math.ceil(chars / multi);
+  return { chars, segments, unicode };
+}
+
+/** What the contact field means, per channel — it isn't always an address. */
+const CONTACT_PLACEHOLDER: Record<string, string> = {
+  email: "name@business.com",
+  sms: "+386 1 234 5678",
+  facebook: "https://m.me/<page>",
+  instagram: "https://ig.me/m/<user>",
+  phone: "+386 1 234 5678",
+  manual: "how you'll reach them",
+};
+
 const FILTERS = [
   { value: "", label: "All" },
   { value: "draft", label: "Drafts" },
@@ -120,6 +166,7 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
   const [channel, setChannel] = useState(item.channel);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [confirmSend, setConfirmSend] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
@@ -140,6 +187,7 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
   async function patch(payload: Record<string, unknown>, action: string) {
     setBusy(action);
     setError(null);
+    setNote(null);
     try {
       const res = await fetch(`/api/outreach/${item.leadId}`, {
         method: "PATCH",
@@ -151,11 +199,23 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
       if (action === "save") {
         setSavedAt(Date.now());
       } else {
-        // Manual send path: no SMTP configured, so open a prefilled Gmail compose
-        // tab for the operator to actually send from (with the preview attached).
-        if (action === "send" && data.delivery?.method === "manual" && data.delivery?.composeUrl) {
-          window.open(data.delivery.composeUrl, "_blank", "noopener");
+        // Assisted send: the app opened Gmail / the messaging app / the DM thread /
+        // the dialer, and the operator finishes it. Messenger and Instagram links
+        // can't carry a body, so the text goes to the clipboard first — do the copy
+        // before window.open, while we're still in the click's user gesture.
+        const d = data.delivery;
+        if (d?.copyBody) {
+          try {
+            await navigator.clipboard.writeText(d.copyBody);
+          } catch {
+            /* clipboard blocked (no permission / insecure origin) — the body is
+               still on screen to copy by hand, so this isn't worth failing over */
+          }
         }
+        if (d?.method === "manual" && d?.composeUrl) {
+          window.open(d.composeUrl, "_blank", "noopener");
+        }
+        if (d?.note) setNote(d.note);
         onChanged();
       }
     } catch (e) {
@@ -186,20 +246,32 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
             onChange={(e) => setChannel(e.target.value)}
             className="bg-[var(--panel-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm disabled:opacity-60"
           >
-            {["email", "whatsapp", "phone", "manual"].map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {CHANNELS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
               </option>
             ))}
+            {/* A record drafted on a channel we no longer offer still has to show
+                its real value rather than silently reading as the first option. */}
+            {!CHANNELS.some((c) => c.value === channel) && (
+              <option value={channel}>{channel}</option>
+            )}
           </select>
           <input
             value={contact}
             disabled={sent}
             onChange={(e) => setContact(e.target.value)}
-            placeholder="contact (email / phone)"
+            placeholder={CONTACT_PLACEHOLDER[channel] ?? "contact"}
             className="flex-1 bg-[var(--panel-2)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm disabled:opacity-60"
           />
         </div>
+
+        {!sent && (
+          <p className="text-[11px] text-[var(--muted)] -mt-1">
+            {CHANNELS.find((c) => c.value === channel)?.hint ??
+              "Unknown channel — pick one that can actually be delivered."}
+          </p>
+        )}
 
         {channel === "email" && (
           <input
@@ -218,6 +290,24 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
           rows={10}
           className="w-full bg-[var(--panel-2)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm leading-relaxed font-mono disabled:opacity-60 focus:outline-none focus:border-[var(--accent)]"
         />
+
+        {channel === "sms" && !sent && (
+          <p
+            // A purpose-written SMS lands at 3-4 segments once the € and the em
+            // dash force UCS-2, so only flag what's clearly an email in disguise.
+            className={`text-[11px] -mt-1 ${
+              smsSegments(body).segments > 5 ? "text-[var(--hot)]" : "text-[var(--muted)]"
+            }`}
+          >
+            {smsSegments(body).chars} characters ·{" "}
+            {smsSegments(body).segments} SMS segment
+            {smsSegments(body).segments === 1 ? "" : "s"}
+            {smsSegments(body).unicode ? " (unicode — 70 chars per segment)" : ""}
+            {smsSegments(body).segments > 5
+              ? " — that's an email, not a text. Regenerate the draft to get the short SMS version."
+              : ""}
+          </p>
+        )}
 
         {sent ? (
           <p className="text-[11px] text-[var(--muted)]">
@@ -318,14 +408,19 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
                 {confirmSend ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="text-[11px] text-[var(--muted)]">
-                      Send now? (delivers if SMTP is set, else opens Gmail)
+                      Send now via {channel}?
                     </span>
                     <button
                       onClick={() => {
                         setConfirmSend(false);
                         patch({ action: "send" }, "send");
                       }}
-                      disabled={busy !== null}
+                      disabled={busy !== null || channel === "manual"}
+                      title={
+                        channel === "manual"
+                          ? "Nothing to deliver on the manual channel — use “Sent by hand”."
+                          : undefined
+                      }
                       className="px-3 py-1.5 rounded-lg text-sm bg-[#16a34a] text-white disabled:opacity-40"
                     >
                       {busy === "send" ? "Sending…" : "Send"}
@@ -346,6 +441,16 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
                     Send…
                   </button>
                 )}
+                {/* The honest way to log a touch made outside the app — so the
+                    funnel never advances on a send that didn't happen. */}
+                <button
+                  onClick={() => patch({ action: "mark-sent" }, "mark-sent")}
+                  disabled={busy !== null}
+                  title="I already contacted them myself — just record it"
+                  className="px-3 py-1.5 rounded-lg text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-40"
+                >
+                  {busy === "mark-sent" ? "Recording…" : "Sent by hand"}
+                </button>
               </>
             )}
             {dirty && (
@@ -354,6 +459,7 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
           </div>
         )}
         {error && <p className="text-sm text-[var(--hot)]">{error}</p>}
+        {note && <p className="text-[13px] text-[var(--muted)]">{note}</p>}
 
         {item.followups && item.followups.length > 0 && (
           <details className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)]/40">

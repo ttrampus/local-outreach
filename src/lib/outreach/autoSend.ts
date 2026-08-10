@@ -1,8 +1,9 @@
 // Hands-off follow-up delivery. The follow-up engine (./followups) already
 // decides WHAT is safe to send — due + prospect hasn't engaged; this module makes
-// the sending itself automatic for the one channel that can be delivered without
-// a human (email over SMTP). DM/phone follow-ups always stay in the manual queue:
-// there is no legitimate API for cold Facebook/Instagram DMs.
+// the sending itself automatic for the channels that can be delivered without a
+// human: email over SMTP and SMS over Twilio. DM/phone follow-ups always stay in
+// the manual queue — there is no legitimate API for cold Facebook/Instagram DMs,
+// and a phone call isn't a message.
 //
 // Two entry points:
 //   - sendDueFollowups(): one pass over the due queue. Called by the timer AND by
@@ -16,23 +17,36 @@ import { env } from "@/lib/env";
 import { listFollowups } from "./followups";
 import { deliverOutreach } from "./send";
 import { isSmtpConfigured } from "./mailer";
+import { isSmsConfigured } from "./sms";
 
 export interface AutoSendResult {
-  ran: boolean; // false = SMTP missing, nothing was attempted
+  ran: boolean; // false = no automatic transport configured, nothing was attempted
   sent: number;
   skippedNonEmail: number; // DM/phone follow-ups left for the manual queue
   errors: string[];
 }
 
-/** One pass: deliver every due email follow-up. Never marks a non-delivery sent. */
+/** Channels a machine can deliver on its own, given the matching credentials. */
+function autoChannels(): Set<string> {
+  const s = new Set<string>();
+  if (isSmtpConfigured()) s.add("email");
+  if (isSmsConfigured()) s.add("sms");
+  return s;
+}
+
+/**
+ * One pass: deliver every due follow-up on an automatable channel. Never marks a
+ * non-delivery sent — deliverOutreach reports failures and leaves the row queued.
+ */
 export async function sendDueFollowups(): Promise<AutoSendResult> {
   const result: AutoSendResult = { ran: false, sent: 0, skippedNonEmail: 0, errors: [] };
-  if (!isSmtpConfigured()) return result; // without SMTP, "sending" would just be bookkeeping
+  const auto = autoChannels();
+  if (auto.size === 0) return result; // "sending" here would just be bookkeeping
   result.ran = true;
 
   const { due } = await listFollowups(); // already gated on engagement + schedule
   for (const f of due) {
-    if (f.channel !== "email" || !f.contact) {
+    if (!auto.has(f.channel) || !f.contact) {
       result.skippedNonEmail += 1;
       continue;
     }
@@ -48,8 +62,10 @@ const globalTimer = globalThis as unknown as { __followupAutoSendTimer?: NodeJS.
 /** Start the recurring auto-send loop (no-op unless enabled + SMTP configured). */
 export function startFollowupAutomation(): void {
   if (!env.autoSendFollowups) return;
-  if (!isSmtpConfigured()) {
-    console.warn("[autoSend] AUTO_SEND_FOLLOWUPS=on but SMTP is not configured — idle.");
+  if (!isSmtpConfigured() && !isSmsConfigured()) {
+    console.warn(
+      "[autoSend] AUTO_SEND_FOLLOWUPS=on but neither SMTP nor Twilio is configured — idle.",
+    );
     return;
   }
   if (globalTimer.__followupAutoSendTimer) return; // dev hot-reload guard

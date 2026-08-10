@@ -22,9 +22,22 @@ export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
+/**
+ * A real address, not any string: this value becomes the Reply-To of the mail sent
+ * to the site owner, so it is the one field here that steers a mail header rather
+ * than sitting in the body. An empty string folds to absent rather than failing,
+ * because a blank optional field is a normal submission, not a malformed one.
+ */
+const OptionalEmail = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((v) => (v === "" ? undefined : v))
+  .pipe(z.email().optional());
+
 const BodySchema = z.object({
   name: z.string().trim().max(200).optional(),
-  email: z.string().trim().max(200).optional(),
+  email: OptionalEmail.optional(),
   phone: z.string().trim().max(60).optional(),
   message: z.string().trim().min(1).max(5000),
 });

@@ -1,25 +1,46 @@
 // POST /api/leads/:id/payment-link — create a Stripe Checkout link to send a lead
-// who's ready to buy. Body: { plan?: "subscription" | "buyout" } (default subscription).
-// Returns { url }. The actual "mark paid" happens hands-off via the Stripe webhook.
+// who's ready to buy. Body: { plan?: "build" | "care" | "growth" }
+// (default "care", the plan most prospects take). Returns { url }. The actual
+// "mark paid" happens hands-off via the Stripe webhook — and for SEPA that can be
+// days after this link is opened.
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-import { createCheckoutUrl, BillingError } from "@/lib/billing/stripe";
+import { requireSession } from "@/lib/auth/guard";
+import { createCheckoutUrl, BillingError, type Plan } from "@/lib/billing/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const BodySchema = z.object({ plan: z.enum(["subscription", "buyout"]).optional() });
+// The legacy names are still accepted so an older client (or a bookmarked call)
+// doesn't 400: "subscription" was the monthly-only plan, "buyout" the pay-once one,
+// and "refresh" the retired €99 touch-up — the nearest live plan for that ask is
+// a build, which is what the pricing page now offers those businesses anyway.
+const BodySchema = z.object({
+  plan: z.enum(["build", "care", "growth", "subscription", "buyout", "refresh"]).optional(),
+});
+
+const LEGACY_PLANS: Record<string, Plan> = {
+  subscription: "care",
+  buyout: "build",
+  refresh: "build",
+};
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Second line of defence behind src/proxy.ts — this mints Stripe Checkout
+  // sessions against our account. See the note in billing-portal.
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { id } = await params;
 
   const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
-  const plan = parsed.success ? (parsed.data.plan ?? "subscription") : "subscription";
+  const requested = parsed.success ? (parsed.data.plan ?? "care") : "care";
+  const plan: Plan = LEGACY_PLANS[requested] ?? (requested as Plan);
 
   const lead = await prisma.lead.findUnique({
     where: { id },

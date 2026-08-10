@@ -1,9 +1,12 @@
 // Build a short, personalized, value-first outreach draft. Leads with the preview,
-// then offers ownership + recurring maintenance — RECURRING PRICING FIRST, one-time
-// setup secondary. Personalized with the business name and one concrete detail
-// (a real review quote > neighborhood > specialty). Saved as a draft, never sent.
+// then the one-time build price with the monthly care plan as the optional
+// follow-on — the same three-plan story the landing page tells, so a prospect who
+// clicks through from the email doesn't meet different numbers. Personalized with
+// the business name and one concrete detail (a real review quote > neighborhood >
+// specialty). Saved as a draft, never sent.
 import type { Lead } from "@/generated/prisma/client";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
+import { OUTREACH_PRICE_SENTENCE, OUTREACH_PRICE_SHORT } from "@/lib/pricing";
 import { pickTheme } from "@/lib/preview/theme";
 import { classifyWebPresence } from "@/lib/qualify";
 
@@ -51,24 +54,49 @@ function socialDmLink(website: string): { channel: string; contact: string } | n
   return null;
 }
 
+/** Knobs that change which channels are even available to pick from. */
+export interface ChannelOptions {
+  /** True when Twilio is configured, so an SMS can actually be delivered. */
+  smsEnabled?: boolean;
+}
+
+/** Everything buildDraft needs beyond the lead itself. */
+export interface DraftOptions extends ChannelOptions {
+  /** Public preview link (…/p/<leadId>). An SMS has no attachment — it needs this. */
+  previewUrl?: string;
+}
+
 /**
- * Decide the first-touch channel: email (automatable) > Facebook/Instagram DM
- * (one-click semi-manual — often the ONLY channel for social-only businesses, and
- * locals answer DMs readily) > phone > manual. We deliberately avoid WhatsApp:
- * cold WhatsApp messaging breaches WhatsApp Business policy and risks a ban.
+ * Decide the first-touch channel, best available first:
+ *   email (delivered by us over SMTP)
+ *   > SMS (delivered by us over Twilio — only offered when Twilio is configured,
+ *     otherwise a phone number is better spent on a DM or a call)
+ *   > Facebook/Instagram DM (one click opens the thread, the operator pastes —
+ *     often the ONLY channel for social-only businesses, and locals answer DMs)
+ *   > phone (opens the dialer; the call is the operator's to make)
+ *   > manual (nothing usable on file).
+ *
+ * We deliberately avoid WhatsApp: cold WhatsApp messaging breaches WhatsApp
+ * Business policy and risks a ban on the sending number.
+ *
+ * This module is imported by client-safe code paths, so config arrives as an
+ * argument rather than by reading `env` here.
  */
-export function pickChannel(lead: Pick<Lead, "email" | "phone" | "website">): {
+export function pickChannel(
+  lead: Pick<Lead, "email" | "phone" | "website">,
+  opts: ChannelOptions = {},
+): {
   channel: string;
   contact: string | null;
 } {
   if (lead.email) return { channel: "email", contact: lead.email };
+  if (opts.smsEnabled && lead.phone) return { channel: "sms", contact: lead.phone };
   const dm = lead.website ? socialDmLink(lead.website) : null;
   if (dm) return dm;
   if (lead.phone) return { channel: "phone", contact: lead.phone };
   return { channel: "manual", contact: null };
 }
 
-const MONTHLY_PRICE = "€50/month";
 
 function firstAddressSegment(address?: string | null): string | null {
   if (!address) return null;
@@ -112,10 +140,11 @@ export function buildDraft(
   lead: Lead,
   details: NormalizedPlaceDetails,
   searchHint = "",
+  opts: DraftOptions = {},
 ): OutreachDraft {
   const name = lead.name;
   const detail = personalDetail(details, searchHint);
-  const { channel, contact } = pickChannel(lead);
+  const { channel, contact } = pickChannel(lead, opts);
 
   const subject = `A quick website idea for ${name}`;
 
@@ -125,7 +154,7 @@ I came across ${name}${detail}
 
 I put together a free, modern website preview to show what a refreshed site could look like — no obligation. ${previewLine(lead)}
 
-If you like it, I can have it live this week. I keep things simple: ${MONTHLY_PRICE}, which covers hosting plus any changes you ever need — just message me and it's done, no per-edit fees. (If you'd rather own the site outright, a one-time setup is available too — but most owners prefer the hands-off monthly option.)
+If you like it, I can have it live this week. I keep pricing simple: ${OUTREACH_PRICE_SENTENCE}. The preview isn't a mock-up — it becomes your actual site, so nothing is built twice.
 
 Happy to adjust the design to match your style. Would it be worth a quick look?
 
@@ -144,12 +173,43 @@ Best,
 
   const followup2 = `Hi ${name} team,
 
-I'll keep this short — I'll be taking the demo site down at the end of the week to free it up. If you'd like me to keep it and put it live (${MONTHLY_PRICE}, cancel anytime), just say the word and it's done.
+I'll keep this short — I'll be taking the demo site down at the end of the week to free it up. If you'd like me to keep it and put it live (${OUTREACH_PRICE_SHORT}), just say the word and it's done.
 
 Either way, thanks for your time.
 
 Best,
 [Your name]`;
+
+  // An SMS is billed per 160-character segment and read on a lock screen, so the
+  // long-form body above is the wrong shape entirely — send the short variant.
+  // (Claude writes its own short variant when a key is set; this is the fallback.)
+  if (channel === "sms") {
+    // No attachments on SMS, so the link carries the whole pitch. Falls back to
+    // "I can send it over" when there's nothing linkable yet.
+    const link = lead.deployedUrl || opts.previewUrl || null;
+    const look = link ? `Have a look: ${link}` : `Happy to send it over.`;
+    return {
+      channel,
+      contact,
+      messages: [
+        {
+          step: 0,
+          subject,
+          body: `Hi ${name} — I built a free website preview for you, no obligation. ${look}\n\nIf you like it I can put it live this week (${OUTREACH_PRICE_SHORT}).\n\n[Your name]`,
+        },
+        {
+          step: 1,
+          subject: `Re: ${subject}`,
+          body: `Hi ${name} — did you get a chance to look at the website preview?${link ? ` ${link}` : ""}\n\nHappy to change anything that feels off.\n\n[Your name]`,
+        },
+        {
+          step: 2,
+          subject: `Re: ${subject}`,
+          body: `Hi ${name} — I'll take the demo site down at the end of the week. Say the word and I'll put it live instead (${OUTREACH_PRICE_SHORT}). Either way, thanks!\n\n[Your name]`,
+        },
+      ],
+    };
+  }
 
   return {
     channel,

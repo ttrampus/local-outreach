@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AvenyoMark } from "@/components/brand/Logo";
 
 const NAV = [
   { href: "/app", label: "Leads", icon: "◧" },
@@ -17,10 +18,10 @@ export function Sidebar() {
   return (
     <aside className="w-60 shrink-0 border-r border-[var(--border)] bg-[var(--panel)] flex flex-col">
       <div className="px-5 py-5 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2">
-          <span className="grid place-items-center w-8 h-8 rounded-lg bg-[var(--accent)] text-white font-bold">
-            ◆
-          </span>
+        <div className="flex items-center gap-2.5">
+          {/* Mark only: the wordmark would compete with the product name next to
+              it, and the operator already knows whose console this is. */}
+          <AvenyoMark size={32} />
           <div className="leading-tight">
             <div className="font-semibold text-sm">Outreach Console</div>
             <div className="text-[11px] text-[var(--muted)]">local-business pipeline</div>

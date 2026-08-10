@@ -4,9 +4,29 @@
 import { readFile } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { injectOwnerBar } from "@/lib/preview/ownerBar";
+import { issueInterestToken } from "@/lib/auth/interestToken";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * This document is written by a model, from inputs including Google review text
+ * that any member of the public can author, and it is served from the same origin
+ * as the console. The operator opens it themselves — "preview page loads" is on
+ * the pre-send checklist — with a valid session cookie in the jar.
+ *
+ * `sandbox` without allow-same-origin puts the page in an opaque origin, so even
+ * a script that did make it into the generated HTML cannot read that cookie's
+ * origin, call /api/leads with it, or touch anything of ours. The grants below
+ * are what a brochure site actually uses: its own scripts, the contact form, and
+ * outbound links. The owner bar keeps working because it stores through
+ * try/catch and posts to a CORS-open endpoint.
+ */
+// This is the ONLY Content-Security-Policy on this response — next.config.ts
+// deliberately ships no app-wide CSP, because one would replace this wholesale
+// rather than combine with it. So frame-ancestors belongs here too.
+const SANDBOX =
+  "sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox; frame-ancestors 'self'";
 
 export async function GET(
   req: Request,
@@ -62,10 +82,18 @@ export async function GET(
     }
   }
 
-  return new Response(injectOwnerBar(html, lead, { showcase: fromShowcase }), {
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "no-store",
+  // Showcase traffic gets no token, matching the bar it gets: the portfolio is
+  // strangers browsing, and none of them is the business being pitched.
+  const interestToken = fromShowcase ? null : issueInterestToken(lead.id);
+
+  return new Response(
+    injectOwnerBar(html, lead, { showcase: fromShowcase, interestToken }),
+    {
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+        "content-security-policy": SANDBOX,
+      },
     },
-  });
+  );
 }

@@ -4,10 +4,15 @@
 import { NextResponse } from "next/server";
 import { listFollowups } from "@/lib/outreach/followups";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const buckets = await listFollowups();
   return NextResponse.json({
     ...buckets,

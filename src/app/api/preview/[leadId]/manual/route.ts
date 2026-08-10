@@ -29,6 +29,8 @@ import { detectLocale } from "@/lib/preview/i18n";
 import { renderPreview } from "@/lib/preview/render";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // Playwright render only; no model call
@@ -66,6 +68,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
   const ctx = await loadContext(leadId);
   if (!ctx) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
@@ -125,6 +130,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
   const ctx = await loadContext(leadId);
   if (!ctx) return NextResponse.json({ error: "Lead not found" }, { status: 404 });

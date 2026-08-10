@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 170" width="260" height="170">
+  <g transform="translate(80 0)">
+  <path d="M6 87 L27 87 L48.5 20 L43 20 Z" fill="#1E2227"></path>
+  <path d="M94 87 L73 87 L51.5 20 L57 20 Z" fill="#1E2227"></path>
+  <rect x="44.5" y="55" width="11" height="17" rx="2.5" fill="#2C6BE4"></rect>
+  </g>
+  <text x="130" y="155" text-anchor="middle" font-family="Archivo, Helvetica, Arial, sans-serif" font-weight="700" font-size="40" letter-spacing="2.4" fill="#1E2227">AVENYO</text>
+</svg>

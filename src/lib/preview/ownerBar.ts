@@ -7,6 +7,8 @@
 // IMPORTANT: this is applied ONLY by the /p/ route, never written to the stored
 // HTML — so the outreach screenshot (render.ts) stays clean and bar-free.
 import { env } from "@/lib/env";
+import { PRICING } from "@/lib/pricing";
+import { BRAND } from "@/lib/brand";
 import { detectLocale } from "./i18n";
 import { cleanDisplayName } from "./brand";
 
@@ -32,7 +34,7 @@ interface Strings {
 const SL: Strings = {
   badge: "Brezplačen predogled",
   title: (name) => `Predlog spletne strani za ${name}`,
-  sub: "Vam je všeč? V živo v 24 urah — 50 € / mesec, vključno z vsemi spremembami. Odpoved kadar koli.",
+  sub: `Vam je všeč? V živo v 24 urah — izdelava ${PRICING.buildEur} €, za ${PRICING.careMonthlyEur} € / mesec zanjo skrbim naprej. Predlog postane vaša stran.`,
   yes: "Zanima me",
   later: "Mogoče kasneje",
   thanksWithContact: "Hvala! Kmalu se oglasim. Lahko pa me kontaktirate tudi neposredno:",
@@ -49,7 +51,7 @@ const SL: Strings = {
 const EN: Strings = {
   badge: "Free preview",
   title: (name) => `A website proposal for ${name}`,
-  sub: "Like it? Live in 24 hours — €50/month, all changes included. Cancel anytime.",
+  sub: `Like it? Live in 24 hours — €${PRICING.buildEur} to build, €${PRICING.careMonthlyEur}/month if you'd like me to look after it. This preview becomes your site.`,
   yes: "I'm interested",
   later: "Maybe later",
   thanksWithContact: "Thanks! I'll be in touch. You can also reach me directly:",
@@ -62,6 +64,22 @@ const EN: Strings = {
   showcaseSub: "We build one for your business free — you only pay if you like it.",
   showcaseCta: "I want one",
 };
+
+// The bar is the only thing on a prospect's preview that is ours rather than
+// theirs, so it carries the mark — reversed, since the bar is always dark.
+// Inline rather than a /brand URL: the same markup is served from this app but
+// read on a page that may later be deployed to the customer's own domain.
+const MARK = `<svg class="__lo-mark" viewBox="0 0 100 100" width="34" height="34" aria-hidden="true">
+  <path d="M6 87 L27 87 L48.5 20 L43 20 Z" fill="${BRAND.paper}"/>
+  <path d="M94 87 L73 87 L51.5 20 L57 20 Z" fill="${BRAND.paper}"/>
+  <rect x="44.5" y="55" width="11" height="17" rx="2.5" fill="${BRAND.signalLight}"/>
+</svg>`;
+
+// `__lo-lead` keeps the mark and the copy as one unit, so the bar stays the
+// two-child (copy | action) flex row it was before the mark existed.
+const MARK_CSS = `#__lo .__lo-lead{display:flex;gap:13px;align-items:flex-start;min-width:0;}
+    #__lo .__lo-mark{flex-shrink:0;margin-top:1px;}
+    @media(max-width:620px){#__lo .__lo-mark{display:none;}}`;
 
 function esc(s: string): string {
   return s
@@ -93,11 +111,16 @@ function contactLinks(t: Strings): string {
  * and only the first of those is the business being pitched. Leaving the real
  * bar on the portfolio route would let any passing stranger mark someone else's
  * live prospect as interested.
+ *
+ * `interestToken` is that same guarantee made server-side. Removing the button
+ * only stops the honest path: the endpoint is a plain POST and the ids are
+ * published on /examples, so the bar carries a short-lived signature minted by
+ * whoever served this page, and the endpoint records nothing without it.
  */
 export function injectOwnerBar(
   html: string,
   lead: { id: string; name: string; address: string | null },
-  opts: { showcase?: boolean } = {},
+  opts: { showcase?: boolean; interestToken?: string | null } = {},
 ): string {
   if (!env.ownerBar) return html;
 
@@ -110,7 +133,7 @@ export function injectOwnerBar(
 
   // Scoped under #__lo so nothing clashes with the generated site's own styles.
   const bar = `
-<div id="__lo" data-lead="${esc(lead.id)}" role="dialog" aria-label="${esc(t.badge)}">
+<div id="__lo" data-lead="${esc(lead.id)}" data-tok="${esc(opts.interestToken ?? "")}" role="dialog" aria-label="${esc(t.badge)}">
   <style>
     #__lo{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147483000;
       width:min(680px,calc(100% - 24px));box-sizing:border-box;
@@ -137,12 +160,16 @@ export function injectOwnerBar(
     @media(max-width:620px){#__lo{flex-direction:column;align-items:stretch;gap:12px;}
       #__lo .__lo-actions{justify-content:space-between;}#__lo .__lo-yes{flex:1;}}
     @media print{#__lo{display:none;}}
+    ${MARK_CSS}
   </style>
-  <div class="__lo-txt">
-    <span class="__lo-badge">${esc(t.badge)}</span>
-    <div class="__lo-title">${t.title(name)}</div>
-    <div class="__lo-sub">${esc(t.sub)}</div>
-    <div class="__lo-contact">${contactLinks(t)}</div>
+  <div class="__lo-lead">
+    ${MARK}
+    <div class="__lo-txt">
+      <span class="__lo-badge">${esc(t.badge)}</span>
+      <div class="__lo-title">${t.title(name)}</div>
+      <div class="__lo-sub">${esc(t.sub)}</div>
+      <div class="__lo-contact">${contactLinks(t)}</div>
+    </div>
   </div>
   <div class="__lo-actions">
     <button type="button" class="__lo-no">${esc(t.later)}</button>
@@ -167,7 +194,8 @@ export function injectOwnerBar(
     bar.querySelector(".__lo-title").textContent=thanks;
     bar.classList.add("__lo-done");
     try{localStorage.setItem("__lo_interested_"+id,"1");}catch(e){}
-    fetch("/api/p/"+id+"/interest",{method:"POST",headers:{"Content-Type":"application/json"}}).catch(function(){});
+    fetch("/api/p/"+id+"/interest",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token:bar.getAttribute("data-tok")})}).catch(function(){});
   });
 })();
 </script>`;
@@ -201,11 +229,15 @@ function injectShowcaseBar(html: string, t: Strings): string {
     @media(max-width:620px){#__lo{flex-direction:column;align-items:stretch;gap:12px;}
       #__lo .__lo-yes{text-align:center;}}
     @media print{#__lo{display:none;}}
+    ${MARK_CSS}
   </style>
-  <div class="__lo-txt">
-    <span class="__lo-badge">${esc(t.showcaseBadge)}</span>
-    <div class="__lo-title">${esc(t.showcaseTitle)}</div>
-    <div class="__lo-sub">${esc(t.showcaseSub)}</div>
+  <div class="__lo-lead">
+    ${MARK}
+    <div class="__lo-txt">
+      <span class="__lo-badge">${esc(t.showcaseBadge)}</span>
+      <div class="__lo-title">${esc(t.showcaseTitle)}</div>
+      <div class="__lo-sub">${esc(t.showcaseSub)}</div>
+    </div>
   </div>
   <a class="__lo-yes" href="/#contact">${esc(t.showcaseCta)} →</a>
 </div>`;

@@ -2,6 +2,7 @@
 // this from a client component would leak nothing (no NEXT_PUBLIC_ prefix), but
 // keep it on the server regardless.
 import "server-only";
+import { PRICING } from "./pricing";
 
 function num(value: string | undefined, fallback: number): number {
   const n = Number(value);
@@ -76,9 +77,24 @@ export const env = {
   smtpFrom: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "",
   smtpSecure: (process.env.SMTP_SECURE ?? "on").toLowerCase() !== "off",
 
-  // What one customer pays per month (the €50 in the pitch) — used by the
-  // unit-economics dashboard to turn active subscriptions into MRR/profit.
-  monthlyPriceEur: num(process.env.MONTHLY_PRICE_EUR, 50),
+  // Twilio — optional outbound SMS, the second channel that can be delivered with
+  // one click. When configured, a lead with a phone number but no email is drafted
+  // as an SMS and sent for real; without it that draft degrades to an `sms:` deep
+  // link the operator finishes in their own messaging app. Either TWILIO_FROM (a
+  // single sender number) or TWILIO_MESSAGING_SERVICE_SID is required.
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFrom: process.env.TWILIO_FROM ?? "",
+  twilioMessagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID ?? "",
+  // Dialing code prepended to national-format numbers (Google Places returns
+  // plenty of them) so they can be normalized to E.164. e.g. "+386".
+  smsDefaultCountryCode: (process.env.SMS_DEFAULT_COUNTRY_CODE ?? "").trim(),
+
+  // What one customer on a care plan pays per month — used by the unit-economics
+  // dashboard to turn active subscriptions into MRR/profit. Defaults to the care
+  // plan's published price so the dashboard and the sales page agree; override
+  // only if what customers actually pay has drifted from the current list price.
+  monthlyPriceEur: num(process.env.MONTHLY_PRICE_EUR, PRICING.careMonthlyEur),
 
   // Cost safety stops (see .env.example for the cost-model rationale).
   maxDetailsPerDay: num(process.env.MAX_DETAILS_PER_DAY, 200),
@@ -132,8 +148,14 @@ export const env = {
   // buyoutPriceId = an optional one-time buyout Price. webhookSecret verifies the
   // billing webhook so we can mark a lead paid hands-off.
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
-  stripePriceId: process.env.STRIPE_PRICE_ID ?? "",
-  stripeBuyoutPriceId: process.env.STRIPE_BUYOUT_PRICE_ID ?? "",
+  // One Price per plan in @/lib/pricing. The legacy STRIPE_PRICE_ID /
+  // STRIPE_BUYOUT_PRICE_ID names are still honoured so an existing deployment
+  // keeps working: back then "the price" meant the monthly subscription and
+  // "buyout" meant paying once instead of subscribing. Under the current model
+  // the one-time build is the normal first charge, not an alternative to it.
+  stripeBuildPriceId: process.env.STRIPE_BUILD_PRICE_ID || process.env.STRIPE_BUYOUT_PRICE_ID || "",
+  stripeCarePriceId: process.env.STRIPE_CARE_PRICE_ID || process.env.STRIPE_PRICE_ID || "",
+  stripeGrowthPriceId: process.env.STRIPE_GROWTH_PRICE_ID ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
 } as const;
 

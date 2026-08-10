@@ -9,6 +9,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,9 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { id } = await params;
   const lead = await prisma.lead.findUnique({
     where: { id },
@@ -44,6 +49,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { id } = await params;
   const parsed = PatchSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {

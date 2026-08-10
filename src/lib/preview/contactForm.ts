@@ -66,9 +66,17 @@ export function renderContactForm(leadId: string, locale: Locale): string {
       border:1px solid currentColor;border-radius:9px;background:transparent;color:inherit;
       font:inherit;font-size:1em;opacity:.95;}
     .__lo-cf textarea{min-height:120px;resize:vertical;}
-    .__lo-cf button{margin-top:16px;width:100%;padding:13px;border:0;border-radius:9px;
-      background:currentColor;font:inherit;font-weight:700;font-size:1em;cursor:pointer;}
-    .__lo-cf button span{filter:invert(1);mix-blend-mode:difference;}
+    /* Outlined by default so the label is legible on ANY palette with no JS. The
+       script below upgrades it to a filled button once it can read the page's real
+       ink/ground and pick a contrasting label colour. The previous filled-by-default
+       version painted the button in currentColor and tried to flip the label with
+       filter:invert(1) + mix-blend-mode:difference; filter creates a stacking
+       context that breaks the blend, so on some palettes the label rendered the
+       same colour as the button — an invisible label on the primary CTA. */
+    .__lo-cf button{margin-top:16px;width:100%;padding:13px;border:2px solid currentColor;
+      border-radius:9px;background:transparent;color:inherit;font:inherit;font-weight:700;
+      font-size:1em;cursor:pointer;}
+    .__lo-cf button span{color:inherit;}
     .__lo-cf .__lo-cf-msg{margin-top:14px;font-size:.95em;}
     .__lo-cf[data-done="1"] form{display:none;}
     .__lo-cf[data-done="1"] .__lo-cf-msg{display:block;}
@@ -93,6 +101,27 @@ export function renderContactForm(leadId: string, locale: Locale): string {
   var form=root.querySelector("form"),btn=root.querySelector("button span"),
       inlineMsg=form.querySelector(".__lo-cf-msg");
   var L=${JSON.stringify({ sending: t.sending, send: t.send, error: t.error })};
+
+  // Upgrade the outlined fallback into a filled primary button, choosing the label
+  // colour from the page's actual ground so it contrasts on any palette. We cannot
+  // know the palette at generation time (the designer picks it), so we read it here.
+  (function(){
+    var el=root.querySelector("button"); if(!el) return;
+    var ink=getComputedStyle(root).color;
+    // The nearest ancestor that actually paints a background — body's own may be
+    // transparent with the colour set on <html> or a wrapper.
+    var ground="", n=root;
+    while(n){
+      var c=getComputedStyle(n).backgroundColor;
+      if(c&&c!=="transparent"&&!/^rgba\\(.*,\\s*0\\)$/.test(c)){ ground=c; break; }
+      n=n.parentElement;
+    }
+    if(!ground) return;                       // keep the legible outlined fallback
+    el.style.background=ink;
+    el.style.borderColor=ink;
+    el.style.color=ground;
+    btn.style.color=ground;
+  })();
   form.addEventListener("submit",function(e){
     e.preventDefault();
     var data={name:form.name.value,email:form.email.value,message:form.message.value};
@@ -115,6 +144,15 @@ export function injectContactForm(html: string, leadId: string, locale: Locale):
   const form = renderContactForm(leadId, locale);
   if (html.includes(CONTACT_FORM_TOKEN)) {
     return html.split(CONTACT_FORM_TOKEN).join(form);
+  }
+
+  // No token: the designer forgot it. Land the form ahead of the footer rather than
+  // after it — appending before </body> drops it below the copyright line as a
+  // stray bordered box with no section around it, which reads as a bolted-on
+  // afterthought on the one element that has to convert.
+  const footer = html.lastIndexOf("<footer");
+  if (footer !== -1) {
+    return `${html.slice(0, footer)}${form}\n${html.slice(footer)}`;
   }
   return html.includes("</body>") ? html.replace("</body>", `${form}\n</body>`) : html + form;
 }

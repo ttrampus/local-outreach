@@ -466,12 +466,95 @@ export function typeSetFor(allowed: string[], seedKey: string): TypeSet {
   return pool.length ? pickAxis(pool, seedKey, "type") : TYPE_SETS[0];
 }
 
+export interface SurfaceTreatment {
+  id: string;
+  /**
+   * The literal CSS that puts texture on the page ground. Written against the
+   * palette custom properties (--bg/--surface/--border/--accent) so one recipe
+   * works on both a light and a dark palette.
+   */
+  css: string;
+  /** How the treatment is distributed across the page. */
+  usage: string;
+}
+
+/**
+ * 10 background treatments.
+ *
+ * The prompt already asked for "atmosphere: layered backgrounds, texture/grain",
+ * and the output came back as a flat fill anyway — the same failure the palette
+ * and motion axes had before they were made literal. A business that sells
+ * websites cannot show a prospect a page whose ground is one untextured colour,
+ * so this is a spec with real CSS rather than an adjective.
+ *
+ * Every recipe is static (no animation), because render.ts screenshots with
+ * reduced motion and the texture has to be present in that frame.
+ *
+ * Pattern colours are mixed from the INK, never from the border token. On a light
+ * palette the border sits a few points off the ground (#F2D6DC on #FDF2F4), so a
+ * grid drawn in it renders perfectly and is still invisible — the exact failure
+ * this axis exists to prevent.
+ */
+export const SURFACE_TREATMENTS: SurfaceTreatment[] = [
+  {
+    id: "blueprint-grid",
+    css: "background-image:background-image:linear-gradient(color-mix(in srgb,var(--ink) 9%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--ink) 9%,transparent) 1px,transparent 1px);background-size:72px 72px. Bake the alpha into the colour with color-mix rather than stacking an opacity multiplier on the layer.",
+    usage: "Across the page ground, with two or three sections deliberately laid on a solid --surface panel so the grid shows through only between them.",
+  },
+  {
+    id: "dot-matrix",
+    css: "background-image:radial-gradient(color-mix(in srgb,var(--ink) 16%,transparent) 1.4px,transparent 1.4px);background-size:26px 26px, with a linear-gradient(180deg,#000 65%,transparent) mask so it softens toward the foot of the page.",
+    usage: "Behind the hero and one mid-page section; solid elsewhere so it stays a texture rather than wallpaper.",
+  },
+  {
+    id: "film-grain",
+    css: "A fixed full-viewport ::after overlay with pointer-events:none carrying url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\") at opacity .045, mix-blend-mode:overlay.",
+    usage: "Over the entire page, combined with one large soft radial glow in --accent at 8% alpha behind the hero so the ground has depth as well as tooth.",
+  },
+  {
+    id: "aurora-mesh",
+    css: "Three overlapping radial-gradients on the body: one --accent at 14% alpha at 15% 10%, one --accent2 at 12% at 85% 30%, one --surface at 60% at 50% 90%, each 60-80% wide, over the --bg base. Heavy blur is implied by the gradient softness — do not use filter:blur on the body.",
+    usage: "Page-wide ambient wash, strongest behind the hero and the contact section, near-invisible in the middle so content sections stay calm.",
+  },
+  {
+    id: "hairline-rules",
+    css: "background-image:repeating-linear-gradient(180deg,color-mix(in srgb,var(--ink) 8%,transparent) 0 1px,transparent 1px 96px), so a faint horizontal ruling runs the height of the page like a ledger.",
+    usage: "Continuous down the page ground; content sections sit on --surface cards that interrupt the ruling, which is what creates the rhythm.",
+  },
+  {
+    id: "diagonal-weave",
+    css: "background-image:repeating-linear-gradient(45deg,color-mix(in srgb,var(--ink) 10%,transparent) 0 1px,transparent 1px 14px) on a ::before layer.",
+    usage: "Confined to two or three band sections (a stats strip, the reviews band, the footer) rather than the whole page, with the rest solid.",
+  },
+  {
+    id: "spotlight-vignette",
+    css: "A large radial-gradient(circle at 50% 0%,var(--accent) 0%,transparent 55%) at 10% alpha over --bg, plus an inset vignette: box-shadow:inset 0 0 240px 80px rgba(0,0,0,.28) on dark palettes (use a light equivalent on light ones).",
+    usage: "Hero and footer carry the spotlight; middle sections alternate --bg and --surface so the page still has structure.",
+  },
+  {
+    id: "contour-lines",
+    css: "Stacked repeating-radial-gradient(circle at 20% 30%,transparent 0 38px,color-mix(in srgb,var(--ink) 11%,transparent) 38px 39px), giving soft topographic rings.",
+    usage: "One oversized ring set bleeding off the left edge of the hero and a second off the right edge of the contact section; not repeated in between.",
+  },
+  {
+    id: "panel-stack",
+    css: "No page-wide pattern. Instead every section alternates between --bg and --surface, each --surface panel getting border-radius:24px, a 1px var(--border) outline and box-shadow:0 24px 60px -30px rgba(0,0,0,.45), inset into the page with margin on both sides.",
+    usage: "The whole page reads as stacked physical cards on a ground — the texture comes from edges, insets and shadow rather than a pattern.",
+  },
+  {
+    id: "gradient-seam",
+    css: "The ground stays --bg, but every section boundary carries a seam: a 1px line of linear-gradient(90deg,transparent,var(--accent),transparent) at 45% alpha, and each section has a subtle top-to-bottom linear-gradient(var(--surface) 0%,var(--bg) 30%) so the ground shifts tone continuously down the page.",
+    usage: "Page-wide; the accent seams are what stop long scrolls from reading as one flat sheet.",
+  },
+];
+
 export interface ArtDirection {
   palette: Palette;
   type: TypeSet;
   composition: Composition;
   motion: MotionSignature;
   hero: HeroPattern;
+  surface: SurfaceTreatment;
 }
 
 /** What the business's own material allows, constraining the draw. */
@@ -534,6 +617,7 @@ export function artDirectionFor(
     type: typeSets.length ? typeSetFor(typeSets, key) : pickAxis(TYPE_SETS, key, "type"),
     composition: pickAxis(pool.length ? pool : COMPOSITIONS, key, "composition"),
     motion: pickAxis(MOTION_SIGNATURES, key, "motion"),
+    surface: pickAxis(SURFACE_TREATMENTS, key, "surface"),
     // `photo-led-minimal` leans entirely on the photography, so it can only be
     // drawn when there is some. With no photos it would leave a near-empty fold.
     hero: pickAxis(

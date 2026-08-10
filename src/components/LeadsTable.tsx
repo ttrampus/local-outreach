@@ -3,6 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { TierBadge } from "./TierBadge";
 import { FunnelStatus } from "./FunnelStatus";
+import { PRICING } from "@/lib/pricing";
+
+// Operator-facing names for the plans on the public pricing page.
+type Plan = "build" | "care" | "growth";
+
+const PLAN_LABELS: Record<Plan, string> = {
+  build: "Website (one-time)",
+  care: "Website + Care",
+  growth: "Growth",
+};
 
 export interface Lead {
   id: string;
@@ -527,7 +537,7 @@ function LeadDetail({
   }
 
   // Create a Stripe Checkout link for this lead, copy it, and open it in a new tab.
-  async function paymentLink(plan: "subscription" | "buyout") {
+  async function paymentLink(plan: Plan) {
     setBusy("pay");
     setError(null);
     setInfo(null);
@@ -545,7 +555,7 @@ function LeadDetail({
         /* clipboard may be blocked; the link still opens below */
       }
       window.open(data.url, "_blank", "noopener");
-      setInfo(`${plan === "buyout" ? "Buyout" : "Subscription"} checkout link copied & opened.`);
+      setInfo(`${PLAN_LABELS[plan]} checkout link copied & opened.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -773,11 +783,21 @@ function LeadDetail({
           </div>
           {hasPreview ? (
             view === "live" ? (
+              // `sandbox` WITHOUT allow-same-origin is load-bearing, not tidiness.
+              // This document is model-written HTML built partly from Google review
+              // text, which anyone can write, and it is served from our own origin —
+              // so unsandboxed it would run with the operator's session and could
+              // call /api/leads or read this page's DOM. Omitting allow-same-origin
+              // gives it an opaque origin, which costs nothing here: scripts still
+              // run (allow-scripts) so animations and the layout judgement this tab
+              // exists for are unaffected, and the contact form still submits
+              // because /api/site/ is CORS-open by design.
               <iframe
                 key={previewNonce}
                 src={`/api/preview/${lead.id}/html?v=${previewNonce}`}
                 title={`${lead.name} live preview`}
                 loading="lazy"
+                sandbox="allow-scripts allow-popups"
                 className="w-full aspect-[1280/1000] rounded-lg border border-[var(--border)] bg-white"
               />
             ) : view === "mobile" && hasMobile ? (
@@ -861,10 +881,26 @@ function LeadDetail({
             </ActionBtn>
             <ActionBtn
               busy={busy === "pay"}
-              onClick={() => paymentLink("subscription")}
-              title="Create a Stripe €50/mo checkout link, copy it, and open it"
+              onClick={() => paymentLink("care")}
+              title={`Stripe checkout for Website + Care — ${PRICING.buildEur} € once + ${PRICING.careMonthlyEur} €/mo, in one session`}
             >
               Payment link
+            </ActionBtn>
+            <ActionBtn
+              busy={busy === "pay"}
+              onClick={() => paymentLink("build")}
+              title={`Stripe checkout for the one-time build only — ${PRICING.buildEur} €, no hosting`}
+            >
+              Build only
+            </ActionBtn>
+            {/* Growth is sold by conversation, not from the pricing page — but when
+                that conversation happens the operator needs a link for it too. */}
+            <ActionBtn
+              busy={busy === "pay"}
+              onClick={() => paymentLink("growth")}
+              title={`Stripe checkout for Growth — ${PRICING.growthMonthlyEur} €/mo, build included`}
+            >
+              Growth
             </ActionBtn>
           </div>
 

@@ -10,9 +10,12 @@ import { prisma } from "@/lib/prisma";
 import { getCachedDetails } from "@/lib/places";
 import { buildDraft } from "@/lib/outreach/draft";
 import { generateOutreachWithClaude } from "@/lib/outreach/claude";
-import { deliverOutreach } from "@/lib/outreach/send";
+import { deliverOutreach, markSentByHand } from "@/lib/outreach/send";
+import { isSmsConfigured } from "@/lib/outreach/sms";
 import { env } from "@/lib/env";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
+
+import { requireSession } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +29,9 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
   const lead = await loadLead(leadId);
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
@@ -49,7 +55,12 @@ export async function POST(
   const previewUrl = `${env.appBaseUrl}/p/${lead.id}`;
   const draft =
     (await generateOutreachWithClaude(lead, details, previewUrl)) ??
-    buildDraft(lead, details, lead.searchRun?.query ?? "");
+    buildDraft(lead, details, lead.searchRun?.query ?? "", {
+      // SMS is only worth picking when it can actually be delivered; without
+      // Twilio a phone number is better spent on a DM or a call.
+      smsEnabled: isSmsConfigured(),
+      previewUrl,
+    });
 
   // Replace any existing *unsent* messages (the editable initial draft plus queued
   // follow-ups); sent history is kept intact. Step 0 is the editable/sendable draft;
@@ -88,7 +99,7 @@ const PatchSchema = z.object({
   subject: z.string().optional(),
   channel: z.string().optional(),
   contact: z.string().nullable().optional(),
-  action: z.enum(["approve", "send", "unapprove"]).optional(),
+  action: z.enum(["approve", "send", "mark-sent", "unapprove"]).optional(),
   // Set by the pre-send checklist in OutreachReview. Required to approve.
   reviewed: z.boolean().optional(),
 });
@@ -98,6 +109,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
 
   let json: unknown;
@@ -136,7 +150,10 @@ export async function PATCH(
   // Sending is special: persist any final edits first, then hand off to the shared
   // delivery path (real SMTP send when configured, else a Gmail compose link),
   // which marks it sent, advances the lead, and schedules the first follow-up.
-  if (action === "send") {
+  // "mark-sent" is the same bookkeeping without any delivery — for a touch the
+  // operator made outside the app. It goes through the same approval gate, because
+  // the checklist is about what the prospect sees, not about who pressed send.
+  if (action === "send" || action === "mark-sent") {
     if (current.status !== "approved") {
       return NextResponse.json(
         { error: "Approve the message before sending." },
@@ -146,7 +163,8 @@ export async function PATCH(
     if (Object.keys(data).length) {
       await prisma.outreach.update({ where: { id: current.id }, data });
     }
-    const result = await deliverOutreach(current.id);
+    const result =
+      action === "send" ? await deliverOutreach(current.id) : await markSentByHand(current.id);
     if (!result.ok) {
       return NextResponse.json(
         { error: `Send failed: ${result.error ?? "unknown error"}` },

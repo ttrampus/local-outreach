@@ -6,6 +6,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { refreshLeadDetails } from "@/lib/discovery";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,9 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { id } = await params;
   const result = await refreshLeadDetails(id);
 

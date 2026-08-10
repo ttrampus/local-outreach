@@ -9,6 +9,7 @@ import { pickTheme, GOOGLE_FONTS_HREF, type Theme } from "./theme";
 import { detectLocale, getStrings, type Locale, type LocaleStrings } from "./i18n";
 import { cleanDisplayName } from "./brand";
 import { paletteFor, pickAxis, readableOn, type Palette } from "./designTokens";
+import { CONTACT_FORM_TOKEN } from "./contactForm";
 
 function esc(s: string): string {
   return s
@@ -164,7 +165,7 @@ export function generateSiteHtml(
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="${GOOGLE_FONTS_HREF}" />
-<style>${buildCss(theme, palette)}</style>
+<style>${buildCss(theme, palette, seedKey)}</style>
 </head>
 <body class="layout-${archetype} ${seedClass} pal-${palette.mode}${photoClass}">
   ${nav(ctx)}
@@ -428,6 +429,7 @@ function sections(c: Ctx): string {
       </div>
       ${c.mapImg ? `<div class="contact-map"><img src="${c.mapImg}" alt="${c.t.foundIn} ${c.area ?? ""}" loading="lazy" /></div>` : ""}
     </div>
+    ${CONTACT_FORM_TOKEN}
   </div></section>
 
   <footer>${c.t.footer(c.name, new Date().getFullYear())}</footer>`;
@@ -491,7 +493,61 @@ function revealScript(): string {
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")";
 
-function buildCss(t: Theme, p: Palette): string {
+/**
+ * Texture for the page ground, drawn per business.
+ *
+ * A flat fill is the single loudest "this is a generated page" signal, and it is
+ * the one a prospect notices without knowing why — especially on a dark palette,
+ * where an untextured ground reads as an unfinished screen. These are the same
+ * treatments the AI brief specifies, written out as real CSS for the deterministic
+ * path. All static: render.ts screenshots with reduced motion.
+ */
+function surfaceCss(seedKey: string): string {
+  // Texture colour is mixed from --text, never from --border. On a light palette
+  // --border sits a few points off --bg (#F2D6DC on #FDF2F4), so a grid drawn in
+  // it is invisible — the texture rendered correctly and still looked like a flat
+  // fill. Mixing from the ink gives one alpha that reads on light and dark alike.
+  // Alpha is baked into the colour rather than stacked as an `opacity` multiplier,
+  // and masks only soften the extremes instead of erasing the middle of the page.
+  const ink = (pct: number) => `color-mix(in srgb,var(--text) ${pct}%,transparent)`;
+  const treatments: Record<string, string> = {
+    "blueprint-grid": `
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(${ink(9)} 1px,transparent 1px),
+      linear-gradient(90deg,${ink(9)} 1px,transparent 1px);
+    background-size:72px 72px;
+    -webkit-mask-image:linear-gradient(180deg,#000 60%,transparent);
+    mask-image:linear-gradient(180deg,#000 60%,transparent);}`,
+    "dot-matrix": `
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(${ink(16)} 1.4px,transparent 1.4px);
+    background-size:26px 26px;
+    -webkit-mask-image:linear-gradient(180deg,#000 65%,transparent);
+    mask-image:linear-gradient(180deg,#000 65%,transparent);}`,
+    "film-grain": `
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.09;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(60% 45% at 50% 0%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%);}`,
+    "aurora-mesh": `
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(70% 55% at 15% 8%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 65%),
+      radial-gradient(65% 50% at 88% 28%,color-mix(in srgb,var(--accent2) 16%,transparent),transparent 62%),
+      radial-gradient(80% 60% at 50% 96%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%);}`,
+    "hairline-rules": `
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:repeating-linear-gradient(180deg,${ink(8)} 0 1px,transparent 1px 96px);
+    -webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);
+    mask-image:linear-gradient(180deg,#000 70%,transparent);}`,
+  };
+  const id = pickAxis(Object.keys(treatments), seedKey, "surface");
+  // Sections paint their own ground, so they must sit above the fixed texture layer.
+  return `${treatments[id]}
+  nav,header,section,footer,.hero,main{position:relative;z-index:1;}`;
+}
+
+function buildCss(t: Theme, p: Palette, seedKey: string): string {
   // Colours come from the seeded palette; the theme still supplies typography and
   // the category-appropriate copy. `surface2` is derived so a palette only has to
   // declare the tokens that are genuinely independent.
@@ -510,6 +566,7 @@ function buildCss(t: Theme, p: Palette): string {
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
   body{font-family:var(--body);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;}
+${surfaceCss(seedKey)}
   h1,h2,h3{font-family:var(--heading);line-height:1.04;font-weight:700;letter-spacing:-0.01em;}
   .wrap{max-width:1140px;margin:0 auto;padding:0 32px;}
   a{color:inherit;text-decoration:none;}

@@ -1,13 +1,24 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BRAND } from "@/lib/brand";
+import { env } from "@/lib/env";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Outreach Console",
+  // Absolute URLs for the OG card. Without this the generated opengraph-image
+  // is advertised as a relative path, which no unfurler resolves.
+  metadataBase: new URL(env.appBaseUrl),
+  // Every page's own title gets the brand appended; `default` covers the ones
+  // that set none.
+  title: {
+    default: `${BRAND.name} — sodobne spletne strani za lokalna podjetja`,
+    template: `%s · ${BRAND.name}`,
+  },
   description: "Local-business outreach pipeline — discovery, qualification, manual outreach.",
+  openGraph: { siteName: BRAND.name, type: "website" },
 };
 
 export default function RootLayout({

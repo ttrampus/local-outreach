@@ -6,6 +6,8 @@
 import { readFile } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,9 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ leadId: string }> },
 ) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { leadId } = await params;
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
@@ -42,6 +47,11 @@ export async function GET(
       "content-type": "text/html; charset=utf-8",
       // Never cache: a regenerate should be reflected immediately in the iframe.
       "cache-control": "no-store",
+      // Model-written HTML on the console's own origin. The iframe that loads
+      // this sets `sandbox` too; this header is what covers the operator opening
+      // the URL directly in a tab, where there is no iframe to carry it.
+      "content-security-policy":
+        "sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox; frame-ancestors 'self'",
     },
   });
 }

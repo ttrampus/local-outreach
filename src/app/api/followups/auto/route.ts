@@ -5,10 +5,15 @@
 import { NextResponse } from "next/server";
 import { sendDueFollowups } from "@/lib/outreach/autoSend";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const result = await sendDueFollowups();
   return NextResponse.json(result, { status: result.ran ? 200 : 409 });
 }

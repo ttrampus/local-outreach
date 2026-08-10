@@ -33,15 +33,117 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html,
-body {
+/* The ground lives on <html> only. Setting it on <body> as well paints an opaque
+   body background *over* any z-index:-1 layer (the root background propagates to
+   the canvas, but body's own background is just a descendant background painted
+   after negative-z-index children) — which silently hid <SiteBackdrop /> even
+   though its CSS was correct. */
+html {
   background: var(--bg);
   color: var(--text);
 }
 
 body {
+  background: transparent;
+  color: var(--text);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Public marketing surface ──────────────────────────────────────────────
+   Only the public pages mount <SiteBackdrop />; the console keeps its flat
+   ground on purpose.
+
+   No noise/grain layer: an SVG turbulence overlay on a near-black ground reads
+   as grey TV static rather than as texture. Depth here comes from light and
+   geometry instead — a soft aurora, a perspective grid plane, and a vignette.
+
+   Absolute, not fixed: these belong to the top of the *page*, anchored behind
+   the hero. Fixed made the glow ride the viewport down the page. */
+.site-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Every layer is anchored to the TOP of the page and given a height in pixels,
+   never a percentage. A percentage resolves against the full document height, so
+   on a long page the perspective grid became a plane thousands of pixels tall and
+   its converging lines streaked the whole way down like searchlights. */
+.site-backdrop > * {
+  position: absolute;
+  inset: 0 0 auto 0;
+}
+
+/* Aurora — three wide, soft colour fields that overlap into a single gradient
+   wash. Colour is what makes the ground feel designed rather than merely dark;
+   keeping all three in the indigo/violet family stops it turning into confetti. */
+.site-backdrop__aurora {
+  background:
+    radial-gradient(
+      48% 34% at 22% 4%,
+      color-mix(in srgb, var(--accent) 30%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      42% 30% at 78% 0%,
+      color-mix(in srgb, #7c3aed 26%, transparent),
+      transparent 66%
+    ),
+    radial-gradient(
+      60% 26% at 50% 16%,
+      color-mix(in srgb, #2563eb 16%, transparent),
+      transparent 70%
+    );
+  height: 860px;
+  filter: blur(28px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 30%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 30%, transparent 100%);
+}
+
+/* Flat grid, dissolved by a radial mask.
+   A tilted perspective plane was tried first and read as diagonal searchlights
+   rather than as a grid: once the lines converge they stop looking like a
+   surface. Flat lines with an elliptical mask give the "printed on graph paper"
+   depth cue without any rays, and leave no hard edge to seam against the nav. */
+.site-backdrop__grid {
+  height: 1100px;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center top;
+  -webkit-mask-image: radial-gradient(120% 78% at 50% 0%, #000 10%, transparent 72%);
+  mask-image: radial-gradient(120% 78% at 50% 0%, #000 10%, transparent 72%);
+}
+
+/* Vignette — darkens the upper corners so the aurora reads as light falling on
+   the page rather than as a flat coloured rectangle. Masked to fade out at its
+   own lower edge, otherwise the point where the darkening stops shows as a seam
+   straight across the page. */
+.site-backdrop__vignette {
+  height: 1100px;
+  background: radial-gradient(
+    82% 70% at 50% 2%,
+    transparent 35%,
+    color-mix(in srgb, var(--bg) 80%, transparent) 100%
+  );
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+}
+
+/* The showcase rail scrolls horizontally; its own scrollbar would cut across the
+   cards. Scrolling stays fully available via trackpad, touch, wheel and keyboard,
+   and the arrow buttons make it discoverable without the bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Thin, unobtrusive scrollbars to match the console feel. */

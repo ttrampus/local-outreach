@@ -87,8 +87,13 @@ model Outreach {
   leadId    String
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-  channel   String   @default("email") // email | whatsapp | phone | manual
-  contact   String?  // resolved contact handle (email/phone), if any
+  // How this message reaches the prospect. Picked automatically from the data the
+  // lead actually has (see pickChannel): email > sms > facebook/instagram DM >
+  // phone > manual. email and sms are delivered by the app when SMTP/Twilio are
+  // configured; the rest open a thread/dialer for the operator to finish. WhatsApp
+  // is deliberately not supported — cold messaging breaches its Business policy.
+  channel   String   @default("email") // email | sms | facebook | instagram | phone | manual
+  contact   String?  // resolved contact handle: address, number, or DM thread link
   subject   String?
   body      String
 

@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
+import { requireSession } from "@/lib/auth/guard";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,9 @@ const SORTS: Record<string, Prisma.LeadOrderByWithRelationInput> = {
 };
 
 export async function GET(req: Request) {
+  const denied = await requireSession();
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const tier = searchParams.get("tier")?.toUpperCase();
   const status = searchParams.get("status") ?? undefined;

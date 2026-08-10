@@ -10,9 +10,9 @@ import { recordAiUsage } from "@/lib/aiUsage";
 import type { Lead } from "@/generated/prisma/client";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { detectLocale } from "@/lib/preview/i18n";
+import { OUTREACH_PRICE_SENTENCE, OUTREACH_PRICE_SHORT } from "@/lib/pricing";
 import { pickChannel, type OutreachDraft, type OutreachMessage } from "./draft";
-
-const MONTHLY_PRICE = "€50/month";
+import { isSmsConfigured } from "./sms";
 
 const LANGUAGE_NAME: Record<string, string> = {
   sl: "Slovenian",
@@ -45,7 +45,7 @@ const OutreachSchema = z.object({
     .describe("An initial message followed by two short follow-ups (3 items total)."),
 });
 
-const SYSTEM = `You are a local freelance web designer writing a first cold-outreach SEQUENCE to the owner of a small business you found on Google Maps. You build modern websites and host them for a low monthly fee. You produce three messages: one initial message and two short follow-ups to send later if they don't reply.
+const SYSTEM = `You are a local freelance web designer writing a first cold-outreach SEQUENCE to the owner of a small business you found on Google Maps. You build modern websites for a one-time fee, and optionally host and look after them for a low monthly fee. You produce three messages: one initial message and two short follow-ups to send later if they don't reply.
 
 Language & tone:
 - Write EVERYTHING in the business's own language, as given. Sound like a native speaker — natural, warm, plain-spoken, never machine-translated and never like marketing copy.
@@ -61,14 +61,17 @@ The INITIAL message (step 0), ~90-140 words:
 - Open with ONE genuine, specific observation about their business — then get to the point. No flattery padding.
 - Name the gap matter-of-factly and kindly — no website, an outdated one, or only a social/booking profile. One sentence; it's an observation, not a criticism.
 - Say you already built them a FREE preview of what their site could look like, and put the preview link on its OWN line.
-- Pricing in one sentence: ${MONTHLY_PRICE}, hosting plus any changes they ever need included (a one-time buyout is possible too).
+- Pricing in one sentence: ${OUTREACH_PRICE_SENTENCE}. Add that the preview they're looking at is not a mock-up — it becomes their actual site, so the work is already done.
+- Sell the outcome, never the method: more customers, a better first impression, a faster site, easier to update. NEVER mention AI, automation, templates or how the site was generated — the owner is buying a result, not a process.
 - End with a soft, low-pressure question they can answer in five seconds.
 
 The FOLLOW-UPS (step 1, then step 2), each ~40-80 words:
 - Step 1: a brief, friendly nudge — re-share the preview link, offer to change anything they don't like. No guilt, no "just checking in" filler.
-- Step 2: a gentle close — you'll take the demo down soon; if they'd like it live it's ${MONTHLY_PRICE}, cancel anytime. Warm, final, never pushy.
+- Step 2: a gentle close — you'll take the demo down soon; if they'd like it live it's ${OUTREACH_PRICE_SHORT}, and the monthly part can be cancelled anytime. Warm, final, never pushy.
 
 If the channel is a Facebook/Instagram DM (you'll be told): make every message noticeably shorter and more conversational (initial ~50-80 words, follow-ups ~25-50) — DMs are read on phones. Keep the formal register. Still provide a subject line (used only as an internal label).
+
+If the channel is SMS (you'll be told): be RUTHLESSLY short — the initial message must fit in about 320 characters INCLUDING the link, follow-ups in about 160. One observation, the free preview, the link on its own line, the price, one short question. Drop the greeting flourish and any sentence that isn't load-bearing; a long SMS reads as spam and is billed per 160 characters. Still provide a subject line (used only as an internal label, never sent).
 
 Always:
 - Sign every message off with "[Your name]" as a literal placeholder.
@@ -109,7 +112,9 @@ function factsBlock(
   const channelLine =
     channel === "facebook" || channel === "instagram"
       ? `Channel: a ${channel === "facebook" ? "Facebook Messenger" : "Instagram"} direct message — write the shorter DM variant.`
-      : `Channel: email.`;
+      : channel === "sms"
+        ? `Channel: SMS text message — write the very short SMS variant.`
+        : `Channel: email.`;
 
   return [
     `Language to write in: ${languageName}`,
@@ -145,9 +150,9 @@ export async function generateOutreachWithClaude(
   const languageName = LANGUAGE_NAME[locale] ?? "English";
   const client = new Anthropic({ apiKey: env.anthropicApiKey });
 
-  // Channel is OUR decision (email > social DM > call), made up front so the
-  // writing style can match the medium (DMs get the short variant).
-  const { channel, contact } = pickChannel(lead);
+  // Channel is OUR decision (email > SMS > social DM > call), made up front so the
+  // writing style can match the medium (DMs and SMS get the short variants).
+  const { channel, contact } = pickChannel(lead, { smsEnabled: isSmsConfigured() });
 
   try {
     const response = await client.messages.parse({

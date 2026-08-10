@@ -7,7 +7,12 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 
 const CUSTOMER_STATUSES = new Set(["customer", "deployed"]);
-const PAYING_SUBSCRIPTION = new Set(["active", "paid", "trialing"]);
+// Subscription statuses only — these get multiplied by the monthly price to give
+// MRR, so a one-time sale must NOT appear here. "paid" used to be written for
+// one-time checkouts, which counted every €399 build as a recurring subscriber
+// and inflated MRR; one-time payments now move the funnel status instead and
+// leave subscriptionStatus null.
+const PAYING_SUBSCRIPTION = new Set(["active", "trialing"]);
 
 export interface FunnelStep {
   stage: string;
