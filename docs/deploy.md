@@ -49,12 +49,26 @@ usermod -aG sudo avenyo
 # firewall: ssh + web only
 ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw --force enable
 
-# Node 22 LTS
-curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+# Node 24 LTS
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 apt-get install -y nodejs git
 
-node --version    # expect v22.x
+node --version    # expect v24.x
 ```
+
+**Node 24, not 22.** `scripts/outreach-selftest.mjs` and `scripts/divergence.mjs`
+import the app's own `.ts` modules directly and rely on Node stripping the types
+itself — see `scripts/lib/app-imports.mjs`. That is unflagged from Node 23.6
+onward; on Node 22 the import throws and `npm run test:outreach` fails, which is
+the command Step 10 uses to verify the install. Prove it before moving on:
+
+```bash
+printf 'const x: number = 1; console.log("type stripping OK", x);\n' > /tmp/t.ts
+node /tmp/t.ts && rm /tmp/t.ts
+```
+
+If that prints `type stripping OK 1`, the scripts will run. If it throws a syntax
+error on the `: number`, the Node version is too old — do not continue.
 
 ## 4. Get the code onto the server
 
