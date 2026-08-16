@@ -5,8 +5,8 @@ disk for generated previews, headless Chromium, requests that last minutes, and 
 background timer for follow-ups. That means a small VPS, not a serverless free
 tier.
 
-These steps assume **Hetzner CAX11** (2 ARM vCPU, 4GB, ~€3.79/mo) running
-**Ubuntu 24.04**, with DNS already at Cloudflare. Any similar box works.
+These steps assume a small Hetzner VPS (this one: CX-series, 2 vCPU, 4GB, Nuremberg) running
+**Ubuntu 26.04**, with DNS already at Cloudflare. Any similar box works.
 
 ---
 
@@ -14,8 +14,10 @@ These steps assume **Hetzner CAX11** (2 ARM vCPU, 4GB, ~€3.79/mo) running
 
 1. hetzner.com/cloud → sign up → New Project → Add Server.
 2. Location: **Nuremberg** or **Helsinki** (closest to Slovenia).
-3. Image: **Ubuntu 24.04**.
-4. Type: **Shared vCPU → Arm64 → CAX11**.
+3. Image: **Ubuntu 26.04**.
+4. Type: **Shared vCPU → x86 → CX22** (4GB). Arm64 (CAX11) is cheaper and works,
+   but Playwright's Chromium and its system dependencies are far better trodden
+   on x86 — worth the difference for a box you only pay for once a month.
 5. SSH key: paste your public key (`cat ~/.ssh/id_ed25519.pub`; if you have none,
    `ssh-keygen -t ed25519` first). Password login is worse in every way.
 6. Name it `avenyo`, create, and copy the IPv4 address.
@@ -76,7 +78,7 @@ If the repo is on GitHub:
 
 ```bash
 su - avenyo
-git clone https://github.com/<you>/local-outreach.git app
+git clone https://github.com/ttrampus/local-outreach.git app
 cd app
 ```
 
@@ -88,18 +90,24 @@ rsync -av --exclude node_modules --exclude .next --exclude .git \
   ~/local-outreach/ avenyo@178.104.18.121:~/app/
 ```
 
-## 5. Install and build
+## 5. Install dependencies
 
 ```bash
 cd ~/app
 npm ci
 npx playwright install --with-deps chromium   # the screenshot browser
-npx prisma migrate deploy                      # create the schema
-npm run build
 ```
 
 `playwright install --with-deps` pulls a long list of system libraries and needs
-sudo. If it complains, run `sudo npx playwright install-deps chromium` first.
+sudo. If it complains, run `sudo npx playwright install-deps chromium` first. On
+an Ubuntu release newer than Playwright knows about, `--with-deps` can refuse
+outright with "unsupported distribution" — in that case install the browser alone
+(`npx playwright install chromium`), then let the next step tell you what's
+actually missing rather than guessing at a package list.
+
+**The schema and the build come after configuration**, in step 6 — `prisma.config.ts`
+reads `DATABASE_URL` out of `.env.local`, so `prisma migrate deploy` has no
+datasource until that file exists.
 
 ## 6. Configuration
 
@@ -129,6 +137,16 @@ openssl rand -base64 48
 
 Both `AUTH_PASSWORD` and `AUTH_SECRET` must be set, or the app returns 503 for
 every private path by design.
+
+Now that the configuration exists, create the schema and build. If you are also
+bringing existing leads across (step 7), copy `dev.db` up **before** running the
+migration, so any pending migrations are applied to the restored database:
+
+```bash
+cd ~/app
+npx prisma migrate deploy
+npm run build
+```
 
 ## 7. Bring your existing leads (optional)
 
