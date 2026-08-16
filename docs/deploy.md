@@ -195,13 +195,40 @@ npm run build
 
 Your 60 discovered leads and their generated previews live locally. To keep them:
 
+There are **three** things to bring, not two — the generated pages and their
+screenshots live in different trees:
+
 ```bash
 # on your laptop, with the local app NOT running
 rsync -av ~/local-outreach/dev.db avenyo@178.104.18.121:~/app/dev.db
+rsync -av ~/local-outreach/data/previews/ avenyo@178.104.18.121:~/app/data/previews/
 rsync -av ~/local-outreach/public/previews/ avenyo@178.104.18.121:~/app/public/previews/
 ```
 
-Skip this to start clean — discovery will refill it.
+`data/previews/` holds the preview **HTML** that `/p/[leadId]` serves;
+`public/previews/` holds the **screenshots** the portfolio shows. Copying only
+the second leaves every preview link returning **410 Gone** — `route.ts` returns
+that when it cannot read the file at `previewHtmlPath`, which looks like an
+expired preview rather than a missing directory.
+
+Then rewrite the stored paths: `Lead.previewHtmlPath` is absolute, so every row
+still points at the laptop.
+
+```bash
+cd ~/app && node -e '
+const D = require("better-sqlite3"), fs = require("fs");
+const db = new D("dev.db");
+const r = db.prepare(
+  "update Lead set previewHtmlPath = replace(previewHtmlPath, ?, ?) where previewHtmlPath like ?"
+).run("/home/tim/local-outreach/", "/home/avenyo/app/", "/home/tim/local-outreach/%");
+console.log("rows rewritten:", r.changes);
+for (const x of db.prepare("select previewHtmlPath p from Lead where previewHtmlPath is not null").all())
+  if (!fs.existsSync(x.p)) console.log("MISSING:", x.p);
+'
+```
+
+It should print the row count and no `MISSING` lines. Skip this whole step to
+start clean — discovery will refill it.
 
 ## 8. Run it as a service
 
