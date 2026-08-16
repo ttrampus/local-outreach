@@ -217,8 +217,6 @@ export function ShowcaseRail({ items }: { items: ShowcaseItem[] }) {
             key={item.id}
             data-card
             href={`/p/${item.id}?src=examples`}
-            target="_blank"
-            rel="noopener"
             // The browser's own image/link dragging would pre-empt the rail drag.
             draggable={false}
             className="group block w-[300px] shrink-0 snap-start overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--muted)]/50 sm:w-[360px]"

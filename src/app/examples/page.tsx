@@ -78,8 +78,6 @@ export default async function ExamplesPage() {
                     // traffic: don't count the view against the lead, and show a
                     // generic CTA rather than that business's own interest button.
                     href={`/p/${lead.id}?src=examples`}
-                    target="_blank"
-                    rel="noopener"
                     className="group block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--muted)]/50"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden bg-[var(--panel-2)]">
