@@ -40,7 +40,6 @@ export const PALETTES: Palette[] = [
   { id: "obsidian-lime",   mode: "dark",  bg: "#0A0C0A", surface: "#141814", ink: "#EAF2E6", muted: "#94A08E", border: "#232B22", accent: "#B6FF3B", accent2: "#5E8438" },
   { id: "midnight-signal", mode: "dark",  bg: "#0B0E14", surface: "#141A24", ink: "#E8EEF5", muted: "#94A2B4", border: "#222C3A", accent: "#4ADE80", accent2: "#F472B6" },
   { id: "ink-cobalt",      mode: "dark",  bg: "#050505", surface: "#101010", ink: "#F2F2F2", muted: "#969696", border: "#1E1E1E", accent: "#3B6BFF", accent2: "#C6D4FF" },
-  { id: "plum-noir",       mode: "dark",  bg: "#12070F", surface: "#1D0E19", ink: "#F6E9F2", muted: "#B295A8", border: "#301B2A", accent: "#FF4D9D", accent2: "#8E3A6B" },
   { id: "forest-brass",    mode: "dark",  bg: "#0C1410", surface: "#14201A", ink: "#E7F0E9", muted: "#93A99C", border: "#22322A", accent: "#D4AF37", accent2: "#6B8E76" },
   { id: "carbon-ember",    mode: "dark",  bg: "#121212", surface: "#1C1C1C", ink: "#EDEDED", muted: "#A2A2A2", border: "#2A2A2A", accent: "#FF5A1F", accent2: "#FFB38A" },
   { id: "abyss-coral",     mode: "dark",  bg: "#04191C", surface: "#082A2F", ink: "#E3F5F4", muted: "#8CB2B1", border: "#103B41", accent: "#FF6B5A", accent2: "#4FD1C5" },
@@ -48,12 +47,19 @@ export const PALETTES: Palette[] = [
   // accent was #FFFFFF: not an accent at all, and when a composition painted a
   // field in it the "dark" page rendered as a full-screen white void.
   { id: "graphite-mono",   mode: "dark",  bg: "#1A1A1A", surface: "#242424", ink: "#FAFAFA", muted: "#A8A8A8", border: "#333333", accent: "#FF3B30", accent2: "#C7CBD1" },
-  { id: "sunset-duo",      mode: "dark",  bg: "#1B1020", surface: "#291733", ink: "#FBEEF7", muted: "#AF97B9", border: "#3D2449", accent: "#FF8A3D", accent2: "#D946EF" },
+  // accent2 was #D946EF (fuchsia). Orange + fuchsia on a plum ground is the
+  // "sunset gradient" duo, and with a gradient surface treatment it rebuilt the
+  // exact hero this whole file exists to prevent. Amber holds the sunset idea
+  // without the second magenta pole that makes it read as a gradient.
+  { id: "sunset-duo",      mode: "dark",  bg: "#1B1020", surface: "#291733", ink: "#FBEEF7", muted: "#AF97B9", border: "#3D2449", accent: "#FF8A3D", accent2: "#FFC24D" },
 
   // ── Jewel / saturated ───────────────────────────────────────────────────
   { id: "emerald-gold",    mode: "dark",  bg: "#06231C", surface: "#0B3229", ink: "#EAF7F1", muted: "#8FBCAB", border: "#14493C", accent: "#F2C14E", accent2: "#34D399" },
   { id: "sapphire-ice",    mode: "dark",  bg: "#071634", surface: "#0D2249", ink: "#E6EEFF", muted: "#98ACD0", border: "#17325F", accent: "#7DD3FC", accent2: "#FBBF24" },
-  { id: "violet-acid",     mode: "dark",  bg: "#150B2E", surface: "#1F1142", ink: "#EDE7FB", muted: "#A89BCC", border: "#2E1E5C", accent: "#D6FF3D", accent2: "#A78BFA" },
+  // WAS violet-acid (#150B2E violet ground) and plum-noir (#12070F plum), both
+  // removed: purple is out of the system entirely, ground and accent alike. It
+  // is the hue that most reliably makes a page read as machine-made, and no
+  // local business in this pipeline has ever wanted one.
 
   // ── Light, non-cream ────────────────────────────────────────────────────
   { id: "paper-cobalt",    mode: "light", bg: "#FFFFFF", surface: "#F4F6FB", ink: "#0A1633", muted: "#5A6785", border: "#DDE3F0", accent: "#1D4ED8", accent2: "#F97316" },
@@ -61,7 +67,12 @@ export const PALETTES: Palette[] = [
   { id: "blush-ink",       mode: "light", bg: "#FDF2F4", surface: "#FFFFFF", ink: "#2A0E16", muted: "#805C68", border: "#F2D6DC", accent: "#E11D48", accent2: "#7C2D4B" },
   { id: "sky-slate",       mode: "light", bg: "#F1F6FC", surface: "#FFFFFF", ink: "#0F2233", muted: "#54697D", border: "#D6E4F0", accent: "#0284C7", accent2: "#F43F5E" },
   { id: "stone-oxide",     mode: "light", bg: "#F5F4F1", surface: "#FFFFFF", ink: "#1C1A17", muted: "#67635C", border: "#E2DFD8", accent: "#C2410C", accent2: "#3F6212" },
-  { id: "lilac-graphite",  mode: "light", bg: "#F6F4FD", surface: "#FFFFFF", ink: "#1B1630", muted: "#635B7D", border: "#E3DEF5", accent: "#6D28D9", accent2: "#DB2777" },
+  // WAS lilac-graphite: bg #F6F4FD with a #6D28D9 violet accent. That is the
+  // single most recognisable "made with AI" palette there is — violet-700 on a
+  // near-white ground — and it was the most-drawn palette in the whole corpus.
+  // Same structural role (a cool pale ground with one saturated accent), a hue
+  // no starter template reaches for.
+  { id: "slate-ink",       mode: "light", bg: "#F4F6F5", surface: "#FFFFFF", ink: "#141A18", muted: "#5B6663", border: "#DDE3E1", accent: "#0F5C4A", accent2: "#B4451F" },
   { id: "citrus-white",    mode: "light", bg: "#FFFFFF", surface: "#FAFAF7", ink: "#14140F", muted: "#646456", border: "#E6E6DC", accent: "#A16207", accent2: "#166534" },
   // was pure #000 on pure #FFF — harsh, cold, and it reads as unfinished rather
   // than as a deliberate monochrome. Toned a few points off each end instead.
@@ -438,6 +449,57 @@ export function readableOn(hex: string): string {
   return luminance(hex) > 0.42 ? "#0B0B0B" : "#FFFFFF";
 }
 
+/**
+ * Narrow a palette pool before the draw, so the corpus comes out mostly white.
+ *
+ * Two seeded rolls, not a filter, so every business still gets a deterministic
+ * palette and the pool keeps its variety:
+ *
+ *  1. MODE. A dark ground is drawn 1 time in 6. Dark pages photograph well and a
+ *     few businesses genuinely want one, but a local trade owner opening their
+ *     own mockup overwhelmingly expects a clean, light, printed-brochure page —
+ *     and a dark site is the one aesthetic choice that makes them doubt the whole
+ *     thing before reading a word.
+ *  2. GROUND. Within light, a near-white ground wins 2 times in 3; the remaining
+ *     third draws the soft tinted grounds (mint, sky, blush, cream, buttermilk).
+ *     Those are the "soft bright colours" that keep the corpus from looking like
+ *     one white template — they are never a saturated field.
+ *
+ * A pool that is all one mode (a category allow-list of dark palettes, say) is
+ * returned untouched: the theme knows something we don't.
+ */
+const DARK_IN = 6; // 1 dark ground in every 6 leads
+const TINTED_IN = 3; // 1 tinted light ground in every 3 light leads
+
+/**
+ * Is this ground white (or a neutral within a hair of it), as opposed to a tint?
+ *
+ * Luminance alone cannot answer this and gets it backwards: mint #E8FFF4 scores
+ * 0.952 and near-white #FAFAF9 scores 0.955, yet one is obviously green and the
+ * other is obviously white. What separates them is CHROMA — how far the channels
+ * spread — so both are required. Spread ≤ 6/255 keeps #FFFFFF, #FAFAF9, #F4F6F5
+ * and #F5F4F1; it excludes mint, buttermilk, blush, sky and the two creams.
+ */
+function isWhiteGround(hex: string): boolean {
+  const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const spread = Math.max(...ch) - Math.min(...ch);
+  return luminance(hex) >= 0.9 && spread <= 6;
+}
+
+export function biasPalettePool(pool: Palette[], seedKey: string): Palette[] {
+  const light = pool.filter((p) => p.mode === "light");
+  const dark = pool.filter((p) => p.mode === "dark");
+  if (!light.length || !dark.length) return pool;
+
+  if (hashOf(`${seedKey}::palette-mode`) % DARK_IN === 0) return dark;
+
+  const white = light.filter((p) => isWhiteGround(p.bg));
+  const tinted = light.filter((p) => !isWhiteGround(p.bg));
+  if (!white.length || !tinted.length) return light;
+
+  return hashOf(`${seedKey}::palette-ground`) % TINTED_IN === 0 ? tinted : white;
+}
+
 /** Look a palette up by id, falling back to the first when the id is unknown. */
 export function paletteById(id: string): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];
@@ -512,9 +574,15 @@ export const SURFACE_TREATMENTS: SurfaceTreatment[] = [
     usage: "Over the entire page, combined with one large soft radial glow in --accent at 8% alpha behind the hero so the ground has depth as well as tooth.",
   },
   {
-    id: "aurora-mesh",
-    css: "Three overlapping radial-gradients on the body: one --accent at 14% alpha at 15% 10%, one --accent2 at 12% at 85% 30%, one --surface at 60% at 50% 90%, each 60-80% wide, over the --bg base. Heavy blur is implied by the gradient softness — do not use filter:blur on the body.",
-    usage: "Page-wide ambient wash, strongest behind the hero and the contact section, near-invisible in the middle so content sections stay calm.",
+    // WAS aurora-mesh: three overlapping soft radial-gradients in --accent and
+    // --accent2 washed across the body. That is the mesh-gradient hero — the
+    // single most recognisable generated-site background there is — and drawn
+    // with any violet or magenta accent it reproduced the exact purple wash this
+    // file is supposed to prevent. A large, soft, coloured gradient field is the
+    // tell regardless of hue, so the recipe is gone rather than recoloured.
+    id: "riso-misregister",
+    css: "Two flat colour layers deliberately out of register, like a two-pass risograph print: a ::before layer filled var(--surface) and a ::after layer filled color-mix(in srgb,var(--accent) 12%,transparent), each clipped to large simple shapes (a wide band, a rectangle, a circle) and offset from each other by 6-10px on both axes, with mix-blend-mode:multiply on light palettes (screen on dark). Hard edges only — no blur, no gradient, no soft falloff anywhere.",
+    usage: "Two or three places down the page — behind the hero, behind one mid-page band, behind the contact section. The misregistration must stay consistent in direction and distance everywhere it appears, because that is what reads as a print process rather than a mistake.",
   },
   {
     id: "hairline-rules",
@@ -528,7 +596,11 @@ export const SURFACE_TREATMENTS: SurfaceTreatment[] = [
   },
   {
     id: "spotlight-vignette",
-    css: "A large radial-gradient(circle at 50% 0%,var(--accent) 0%,transparent 55%) at 10% alpha over --bg, plus an inset vignette: box-shadow:inset 0 0 240px 80px rgba(0,0,0,.28) on dark palettes (use a light equivalent on light ones).",
+    // The accent glow is capped at 6% and confined to the top 35% of the hero.
+    // At the old 10% across 55% of the viewport it read as a coloured gradient
+    // wash rather than a light source — the same failure aurora-mesh was removed
+    // for, just milder.
+    css: "A radial-gradient(circle at 50% 0%,var(--accent) 0%,transparent 35%) at NO MORE THAN 6% alpha over --bg, confined to the hero rather than the body, plus an inset vignette: box-shadow:inset 0 0 240px 80px rgba(0,0,0,.28) on dark palettes (use a light equivalent on light ones). The vignette does the work; the accent is a hint of a light source, never a colour field.",
     usage: "Hero and footer carry the spotlight; middle sections alternate --bg and --surface so the page still has structure.",
   },
   {
@@ -548,6 +620,221 @@ export const SURFACE_TREATMENTS: SurfaceTreatment[] = [
   },
 ];
 
+export interface IconSystem {
+  id: string;
+  /**
+   * False for the one system that deliberately uses no pictograms. The audit
+   * only demands inline SVG when this is true, so "no icons" stays a design
+   * decision rather than the vacuum it used to be.
+   */
+  expectsSvg: boolean;
+  /** Literal drawing rules — grid, stroke, caps, fill. */
+  spec: string;
+  /** Where icons appear, and where they must not. */
+  usage: string;
+}
+
+/**
+ * 7 icon systems.
+ *
+ * Every site generated before this axis existed contained ZERO inline <svg>.
+ * The only glyphs across the whole corpus were 152 "★" and one "✆". That is not
+ * restraint, it is an omission with a mechanical cause: the output contract bans
+ * external resources, so the model cannot reach for Lucide or Heroicons the way
+ * it would in any other context, and nothing told it to draw its own. So it drew
+ * nothing, and every services list, hours block and contact row shipped as bare
+ * text where a real site would have a mark.
+ *
+ * These are hand-built inline SVG, which the contract does allow. Varying the
+ * system per business also makes iconography a diversity axis rather than one
+ * more thing every site shares.
+ */
+export const ICON_SYSTEMS: IconSystem[] = [
+  {
+    id: "hairline-stroke",
+    expectsSvg: true,
+    spec: "24×24 viewBox, fill:none, stroke:currentColor, stroke-width:1.25, stroke-linecap:round, stroke-linejoin:round. Geometric construction on the 24-grid — circles centred on 12,12; lines landing on whole units. Rendered at 22-24px.",
+    usage: "One icon per service row, one per contact detail (phone, address, hours). Never in the hero, never larger than 28px.",
+  },
+  {
+    id: "heavy-stroke-blunt",
+    expectsSvg: true,
+    spec: "24×24 viewBox, fill:none, stroke:currentColor, stroke-width:2.5, stroke-linecap:butt, stroke-linejoin:miter. Blunt ends and hard corners — no rounding anywhere. Rendered at 26-30px.",
+    usage: "Service rows and the process/how-it-works steps. Pair with the accent colour on hover. Keep them out of the footer.",
+  },
+  {
+    id: "solid-glyph",
+    expectsSvg: true,
+    spec: "20×20 viewBox, single filled path, fill:currentColor, stroke:none. Solid silhouettes with generous counters so they read at small size. Rendered at 18-20px.",
+    usage: "Inline with text — beside opening hours, the phone number, the address — sitting on the text baseline rather than in its own tile.",
+  },
+  {
+    id: "duotone-accent",
+    expectsSvg: true,
+    spec: "24×24 viewBox, exactly two paths: a base shape filled var(--ink) and an accent shape filled var(--accent). No strokes. The accent path is the smaller, more specific element of the pair.",
+    usage: "Service cards and proof points only — one per card, top-left, 28px. A duotone mark is loud, so it must not repeat more than about eight times on the page.",
+  },
+  {
+    id: "circle-badged",
+    expectsSvg: true,
+    spec: "A 44px circle filled var(--surface) with a 1px var(--border) ring, holding a 20×20 stroked icon: fill:none, stroke:currentColor, stroke-width:1.5, round caps.",
+    usage: "Wherever a list needs vertical rhythm — services, FAQ rows, the contact block. The badge is the alignment element, so left edges line up on the circle, not the text.",
+  },
+  {
+    id: "sketch-irregular",
+    expectsSvg: true,
+    spec: "24×24 viewBox, fill:none, stroke:currentColor, stroke-width:2, stroke-linecap:round. Paths are deliberately imperfect — lines that overshoot their corner by a unit, circles drawn as a near-closed arc rather than a <circle>. It should read as drawn by hand, not plotted.",
+    usage: "Service rows and section markers. This system carries the page's personality, so use it consistently and never mix it with a geometric mark.",
+  },
+  {
+    id: "numeral-system",
+    expectsSvg: false,
+    spec: "NO pictograms anywhere on this page — no SVG icons, no emoji, no dingbats. The marking system is typographic instead: two-digit figures (01, 02, 03…) set in the display face at ~0.75× body size, in var(--muted), hanging in the left margin of each service row and each process step.",
+    usage: "Numbers run continuously down the page in one sequence, on the SERVICES and process steps only. They must NEVER appear in the navigation — a numbered nav is one of the most recognisable generated-site tells there is. Because there are no icons at all, the figures must be set with real care: consistent margin, consistent baseline, never wrapping.",
+  },
+];
+
+export interface SignatureDetail {
+  id: string;
+  /** The literal thing to build. */
+  spec: string;
+}
+
+/**
+ * 12 signature details — one hand-made element per site.
+ *
+ * This is the axis for the thing no default would ever produce. Palette, type,
+ * composition and motion can all be varied and the page can still read as
+ * assembled rather than designed, because everything on it is a component
+ * anyone's starter template would emit. One element that is obviously built on
+ * purpose, for this business, changes how the whole page reads.
+ *
+ * Written as literally as SURFACE_TREATMENTS, and for the same reason: asking
+ * for "a distinctive touch" gets a rounded card with a shadow.
+ */
+export const SIGNATURE_DETAILS: SignatureDetail[] = [
+  {
+    id: "hanging-figures",
+    spec: "The SERVICES list is numbered with figures that HANG in the left margin, outside the text column, set in the display face at ~2× body size in var(--accent) with their baselines aligned to the first line of each service name. Achieved with a negative text-indent or a grid column, never with list-style. The numbering applies to the services list only — never to the navigation, which is words.",
+  },
+  {
+    id: "leader-dots",
+    spec: "The services or hours list is set as a price/menu column with true leader dots: name hard left, figure hard right, and a row of dots filling the gap, built with a repeating-linear-gradient on a flex spacer (not typed periods) so it reflows correctly at every width.",
+  },
+  {
+    id: "photo-cushion",
+    spec: "Every photograph sits on a hand-made oval cushion: an ::before ellipse in var(--accent) at ~12% alpha, wider than the image and offset 10px down and 6px right, with a heavy blur, so each photo appears to rest on a soft shadow of its own rather than being cropped into a box.",
+  },
+  {
+    id: "ticket-notch",
+    spec: "The opening-hours card is a ticket stub: semicircular notches bitten out of both side edges at 40% height (radial-gradient masks or a CSS mask-image), and a vertical dashed rule separating the day column from the time column.",
+  },
+  {
+    id: "rotated-stamp",
+    spec: "The Google rating is a rubber stamp: the score, star row and review count inside a 2px ink-coloured double ring, the whole thing rotated -7deg, with slightly reduced opacity so it reads as ink pressed onto the page. It overlaps the edge of an adjacent photo or panel rather than sitting in clear space.",
+  },
+  {
+    id: "drawn-underline",
+    spec: "The single most important phrase in the hero carries a hand-drawn underline: an inline SVG path with a slightly uneven, non-parallel stroke in var(--accent), stroke-width 3, round caps, sitting below the baseline and overshooting the word at both ends. Never a border-bottom.",
+  },
+  {
+    id: "drop-cap",
+    spec: "The about/why-us paragraph opens with a real drop cap: ::first-letter set in the display face, float:left, spanning exactly three lines, with optical side-bearings tuned by negative margins so the cap's stem aligns with the paragraph's left edge and the following text sits tight against it.",
+  },
+  {
+    id: "marginal-note",
+    spec: "One aside — a note about parking, a walk-in policy, who does the work — is set as a genuine margin note: small, in the display face, rotated 90deg and running up the outer edge of a section, or hung in the outside margin at body size with a hairline rule connecting it to the line it annotates.",
+  },
+  {
+    id: "stitched-edge",
+    spec: "One full-width band (the reviews or the contact section) is edged top and bottom with a stitched seam: a repeating-linear-gradient dash in var(--accent) at 2px thickness with 6px dashes and 5px gaps, inset 24px from both ends so the stitching stops short of the viewport edge.",
+  },
+  {
+    id: "tab-index",
+    spec: "The section navigation is a set of file-folder tabs: each nav item has an asymmetric clipped top-left corner (clip-path polygon), they overlap each other by 8px in z-order, and the active one sits 3px taller and in var(--surface) so it reads as the tab in front.",
+  },
+  {
+    id: "letterpress-heading",
+    spec: "Every section heading is letterpressed into the ground: the text in var(--ink) with a 1px inset highlight below and a 1px shadow above (text-shadow with two offsets in opposing directions, both derived from the palette rather than pure black/white), so the type appears pressed into the page rather than sitting on it.",
+  },
+  {
+    id: "corner-brackets",
+    spec: "The hero content is framed by four hand-set corner brackets rather than a box: 28px L-shaped marks in 2px var(--accent), one at each corner of the content area, inset from the viewport edge, with no connecting edges between them. They must sit outside the text, never clipping it.",
+  },
+];
+
+export interface PageRhythm {
+  id: string;
+  /** The order sections appear in below the hero. */
+  sequence: string;
+  /** Which grounds those sections sit on, and where the one accent band lands. */
+  grounds: string;
+  /** The section that deliberately breaks the established pattern. */
+  breaks: string;
+}
+
+/**
+ * 8 page rhythms.
+ *
+ * Every other axis in this file varies the HERO. Below the fold the brief had
+ * nothing but prose rules ("alternate the ground", "do not centre every
+ * section"), which is why two sites could draw different palettes, different
+ * families and different compositions and still feel like relatives once you
+ * scrolled: they ran the same sections in the same order on the same grounds.
+ *
+ * This is the below-the-fold counterpart to COMPOSITIONS.
+ */
+export const PAGE_RHYTHMS: PageRhythm[] = [
+  {
+    id: "proof-early",
+    sequence: "reviews → services → about → process → hours+location → FAQ → contact",
+    grounds: "Reviews open on a full-bleed accent band directly under the hero. Services and about alternate bg/surface. Hours and location share one inset surface panel.",
+    breaks: "The process section runs as a horizontal three-column stepper against the vertical stack around it.",
+  },
+  {
+    id: "services-first",
+    sequence: "services → gallery → about → reviews → hours+location → contact",
+    grounds: "Services sit on bg, gallery full-bleed edge to edge with no padding, about on surface, reviews on the accent band.",
+    breaks: "The gallery is the only full-bleed section and carries no heading at all — the photographs run straight into the section above it.",
+  },
+  {
+    id: "long-editorial",
+    sequence: "about → services → gallery → reviews → staff-or-process → hours → location → contact",
+    grounds: "A long run on bg with only two surface panels (services, contact), so the page reads as one continuous article rather than a stack of cards.",
+    breaks: "One oversized pull-quote from a real review, set at display size on the accent, splits the page roughly in half.",
+  },
+  {
+    id: "practical-front",
+    sequence: "hours+location → services → about → reviews → FAQ → contact",
+    grounds: "The practical block sits on surface immediately under the hero, tight and dense. Everything after it opens out onto bg with generous rhythm.",
+    breaks: "The first section is deliberately the densest on the page; the density drops as the reader goes down.",
+  },
+  {
+    id: "alternating-split",
+    sequence: "about → services → process → reviews → gallery → hours+location → contact",
+    grounds: "Every section is a two-column split, and the image/text sides swap on each one. Grounds alternate bg/surface with each swap.",
+    breaks: "The reviews section abandons the split for a single centred column, and is the only centred thing on the page.",
+  },
+  {
+    id: "band-stack",
+    sequence: "services → reviews → about → gallery → FAQ → hours+location → contact",
+    grounds: "Each section is a full-width band with no side margins, separated only by a change of ground: bg, surface, bg, accent, surface, bg, surface.",
+    breaks: "The gallery band is twice the height of every other band and bleeds its images off both edges.",
+  },
+  {
+    id: "sidebar-persistent",
+    sequence: "services → about → reviews → process → gallery → hours+location → contact",
+    grounds: "Content runs in a single column offset to one side, with hours, phone and rating persisting in a narrow sticky rail on the other. Sections alternate bg/surface within the content column only; the rail stays on surface throughout.",
+    breaks: "The gallery is the one section that spans the full width, running underneath the rail.",
+  },
+  {
+    id: "dense-then-open",
+    sequence: "services → FAQ → reviews → about → gallery → hours+location → contact",
+    grounds: "The top half is dense and rule-separated on a single bg with hairline dividers rather than ground changes. The bottom half opens into large surface panels with real spacing between them.",
+    breaks: "There is exactly one ground change on the page — where the dense half ends and the open half begins — and it lands on the accent.",
+  },
+];
+
 export interface ArtDirection {
   palette: Palette;
   type: TypeSet;
@@ -555,6 +842,9 @@ export interface ArtDirection {
   motion: MotionSignature;
   hero: HeroPattern;
   surface: SurfaceTreatment;
+  icons: IconSystem;
+  signature: SignatureDetail;
+  rhythm: PageRhythm;
 }
 
 /** What the business's own material allows, constraining the draw. */
@@ -613,11 +903,28 @@ export function artDirectionFor(
   }
 
   return {
-    palette: palettes.length ? paletteFor(palettes, key) : pickAxis(PALETTES, key, "palette"),
+    // Biased toward white grounds before the draw — see biasPalettePool. Applied
+    // here rather than inside paletteFor() so the deterministic template keeps
+    // drawing from its category's full list; this is a rule about the AI corpus.
+    palette: pickAxis(
+      biasPalettePool(palettes.length ? palettes.map(paletteById) : PALETTES, key),
+      key,
+      palettes.length ? "template-palette" : "palette",
+    ),
     type: typeSets.length ? typeSetFor(typeSets, key) : pickAxis(TYPE_SETS, key, "type"),
     composition: pickAxis(pool.length ? pool : COMPOSITIONS, key, "composition"),
     motion: pickAxis(MOTION_SIGNATURES, key, "motion"),
     surface: pickAxis(SURFACE_TREATMENTS, key, "surface"),
+    icons: pickAxis(ICON_SYSTEMS, key, "icons"),
+    signature: pickAxis(SIGNATURE_DETAILS, key, "signature"),
+    // Rhythms that lean on a gallery need photographs to fill it; with none, the
+    // section would be an empty band — the exact failure the brief spends most of
+    // its length trying to prevent.
+    rhythm: pickAxis(
+      hasAny ? PAGE_RHYTHMS : PAGE_RHYTHMS.filter((r) => !r.sequence.includes("gallery")),
+      key,
+      "rhythm",
+    ),
     // `photo-led-minimal` leans entirely on the photography, so it can only be
     // drawn when there is some. With no photos it would leave a near-empty fold.
     hero: pickAxis(

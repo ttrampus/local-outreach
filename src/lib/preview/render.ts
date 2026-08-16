@@ -4,6 +4,7 @@
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { auditRenderedPage, type RenderedAudit } from "./audit";
 
 const PREVIEW_IMG_DIR = path.join(process.cwd(), "public", "previews");
 const PREVIEW_HTML_DIR = path.join(process.cwd(), "data", "previews");
@@ -12,6 +13,12 @@ export interface RenderResult {
   imagePath: string; // web path under /public, e.g. /previews/{placeId}.png
   mobileImagePath: string | null; // same, at a phone viewport; null if that shot failed
   htmlPath: string; // absolute path to stored HTML on disk
+  // The shot bytes, so the critique pass doesn't have to read the PNGs back off
+  // disk immediately after we wrote them.
+  desktopShot: Buffer;
+  mobileShot: Buffer | null;
+  // null when the audit itself failed — distinct from "audited and found clean".
+  audit: RenderedAudit | null;
 }
 
 // iPhone-class portrait viewport. Most prospects open a cold-outreach link on a
@@ -83,23 +90,37 @@ export async function renderPreview(
     await page.waitForTimeout(700);
 
     // Hero screenshot = the above-the-fold viewport (nav + hero band).
-    await page.screenshot({ path: imgFsPath, fullPage: false });
+    const desktopShot = await page.screenshot({ path: imgFsPath, fullPage: false });
 
     // Then the same page at phone width. Reusing the page rather than launching a
     // second browser keeps this nearly free; the context's deviceScaleFactor of 2
     // carries over, so the phone shot is retina too. Best-effort: a layout that
     // breaks the resize must not cost us the desktop artifact we already have.
     let mobileImagePath: string | null = null;
+    let mobileShot: Buffer | null = null;
     try {
       await page.setViewportSize(MOBILE_VIEWPORT);
       await page.waitForTimeout(500); // let the responsive reflow settle
-      await page.screenshot({ path: mobileFsPath, fullPage: false });
+      mobileShot = await page.screenshot({ path: mobileFsPath, fullPage: false });
       mobileImagePath = mobileWebPath;
     } catch {
       // leave null — the panel simply won't offer a Mobile toggle for this render
     }
 
-    return { imagePath: imgWebPath, mobileImagePath, htmlPath };
+    // Audit last, and back at the desktop viewport: it scrolls the page to reach
+    // the submit button, so running it before the shots would capture a
+    // mid-scroll frame. Best-effort for the same reason the mobile shot is —
+    // a check that throws must not cost us a render we already paid a model for.
+    let audit: RenderedAudit | null = null;
+    try {
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await page.waitForTimeout(300);
+      audit = await auditRenderedPage(page);
+    } catch (err) {
+      console.warn(`[render] audit failed for ${placeId}:`, err);
+    }
+
+    return { imagePath: imgWebPath, mobileImagePath, htmlPath, desktopShot, mobileShot, audit };
   } finally {
     await browser.close().catch(() => {});
   }

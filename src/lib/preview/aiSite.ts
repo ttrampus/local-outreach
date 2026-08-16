@@ -33,6 +33,7 @@ OUTPUT CONTRACT (strict):
 - Inline ALL CSS in a single <style> in <head>. Any JS goes in one <script> before </body> and must be defensive (no errors if an element is missing).
 - The ONLY images you may reference are the placeholders given to you: the photo placeholders (e.g. {{PHOTO_0}}) and, when offered, a single location-map placeholder {{MAP}}. Use them in CSS background-image or <img src>. Never reference any other image URL. If given zero photos, build a striking type-led / illustrative design instead — do not leave broken image holes.
 - You MAY load distinctive fonts from Google Fonts via a <link> to fonts.googleapis.com. Do not reference any other external resource.
+- You MAY and SHOULD write inline <svg> directly in the markup — icons, rules, marks, decorative paths. Inline SVG is not an external reference and is the only way to put iconography on this page, since icon fonts and icon libraries are unreachable. See the ICON SYSTEM in the art direction below.
 
 THE ART DIRECTION BELOW IS A SPECIFICATION, NOT A SUGGESTION:
 - The PALETTE gives exact hex values. Use them verbatim as your CSS custom properties. Do not tint, shade-shift, substitute, or "improve" them, and do not introduce a background colour that is not derived from them. If the palette is dark, the page is dark; if it is light, the page is light.
@@ -74,6 +75,10 @@ CONTENT RULES:
 - The point of the inventory is substance, not padding: every item above is REAL information you were given or can state without inventing. If you cannot fill a section with real content, drop the section rather than padding it — but you should rarely need to, because the material above is genuinely there.
 - WORKING CONTACT FORM: place the literal token {{CONTACT_FORM}} exactly once, inside your contact section, where a "get in touch" form belongs. It is replaced with a real, functioning enquiry form. Do NOT build your own <form> — just output the {{CONTACT_FORM}} token in the right spot (you may still keep tel:/email CTAs alongside it). This token is MANDATORY and it must sit inside a real styled section, above the footer, with the surrounding layout (heading, hours, address, map) designed around it. If you omit it the form gets appended in a fallback position as an unstyled stray box below the copyright line — which has happened, and it makes the one element that has to convert look bolted on. The form inherits its colours from whatever you place it in, so give it a container with a defined background and text colour. It also renders with its OWN heading ("Pišite nam" / "Get in touch") and its own submit button — so do not put a second heading of the same meaning directly above the token, and do not add your own send button beside it. Title the surrounding section something different (the location, the invitation to book, the business name), or let the form's heading stand alone.
 - When a list of what customers actually praise is provided, weave those real specifics into the headlines, about copy and service blurbs — that is what makes the site feel written for THIS business. Mention named staff naturally if given. Still invent nothing factual beyond what's provided.
+- THE HERO HEADLINE SAYS WHAT THE BUSINESS IS. It is the first thing the owner reads, and it has to sound like something they would actually put on their own sign — not like a copywriter's award entry. Name the trade, the place, the specialism, or the promise, in plain words the owner would use to a customer standing in front of them.
+- NEVER INVENT A POETIC SLOGAN, and never build the headline out of a metaphor, a personification, or an abstraction. This is currently the single worst thing in the output. Real examples produced by this system, all of them wrong: "Lasje, ki vas poslušajo" (hair that listens to you), "Lasje, ki so zgrajeni po meri" (hair built to measure). They are meaningless, faintly absurd in the business's own language, and an owner reads them as proof that a machine wrote the page. The test is blunt: if the subject of the sentence is an inanimate thing doing something it cannot do, or if the line would make the owner laugh or wince when read aloud to a customer, delete it and write what the business actually is. Do not merely soften the metaphor — remove it.
+- Good hero headlines for a hair salon, as a calibration: "Frizerski salon v starem Mariboru", "Barvanje in balayage, brez naročanja tedne vnaprej", "Salon Meri Arifi — striženje, barvanje, nega", or simply the business's own name set large with the real specialism under it. All of them are ordinary. Ordinary and true beats clever and hollow every single time, and the design — not the wordplay — is what makes the page look expensive.
+- The same rule governs section headings and taglines: no "Vaša pot do...", no "Kjer se X sreča z Y", no line whose meaning evaporates when you ask what it literally claims.
 - The HERO PATTERN below decides what the first screen says and in what order. Build that, including the thing it omits — the omission is the point. Do not reinstate a missing element "for completeness": anything the pattern leaves out belongs further down the page, or nowhere.
 
 BANNED HERO FURNITURE — these six things appeared, together and in this order, on every site this system has produced. They are the reason the output reads as machine-made even when the palette and typeface change. Do not use them unless the hero pattern explicitly calls for one:
@@ -83,6 +88,10 @@ BANNED HERO FURNITURE — these six things appeared, together and in this order,
 - A supporting paragraph with exactly one phrase bolded in the middle of it.
 - A filled primary button paired with a ghost/outline secondary carrying an arrow glyph.
 - A rating stat block — big number, star row, review count — parked in a corner of the fold.
+- A NAVIGATION LIST WITH TWO-DIGIT NUMBERS BESIDE EACH ITEM ("01 Services / 02 About / 03 Contact"). This is one of the most recognisable generated-site tells in existence and it must never appear. Navigation is words. Even when the art direction below specifies a numeral system or numbered figures, those numbers belong on SERVICES, process steps or section headings — never on the nav.
+- A hero headline that is a poetic slogan rather than a plain statement of what the business is. See the headline rules above; this is the most common single failure in the current output.
+- PURPLE OR VIOLET ANYWHERE THAT THE PALETTE DID NOT GIVE YOU. No violet or lavender tints, washes, shadows, hover states, icon fills or "accessible purple" substitutions. Purple-on-white is the most recognisable generated-page signature there is, and this system's palettes deliberately exclude it — do not reintroduce it. Use only the hex values in the palette you were given.
+- A large, soft, coloured gradient field behind the hero — a mesh gradient, an aurora wash, overlapping blurred colour blobs, or a hero whose background is a gradient between two accent hues. Gradients are permitted ONLY as hairline seams, as masks on a pattern, or as a scrim over a photograph for legibility. A gradient must never be the visible ground of a section, whatever the colours.
 Vary the shape of the copy as well as its content: not every business gets a headline, not every fold needs a button, and the rating does not have to appear above the fold at all.
 
 CRAFT DISCIPLINE — the difference between a designed page and a generated one is usually measurable, not mystical:
@@ -314,6 +323,21 @@ function artDirectionBrief(d: ArtDirection): string {
     `  on scroll: ${d.motion.scroll}`,
     `  on hover: ${d.motion.hover}`,
     `  SETTLED STATE (what the un-animated / reduced-motion CSS must show): ${d.motion.settled}`,
+    ``,
+    `PAGE RHYTHM "${d.rhythm.id}" — the structure BELOW the fold, which is as specified as the hero:`,
+    `  section order: ${d.rhythm.sequence}`,
+    `  grounds: ${d.rhythm.grounds}`,
+    `  the deliberate break: ${d.rhythm.breaks}`,
+    `  Follow this order. A section the sequence omits belongs nowhere on the page; one it names must be built.`,
+    ``,
+    `ICON SYSTEM "${d.icons.id}" — you must HAND-BUILD these as inline <svg> in the markup:`,
+    `  ${d.icons.spec}`,
+    `  usage: ${d.icons.usage}`,
+    `  You cannot link an icon font or an icon library — the output contract forbids every external resource except Google Fonts. Draw the paths yourself. Do NOT substitute emoji, dingbats, or star/arrow characters for icons: an emoji where an icon belongs is one of the most recognisable marks of a generated page. Every icon on the page comes from this one system, at one weight and one size.`,
+    ``,
+    `SIGNATURE DETAIL "${d.signature.id}" — build this exactly, and build it well:`,
+    `  ${d.signature.spec}`,
+    `  This is the one element on the page that no template would ever produce, and it is the difference between a page that was assembled and a page that was designed. It must be genuinely crafted — correctly aligned, correct at every viewport, and integrated into the layout rather than dropped on top of it. Build this ONE detail properly rather than scattering several half-made flourishes.`,
   ].join("\n");
 }
 
@@ -490,6 +514,20 @@ export function extractHtml(text: string): string | null {
   return t.slice(start).trim();
 }
 
+export interface AiSiteResult {
+  /** Placeholders substituted for real bytes — the document that ships. */
+  html: string;
+  /**
+   * The same document with {{PHOTO_n}} / {{MAP}} still in place. This is what the
+   * static audit scans: `html` carries the photos as base64 data URIs and runs to
+   * well over a megabyte, so scanning it means walking that payload for nothing,
+   * and the {{CONTACT_FORM}} token the audit checks for is only visible here.
+   */
+  rawHtml: string;
+  /** The brief this was built from — the critique scores against it. */
+  direction: ArtDirection;
+}
+
 /**
  * Generate a bespoke site for a lead, or null on any failure (no key, refusal,
  * bad output, error) so the caller can fall back to the deterministic template.
@@ -500,7 +538,7 @@ export async function generateAiSiteHtml(
   photos: string[],
   mapUri: string | null = null,
   variant = 0,
-): Promise<string | null> {
+): Promise<AiSiteResult | null> {
   if (!env.anthropicApiKey) return null;
 
   const locale = detectLocale(details);
@@ -592,13 +630,18 @@ export async function generateAiSiteHtml(
       .map((b) => b.text)
       .join("");
 
-    const html = extractHtml(text);
-    if (!html) return null;
+    const rawHtml = extractHtml(text);
+    if (!rawHtml) return null;
 
-    // orderedPhotos, so {{PHOTO_0}} resolves to the hero the vision pass selected.
-    return applyPlaceholders(html, orderedPhotos, mapUri);
+    return {
+      // orderedPhotos, so {{PHOTO_0}} resolves to the hero the vision pass picked.
+      html: applyPlaceholders(rawHtml, orderedPhotos, mapUri),
+      rawHtml,
+      direction,
+    };
   } catch (err) {
     console.error(`[aiSite] generation failed for ${details.placeId}:`, err);
     return null;
   }
 }
+

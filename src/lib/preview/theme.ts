@@ -59,7 +59,7 @@ const THEMES: Theme[] = [
     border: "#e6d8cd",
     accents: ["#b76e79", "#bd6a4c", "#9c5a78"],
     accentText: "#fffaf6",
-    palettes: ["plum-noir", "oxblood", "graphite-mono", "blush-ink", "lilac-graphite", "pure-mono", "violet-acid", "stone-oxide", "sunset-duo", "bone-forest"],
+    palettes: ["oxblood", "graphite-mono", "blush-ink", "slate-ink", "pure-mono", "stone-oxide", "sunset-duo", "bone-forest"],
     typeSets: ["fraunces-hanken", "instrument-figtree", "outfit-karla", "newsreader-plex", "petrona-franklin", "familjen-literata", "syne-epilogue"],
     heroBg: "#f3e7df",
     heroText: "#34261f",
@@ -143,7 +143,7 @@ const THEMES: Theme[] = [
     border: "#dde2d0",
     accents: ["#5c8a3a", "#bd6a4c", "#9a7bb0"],
     accentText: "#fcfcf6",
-    palettes: ["blush-ink", "lilac-graphite", "bone-forest", "neo-mint-black", "mint-clinic", "stone-oxide", "sunset-duo", "emerald-gold"],
+    palettes: ["blush-ink", "slate-ink", "bone-forest", "neo-mint-black", "mint-clinic", "stone-oxide", "sunset-duo", "emerald-gold"],
     typeSets: ["newsreader-plex", "fraunces-hanken", "petrona-franklin", "youngserif-public", "familjen-literata", "instrument-figtree"],
     heroBg: "#eef1e6",
     heroText: "#26301f",
@@ -164,7 +164,7 @@ const THEMES: Theme[] = [
     border: "#262a2f",
     accents: ["#c6f53d", "#ff4d57", "#33d6a6"],
     accentText: "#0c0d0f",
-    palettes: ["obsidian-lime", "midnight-signal", "graphite-mono", "carbon-ember", "electric-pop", "violet-acid", "abyss-coral", "pure-mono", "ink-cobalt"],
+    palettes: ["obsidian-lime", "midnight-signal", "graphite-mono", "carbon-ember", "electric-pop", "abyss-coral", "pure-mono", "ink-cobalt"],
     typeSets: ["anton-karla", "bebas-figtree", "bigshoulders-public", "archivo-commissioner", "unbounded-dmsans", "syne-epilogue"],
     heroBg: "#0c0d0f",
     heroText: "#ffffff",
@@ -227,7 +227,10 @@ const DEFAULT_THEME: Theme = {
   text: "#eef1f6",
   muted: "#9aa3b2",
   border: "#262b38",
-  accents: ["#6c5ce7", "#00b894", "#ff7675"],
+  // #6c5ce7 was here — the flat-UI purple, and the default accent for every
+  // business that matched no category. The one palette slot most likely to be
+  // seen by a stranger was the most generic colour in the file.
+  accents: ["#1f6f5c", "#b4451f", "#2f5fa8"],
   accentText: "#ffffff",
   palettes: ["paper-cobalt", "midnight-signal", "stone-oxide", "sky-slate", "carbon-ember", "graphite-mono", "citrus-white", "linen-navy", "emerald-gold", "ink-cobalt"],
   // No category matched, so nothing is ruled out on category grounds — this list

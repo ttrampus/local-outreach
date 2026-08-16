@@ -34,7 +34,7 @@ interface Strings {
 const SL: Strings = {
   badge: "Brezplačen predogled",
   title: (name) => `Predlog spletne strani za ${name}`,
-  sub: `Vam je všeč? V živo v 24 urah — izdelava ${PRICING.buildEur} €, za ${PRICING.careMonthlyEur} € / mesec zanjo skrbim naprej. Predlog postane vaša stran.`,
+  sub: `Predlog je izhodišče — pred objavo ga dodelamo po vaših željah (fotografije, besedila, oblika). Izdelava ${PRICING.buildEur} €, za ${PRICING.careMonthlyEur} € / mesec zanjo skrbim naprej.`,
   yes: "Zanima me",
   later: "Mogoče kasneje",
   thanksWithContact: "Hvala! Kmalu se oglasim. Lahko pa me kontaktirate tudi neposredno:",
@@ -51,7 +51,7 @@ const SL: Strings = {
 const EN: Strings = {
   badge: "Free preview",
   title: (name) => `A website proposal for ${name}`,
-  sub: `Like it? Live in 24 hours — €${PRICING.buildEur} to build, €${PRICING.careMonthlyEur}/month if you'd like me to look after it. This preview becomes your site.`,
+  sub: `This is a starting point — before it goes live we adjust it to your liking (photos, text, design). €${PRICING.buildEur} to build, €${PRICING.careMonthlyEur}/month if you'd like me to look after it.`,
   yes: "I'm interested",
   later: "Maybe later",
   thanksWithContact: "Thanks! I'll be in touch. You can also reach me directly:",

@@ -9,12 +9,18 @@
 //   node scripts/audit-previews.mjs            # every lead with a preview
 //   node scripts/audit-previews.mjs --showcase # only the portfolio
 //
+// The checks themselves live in src/lib/preview/audit.ts, which the build
+// pipeline also runs on every generated site. This script is the retrospective
+// view over what is already on disk; keeping both on one implementation is what
+// stops the two from drifting into disagreeing about what "broken" means.
+//
 // Pages are rendered with prefers-reduced-motion:reduce, which is the settled
 // state: scroll-reveals are supposed to start visible there. A page that is blank
 // under reduce is genuinely broken, not merely un-scrolled.
 import { chromium } from "playwright";
 import Database from "better-sqlite3";
-import sharp from "sharp";
+import { readFile } from "node:fs/promises";
+import { auditRenderedPage, auditHtml } from "../src/lib/preview/audit.ts";
 
 const showcaseOnly = process.argv.includes("--showcase");
 const db = new Database("dev.db", { readonly: true });
@@ -31,13 +37,6 @@ if (!leads.length) {
   process.exit(0);
 }
 
-// Emptiness is measured in rendered pixels, not in text length: a photo gallery
-// carries almost no text but is not empty, and a counting heuristic flags it
-// wrongly. Instead we render the settled page and look for runs of consecutive
-// rows that are uniform across their whole width — literal bands of bare ground.
-const EMPTY_BAND_PX = 450; // a run this tall reads as "the page just stopped"
-const ROW_UNIFORM_TOLERANCE = 6; // max luma spread within a row to call it bare
-
 const browser = await chromium.launch();
 const page = await browser.newPage({
   viewport: { width: 1280, height: 900 },
@@ -48,90 +47,27 @@ let totalIssues = 0;
 
 for (const lead of leads) {
   const label = (lead.name || "").slice(0, 34);
-  const issues = [];
 
   await page.goto(`file://${lead.previewHtmlPath}`, { waitUntil: "load", timeout: 60000 });
   await page.waitForTimeout(400);
 
-  const info = await page.evaluate(() => {
-    const out = { height: document.documentElement.scrollHeight, hidden: [], sections: 0 };
-    out.sections = document.querySelectorAll("section, header, footer, main > div").length;
+  const { findings, height, sections } = await auditRenderedPage(page);
 
-    // Content left invisible in the settled state — a reveal authored outside
-    // the no-preference media query never comes back for these users.
-    for (const el of document.querySelectorAll("*")) {
-      const t = (el.innerText || "").trim();
-      if (!t || el.children.length) continue;
-      const cs = getComputedStyle(el);
-      if (cs.opacity === "0" || cs.visibility === "hidden") out.hidden.push(t.slice(0, 30));
-    }
+  // The static half too, on what is actually stored. No art direction is passed:
+  // it is a pure function of placeId and the pools, and recomputing it here would
+  // only be meaningful for sites built since the current pools landed. The
+  // direction-free checks — banned families, external hosts, spacing scale —
+  // still apply to every site ever generated.
+  const source = await readFile(lead.previewHtmlPath, "utf8");
+  findings.push(...auditHtml(source));
 
-    const cf = document.querySelector(".__lo-cf");
-    out.form = cf ? { orphan: cf.parentElement === document.body } : null;
-    return out;
-  });
-
-  // Find bands of bare ground in the rendered page.
-  const full = await page.screenshot({ fullPage: true });
-  const { data, info: meta } = await sharp(full).greyscale().raw().toBuffer({ resolveWithObject: true });
-  const bands = [];
-  let runStart = null;
-  for (let y = 0; y < meta.height; y++) {
-    let min = 255;
-    let max = 0;
-    for (let x = 0; x < meta.width; x++) {
-      const v = data[y * meta.width + x];
-      if (v < min) min = v;
-      if (v > max) max = v;
-    }
-    const bare = max - min <= ROW_UNIFORM_TOLERANCE;
-    if (bare && runStart === null) runStart = y;
-    if (!bare && runStart !== null) {
-      if (y - runStart >= EMPTY_BAND_PX) bands.push({ top: runStart, h: y - runStart });
-      runStart = null;
-    }
-  }
-  if (runStart !== null && meta.height - runStart >= EMPTY_BAND_PX) {
-    bands.push({ top: runStart, h: meta.height - runStart });
-  }
-  for (const b of bands) {
-    issues.push(`${b.h}px of bare background starting at y=${b.top} (${((b.h / meta.height) * 100).toFixed(0)}% of the page)`);
-  }
-  if (info.hidden.length) {
-    issues.push(`${info.hidden.length} element(s) invisible in the settled state, e.g. ${JSON.stringify(info.hidden[0])}`);
-  }
-  if (!info.form) {
-    issues.push("no contact form on the page");
-  } else if (info.form.orphan) {
-    issues.push("contact form is a direct child of <body> — appended below the footer, not placed in a section");
-  }
-
-  // Submit button legibility, measured in rendered pixels rather than computed
-  // style: the label may be flipped by filter/blend, which computed colour misses.
-  const button = await page.$(".__lo-cf button");
-  if (button) {
-    await button.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(150);
-    const shot = await button.screenshot();
-    const { data, info: meta } = await sharp(shot).raw().toBuffer({ resolveWithObject: true });
-    let min = 255;
-    let max = 0;
-    for (let i = 0; i < data.length; i += meta.channels) {
-      const luma = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-      if (luma < min) min = luma;
-      if (luma > max) max = luma;
-    }
-    const spread = Math.round(max - min);
-    if (spread < 25) issues.push(`submit button label is invisible (luma spread ${spread}/255)`);
-  }
-
-  totalIssues += issues.length;
-  const screens = (info.height / 900).toFixed(1);
-  if (issues.length) {
-    console.log(`\n✗ ${label}  (${info.sections} sections, ${screens} screens)`);
-    for (const i of issues) console.log(`    · ${i}`);
+  totalIssues += findings.length;
+  const screens = (height / 900).toFixed(1);
+  if (findings.length) {
+    console.log(`\n✗ ${label}  (${sections} sections, ${screens} screens)`);
+    for (const f of findings) console.log(`    · [${f.severity}] ${f.check}: ${f.detail}`);
   } else {
-    console.log(`✓ ${label}  (${info.sections} sections, ${screens} screens)`);
+    console.log(`✓ ${label}  (${sections} sections, ${screens} screens)`);
   }
 }
 
