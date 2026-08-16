@@ -827,13 +827,15 @@ function LeadDetail({
 
           {hasPreview && (
             <div className="mt-2 flex items-center gap-3 text-xs">
+              {/* Same tab on purpose: the preview is a document you glance at and
+                  come back from, and Back restores the console with its filters
+                  and scroll intact. No no-store header on this app, so the page
+                  is restored from bfcache rather than re-fetched. */}
               <a
                 href={shareUrl}
-                target="_blank"
-                rel="noreferrer"
                 className="text-[var(--accent,#7c3aed)] hover:underline"
               >
-                Open full preview ↗
+                Open full preview
               </a>
               <button
                 type="button"

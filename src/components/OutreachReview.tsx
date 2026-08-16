@@ -326,24 +326,26 @@ function OutreachCard({ item, onChanged }: { item: OutreachItem; onChanged: () =
                 </div>
 
                 <div className="mt-1 flex flex-wrap gap-3 text-[11px]">
+                  {/* Same tab: both are things you check and come straight back
+                      from. Back normally restores this queue from bfcache with
+                      the checklist still ticked, but that is the browser's call,
+                      not a guarantee — if a tick ever comes back cleared, that is
+                      why, and the fix is to persist `checked` rather than to go
+                      back to opening a second tab. */}
                   {item.lead.previewImagePath && (
                     <a
                       href={`/p/${item.leadId}`}
-                      target="_blank"
-                      rel="noopener"
                       className="text-[var(--accent)] hover:underline"
                     >
-                      open the live preview ↗
+                      open the live preview
                     </a>
                   )}
                   {item.lead.previewMobileImagePath && (
                     <a
                       href={item.lead.previewMobileImagePath}
-                      target="_blank"
-                      rel="noopener"
                       className="text-[var(--accent)] hover:underline"
                     >
-                      phone screenshot ↗
+                      phone screenshot
                     </a>
                   )}
                 </div>
