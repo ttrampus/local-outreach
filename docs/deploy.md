@@ -99,11 +99,36 @@ npx playwright install --with-deps chromium   # the screenshot browser
 ```
 
 `playwright install --with-deps` pulls a long list of system libraries and needs
-sudo. If it complains, run `sudo npx playwright install-deps chromium` first. On
-an Ubuntu release newer than Playwright knows about, `--with-deps` can refuse
-outright with "unsupported distribution" — in that case install the browser alone
-(`npx playwright install chromium`), then let the next step tell you what's
-actually missing rather than guessing at a package list.
+sudo. If it complains, run `sudo npx playwright install-deps chromium` first.
+
+**Playwright must know your Ubuntu release, or it refuses to install the browser
+at all** — not just the dependencies. `ERROR: Playwright does not support chromium
+on ubuntuXX.YY-x64` is a hard failure with or without `--with-deps`. Support for
+Ubuntu 26.04 landed in **1.62.0**; 1.60.0 stopped at 24.04, which is why this
+project's floor is `^1.62.1`. If you deploy onto a newer Ubuntu than that, check
+which releases the installed version knows before debugging anything else:
+
+```bash
+grep -ohE "ubuntu[0-9]+\.[0-9]+" node_modules/playwright-core/lib/*.js | sort -u
+```
+
+Then confirm the browser actually launches — a missing dependency shows up here,
+naming the exact library, which beats guessing at a package list:
+
+```bash
+cd ~/app    # must be inside the project: ESM resolves "playwright" from the
+            # script's own directory, so a script in /tmp cannot import it
+cat > pwtest.mjs <<'PWEOF'
+import { chromium } from "playwright";
+const browser = await chromium.launch({ args: ["--no-sandbox"] });
+const page = await browser.newPage();
+await page.setContent("<h1>ok</h1>");
+await page.screenshot({ path: "pwtest.png" });
+await browser.close();
+console.log("CHROMIUM LAUNCH OK");
+PWEOF
+node ./pwtest.mjs && rm pwtest.mjs pwtest.png
+```
 
 **The schema and the build come after configuration**, in step 6 — `prisma.config.ts`
 reads `DATABASE_URL` out of `.env.local`, so `prisma migrate deploy` has no
