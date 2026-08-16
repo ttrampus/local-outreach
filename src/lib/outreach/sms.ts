@@ -50,6 +50,52 @@ export function toE164(raw: string): string | null {
   return `+${cc}${digits}`;
 }
 
+/**
+ * Check the credentials and the sender without sending a message: fetch the
+ * account, then confirm the sender actually exists on it. A typo'd From number or
+ * a suspended trial account otherwise stays invisible until a real send fails —
+ * and Twilio bills nothing for these reads. Used by the outreach self-test.
+ */
+export async function verifyTwilio(): Promise<{ ok: boolean; detail?: string; error?: string }> {
+  if (!isSmsConfigured()) return { ok: false, error: "Twilio is not configured." };
+
+  const auth = `Basic ${Buffer.from(`${env.twilioAccountSid}:${env.twilioAuthToken}`).toString("base64")}`;
+  const get = async (url: string) => {
+    const res = await fetch(url, { headers: { Authorization: auth } });
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!res.ok) throw new Error((json?.message as string) ?? `HTTP ${res.status}`);
+    return json ?? {};
+  };
+
+  try {
+    const account = await get(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(env.twilioAccountSid)}.json`,
+    );
+    if (account.status !== "active") {
+      return { ok: false, error: `Twilio account is "${account.status}", not active.` };
+    }
+
+    if (env.twilioMessagingServiceSid) {
+      const svc = await get(
+        `https://messaging.twilio.com/v1/Services/${encodeURIComponent(env.twilioMessagingServiceSid)}`,
+      );
+      return { ok: true, detail: `messaging service "${svc.friendly_name as string}"` };
+    }
+
+    // A number that isn't on the account can't be sent from, whatever it says.
+    const owned = (await get(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(env.twilioAccountSid)}` +
+        `/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(env.twilioFrom)}`,
+    )) as { incoming_phone_numbers?: unknown[] };
+    if (!owned.incoming_phone_numbers?.length) {
+      return { ok: false, error: `TWILIO_FROM ${env.twilioFrom} is not a number on this account.` };
+    }
+    return { ok: true, detail: `sending from ${env.twilioFrom}` };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message.slice(0, 200) };
+  }
+}
+
 export interface SendSmsInput {
   /** Destination number in any format — normalized to E.164 before sending. */
   to: string;

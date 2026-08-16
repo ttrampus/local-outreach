@@ -23,6 +23,22 @@ function transport(): Transporter {
   return cached;
 }
 
+/**
+ * Open a connection and authenticate, without sending anything. The only check
+ * that distinguishes "SMTP is configured" from "SMTP works" — an App Password that
+ * was revoked looks identical to a good one until the first send fails. Used by
+ * the outreach self-test (scripts/outreach-selftest.mjs).
+ */
+export async function verifySmtp(): Promise<{ ok: boolean; error?: string }> {
+  if (!isSmtpConfigured()) return { ok: false, error: "SMTP is not configured." };
+  try {
+    await transport().verify();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message.slice(0, 200) };
+  }
+}
+
 export interface SendMailInput {
   to: string;
   subject: string;
