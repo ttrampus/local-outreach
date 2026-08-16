@@ -32,6 +32,10 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Next's own dev-only badge, which sits over the bottom-left of the console.
+  // It never ships to production, but it overlaps the UI while working locally.
+  // Compile and runtime errors are still surfaced with this off.
+  devIndicators: false,
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
