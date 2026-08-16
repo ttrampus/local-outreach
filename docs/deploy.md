@@ -163,6 +163,24 @@ openssl rand -base64 48
 Both `AUTH_PASSWORD` and `AUTH_SECRET` must be set, or the app returns 503 for
 every private path by design.
 
+**Change `SMTP_PORT` to 587 and `SMTP_SECURE` to "off".** Hetzner blocks outbound
+ports 25 and 465 on new accounts to deter spam, so the implicit-TLS SMTP that
+works from your laptop times out on the server — email shows as `BROKEN
+Connection timeout` in the readiness table while every DNS record still passes,
+because the domain is fine and the socket is not. Port 587 is open, and Gmail
+accepts STARTTLS there; `mailer.ts` already handles both (`secure: true` for 465,
+`false` for 587). Check before assuming a credential problem:
+
+```bash
+for p in 25 465 587; do
+  timeout 8 bash -c "echo > /dev/tcp/smtp.gmail.com/$p" 2>/dev/null \
+    && echo "port $p: open" || echo "port $p: blocked"
+done
+```
+
+Anything that changes `.env.local` needs `sudo systemctl restart avenyo` to take
+effect — the running process read the file at boot.
+
 Now that the configuration exists, create the schema and build. If you are also
 bringing existing leads across (step 7), copy `dev.db` up **before** running the
 migration, so any pending migrations are applied to the restored database:
