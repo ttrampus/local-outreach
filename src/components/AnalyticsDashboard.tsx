@@ -126,6 +126,9 @@ const PURPOSE_LABELS: Record<string, string> = {
   preview_design: "Preview — site design",
   preview_vision: "Preview — photo analysis",
   preview_reviews: "Preview — review mining",
+  preview_critique: "Preview — visual review",
+  // Retired step, kept so historical rows don't render as a raw key.
+  preview_repair: "Preview — repair (retired)",
   outreach_draft: "Outreach drafting",
 };
 

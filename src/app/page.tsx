@@ -33,22 +33,22 @@ const STEPS = [
   {
     n: "01",
     title: "Pripravim predlog",
-    body: "Na podlagi vaših fotografij, ocen in podatkov izdelam celotno spletno stran. Brezplačno in brez obveznosti — tudi če se ne odzovete.",
+    body: "Iz vaših fotografij, ocen in javno dostopnih podatkov izdelam predlog celotne strani. Brezplačno in brez obveznosti — tudi če se ne odzovete.",
   },
   {
     n: "02",
-    title: "Pogledate jo",
-    body: "Pošljem vam povezavo. Ni prijave, ni obrazcev — samo odprete in vidite, kako bi vaša stran izgledala.",
+    title: "Ogledate si ga",
+    body: "Predlog objavim na svojem naslovu, na primer vasepodjetje.avenyo.app. Ni prijave in ni obrazcev — odprete povezavo in vidite celo stran.",
   },
   {
     n: "03",
-    title: "Če vam je všeč, gre v živo",
-    body: "Stran objavim na vaši domeni v 24 urah. Če vam ni všeč, ne storite ničesar in stvar je zaključena.",
+    title: "Dodelamo ga po vaše",
+    body: "Predlog je izhodišče, ne dokončna ponudba. Skupaj zamenjamo besedila, fotografije, barve, pisave ali celotno zasnovo — vse spremembe pred objavo so vključene v ceno.",
   },
   {
     n: "04",
-    title: "Skrbim zanjo naprej",
-    body: "Če želite, prevzamem gostovanje, posodobitve in spremembe za mesečno ceno. Ni obvezno in odpoveste lahko kadar koli.",
+    title: "Objava in skrb naprej",
+    body: "Ko je stran takšna, kot jo želite, jo objavim na vaši domeni. Če želite, prevzamem tudi gostovanje, posodobitve in poznejše spremembe.",
   },
 ];
 
@@ -151,19 +151,31 @@ const BY_QUOTE = [
 const FAQ = [
   {
     q: "Zakaj je predlog brezplačen? V čem je kljub?",
-    a: "Kljuke ni. Stran izdelam vnaprej, ker je to najhitrejši način, da vidite, o čem govorim — opisovanje po telefonu ne deluje. Če vam ni všeč, nič ne plačate in nič ne dolgujete. Večina ljudi ne odgovori in to je povsem v redu.",
+    a: "Kljuke ni. Predlog izdelam vnaprej, ker je to najhitrejši način, da vidite, o čem govorim — opisovanje po telefonu ne deluje. Če vas ne zanima, nič ne plačate in nič ne dolgujete. Večina ljudi ne odgovori in to je povsem v redu.",
+  },
+  {
+    q: "Ali je predlog dokončen? Kaj, če mi kaj ni všeč?",
+    a: "Predlog je izhodišče, ne ponudba po načelu vzemi ali pusti. Izdelan je iz podatkov, ki so o vašem podjetju javno dostopni, zato marsičesa o vas še ne ve. Ko se dogovoriva za sodelovanje, ga predelamo po vaše: druge fotografije, druga besedila, druge barve in pisave, drugačna razporeditev razdelkov — ali pa povsem nova zasnova, če vam smer ni po godu. Če vam je predlog všeč takšen, kot je, ali potrebuje le nekaj popravkov, je to seveda prav tako v redu in gre hitreje.",
+  },
+  {
+    q: "Kje je predlog objavljen? Ali gre takoj na mojo domeno?",
+    a: "Ne. Predlog stoji na naslovu, ki ga pripravim jaz — na primer vasepodjetje.avenyo.app — da si ga lahko v miru ogledate, ne da bi se karkoli dotaknilo vaše obstoječe strani. Na vašo domeno gre šele, ko se dogovoriva za sodelovanje in ko je stran dodelana tako, da ste z njo zadovoljni. Do takrat se pri vas ne spremeni nič.",
   },
   {
     q: "Kaj pa, če spletno stran že imam?",
-    a: "Potem primerjajte. Predlog vam pošljem ne glede na to — če je vaša obstoječa stran boljša, mi to povejte in ne bom več pisal. Cena je enaka: nova stran je vedno nova stran, ne popravljanje stare.",
+    a: "Potem primerjajte. Predlog vam pošljem ne glede na to — če je vaša obstoječa stran boljša, mi to povejte in ne bom več pisal. Vaša obstoječa stran ves čas deluje naprej; zamenjava se zgodi samo takrat, ko se tako dogovoriva.",
   },
   {
     q: "Koliko stanejo spremembe in dodatne podstrani?",
-    a: "Nič. Preden gre stran v živo, jo popravljam, dokler ni takšna, kot si jo želite — brez štetja popravkov in brez doplačil za dodatno podstran ali razdelek. Ločeno ponudbo pripravim samo za stvari, ki niso več spletna stran, ampak svoj projekt: rezervacijski sistem s plačili, spletna trgovina, portal za stranke ali povezava z vašo poslovno programsko opremo.",
+    a: "Nič. Do objave stran popravljam, dokler ni takšna, kot si jo želite — brez štetja popravkov in brez doplačil za dodatno podstran, razdelek ali krog sprememb. Ločeno ponudbo pripravim samo za stvari, ki niso več spletna stran, ampak svoj projekt: rezervacijski sistem s plačili, spletna trgovina, portal za stranke ali povezava z vašo poslovno programsko opremo.",
+  },
+  {
+    q: "Kako poteka plačilo?",
+    a: `Za vse izdam račun. Izdelavo (${PRICING.buildEur} €) poravnate takrat, ko je stran dodelana in pripravljena za objavo na vaši domeni — do tedaj ne plačate ničesar. Plačate lahko z nakazilom po računu ali s kartico prek varne povezave. Mesečna skrb se obračunava mesečno vnaprej in teče šele od objave dalje.`,
   },
   {
     q: "Kdo je lastnik strani in domene?",
-    a: "Vi. Domena je registrirana na vaše ime in jo zaračunam po nabavni ceni, vsebina je vaša. Če odpoveste, vam datoteke izročim in stran lahko preselite drugam.",
+    a: "Vi. Domena je registrirana na vaše ime in jo zaračunam po nabavni ceni, vsebina in fotografije ostanejo vaše. Če mesečno skrb odpoveste, vam datoteke strani izročim in stran lahko preselite drugam.",
   },
   {
     q: `Kaj je vključeno v ${PRICING.careMonthlyEur} € na mesec?`,
@@ -174,12 +186,12 @@ const FAQ = [
     a: `Ne. Stran lahko plačate enkratno (${PRICING.buildEur} €), dobite datoteke in jo gostujete, kjer želite. Mesečna skrb je za tiste, ki se s tem nočejo ukvarjati.`,
   },
   {
-    q: "Ali sem vezan na pogodbo?",
-    a: "Ne. Mesečno skrb odpoveste kadar koli, brez odpovednega roka in brez pojasnil. Stran ostane vaša.",
+    q: "Kaj me veže za naprej?",
+    a: "Kaj je dogovorjeno — cena, obseg in rok — dobite pisno, preden se karkoli začne, da veste, kaj dobite. Vezave pa ni: minimalne dobe ni, mesečno skrb odpoveste kadar koli brez odpovednega roka in brez pojasnil, stran pa ostane vaša.",
   },
   {
     q: "Kako dolgo traja, da je stran v živo?",
-    a: "Predlog je narejen že preden vas kontaktiram. Ko potrdite, je stran na vaši domeni v 24 urah.",
+    a: "Odvisno od tega, koliko sprememb želite. Predlog je narejen že preden vas kontaktiram, zato je stran — če ste z njo zadovoljni takšno, kot je — lahko na vaši domeni v 24 urah. Če želite drugačno obliko, svoje fotografije, dodatne podstrani ali nova besedila, si vzamemo nekaj dni za usklajevanje; običajno je vse skupaj končano v enem tednu.",
   },
 ];
 
@@ -235,9 +247,10 @@ export default async function HomePage() {
             </h1>
 
             <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-[var(--muted)] sm:text-xl">
-              Ne pošiljam ponudb — pošiljam končano stran. Pogledate jo, in če vam je
-              všeč, je v 24 urah v živo za {PRICING.buildEur} €. Za{" "}
-              {PRICING.careMonthlyEur} € na mesec zanjo skrbim naprej.
+              Namesto ponudbe vam pošljem izdelan predlog vaše strani — brezplačno in
+              vnaprej, da vidite, o čem govorim. Predlog je izhodišče: dodelamo ga po
+              vaših željah in objavim na vaši domeni za {PRICING.buildEur} €, za{" "}
+              {PRICING.careMonthlyEur} € na mesec pa zanjo skrbim naprej.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -256,7 +269,8 @@ export default async function HomePage() {
             </div>
 
             <p className="mt-6 text-sm text-[var(--muted)]">
-              Predlog je brezplačen · Brez pogodbe · Mesečno skrb odpoveste kadar koli
+              Predlog je brezplačen · Spremembe pred objavo so vključene · Mesečno skrb
+              odpoveste kadar koli
             </p>
           </div>
         </section>
@@ -283,8 +297,13 @@ export default async function HomePage() {
             <div className="max-w-2xl">
               <Eyebrow>Kako poteka</Eyebrow>
               <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
-                Štirje koraki, brez sestankov
+                Štirje koraki, brez zapletov
               </h2>
+              <p className="mt-5 text-[17px] leading-relaxed text-[var(--muted)]">
+                Predlog, ki ga prejmete, je začetek pogovora in ne zadnja beseda. Kar
+                vidite, lahko obdržimo, popravimo ali zamenjamo — na vašo domeno gre
+                šele stran, s katero ste zadovoljni.
+              </p>
             </div>
 
             {/* gap-px over a border-coloured background draws the hairline grid
@@ -308,24 +327,30 @@ export default async function HomePage() {
               <div>
                 <Eyebrow>Kdo stoji za tem</Eyebrow>
                 <h2 className="mt-4 text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">
-                  Ena oseba, ne agencija
+                  Ena kontaktna oseba, od predloga do objave
                 </h2>
               </div>
               <div className="space-y-5 text-lg leading-relaxed text-[var(--muted)]">
                 <p>
                   {name && <span className="font-medium text-[var(--text)]">{name}. </span>}
-                  Spletne strani izdelujem že več let. To ni agencija in ni prodajna
-                  ekipa: pišem vam jaz, stran naredim jaz, in ko me pokličete, se
-                  oglasim jaz.
+                  Spletne strani izdelujem že več let, danes predvsem za lokalna
+                  podjetja — obrtnike, gostince, salone, ambulante in storitvena
+                  podjetja, ki imajo dobre ocene in redne stranke, spletno stran pa
+                  staro deset let ali pa je sploh nimajo.
                 </p>
                 <p>
-                  Delam z lokalnimi podjetji, ki imajo dobre ocene in resnične stranke,
-                  a spletno stran staro deset let ali pa je sploh nimajo. Takim
-                  podjetjem ena dobra stran prinese več kot kadar koli prej.
+                  Vmes ni prodajne ekipe in ni posrednikov. Z isto osebo se
+                  pogovorite na začetku, ista oseba stran izdela in ista oseba se
+                  oglasi, ko čez pol leta potrebujete spremembo cenika ali novo
+                  fotografijo. To pomeni kratke poti: sprememba, ki drugod potuje
+                  skozi tri ljudi, je pri meni praviloma narejena isti dan.
                 </p>
                 <p>
-                  Ker delam sam, sprejmem omejeno število strank hkrati — in raje
-                  povem vnaprej, da sem majhen, kot da se pretvarjam, da nisem.
+                  Delo je zastavljeno tako, da veste, pri čem ste — cena in obseg sta
+                  dogovorjena vnaprej in pisno, vse spremembe pred objavo so vključene,
+                  za storitve prejmete račun, stran in domena pa sta vaši. Hkrati
+                  sprejmem le toliko projektov, kolikor jih lahko vodim od začetka do
+                  konca, zato so roki kratki in odzivi hitri.
                 </p>
               </div>
             </div>
@@ -401,10 +426,12 @@ export default async function HomePage() {
                 It sits directly under the prices, where the hesitation happens. */}
             <div className="mx-auto mt-14 max-w-3xl rounded-2xl border border-[var(--border)] bg-[var(--panel)]/50 p-8 text-center">
               <p className="text-lg leading-relaxed">
-                Predlog, ki ste ga prejeli,{" "}
+                Predlog, ki ste ga prejeli, ni prodajni demo{" "}
                 <span className="text-[var(--muted)]">
-                  ni prodajni demo. Če se odločite za sodelovanje, postane vaša spletna
-                  stran — cena predloga je vključena v ceno projekta.
+                  in tudi ni ponudba po načelu vzemi ali pusti. Če se odločite za
+                  sodelovanje, ga dodelamo po vaših željah — druge fotografije, druga
+                  besedila, druga oblika — in postane vaša spletna stran. Delo, ki je
+                  vanj že vloženo, je vključeno v ceno.
                 </span>
               </p>
             </div>

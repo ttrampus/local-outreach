@@ -11,6 +11,10 @@ export type AiPurpose =
   | "preview_vision" // Haiku photo captioning + hero pick
   | "preview_reviews" // Haiku review-insight mining
   | "preview_design" // the big Opus site-design call
+  | "preview_critique" // Haiku visual review of the rendered page
+  | "preview_repair" // RETIRED: Opus correction pass. Nothing writes this any
+  //                    more (it cost more per call than the generation it fixed);
+  //                    the member stays so historical rows keep a typed name.
   | "outreach_draft"; // Claude-written outreach sequence
 
 // USD per million tokens, matched by model-id prefix (longest match wins by

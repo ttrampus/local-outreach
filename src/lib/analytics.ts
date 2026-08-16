@@ -144,7 +144,17 @@ function groupSegments(leads: LeadLite[], key: (l: LeadLite) => string, minLeads
     .sort((a, b) => b.leads - a.leads);
 }
 
-const PREVIEW_PURPOSES = new Set(["preview_design", "preview_vision", "preview_reviews"]);
+// Everything that is spent to put ONE preview on disk, so "cost per preview" is
+// the real number and not a flattering subset. `preview_repair` is a retired step
+// — nothing produces those rows any more — but the historical ones were spent on
+// previews and still belong in the average.
+const PREVIEW_PURPOSES = new Set([
+  "preview_design",
+  "preview_vision",
+  "preview_reviews",
+  "preview_critique",
+  "preview_repair",
+]);
 
 /** Roll the per-call AiUsage rows up into the dashboard's economics block. */
 async function computeEconomics(

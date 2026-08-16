@@ -26,6 +26,10 @@ export const env = {
   // Preview engine: "ai" (Claude designs a bespoke site per business) | "template"
   // (the free deterministic template). Empty → "ai" when a key is set, else "template".
   previewEngine: (process.env.PREVIEW_ENGINE ?? "").toLowerCase(),
+  // NOTE: PREVIEW_REPAIR / PREVIEW_REPAIR_THRESHOLD are gone. The repair pass they
+  // gated was removed on cost — see the note in preview/generate.ts. Designed
+  // pages are still audited and visually reviewed; those checks just report now.
+  // Both variables are ignored if still set in a .env file.
 
   // Where the manual-design panel's "open Claude" button points. Defaults to a new
   // chat; point it at your own Project (or a standing conversation) so you land
@@ -69,12 +73,17 @@ export const env = {
   // preview image attached) instead of copy-pasting into Gmail. When SMTP_HOST is
   // empty the send path degrades to "mark sent" + a Gmail compose deep-link. For
   // Gmail: host smtp.gmail.com, port 465, secure, an App Password as SMTP_PASS.
-  smtpHost: process.env.SMTP_HOST ?? "",
+  // Identifiers are trimmed: a hostname or an address can never legitimately carry
+  // surrounding whitespace, and .env values are quoted, so a stray space pasted
+  // inside the quotes survives into a baffling "ENOTFOUND smtp.gmail.com " at
+  // send time. Secrets are deliberately NOT trimmed — a password may legitimately
+  // begin or end with a space, and silently altering one would be worse.
+  smtpHost: (process.env.SMTP_HOST ?? "").trim(),
   smtpPort: num(process.env.SMTP_PORT, 465),
-  smtpUser: process.env.SMTP_USER ?? "",
+  smtpUser: (process.env.SMTP_USER ?? "").trim(),
   smtpPass: process.env.SMTP_PASS ?? "",
   // Defaults to SMTP_USER when unset. "Name <addr>" is allowed.
-  smtpFrom: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "",
+  smtpFrom: (process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "").trim(),
   smtpSecure: (process.env.SMTP_SECURE ?? "on").toLowerCase() !== "off",
 
   // Twilio — optional outbound SMS, the second channel that can be delivered with
@@ -82,10 +91,10 @@ export const env = {
   // as an SMS and sent for real; without it that draft degrades to an `sms:` deep
   // link the operator finishes in their own messaging app. Either TWILIO_FROM (a
   // single sender number) or TWILIO_MESSAGING_SERVICE_SID is required.
-  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAccountSid: (process.env.TWILIO_ACCOUNT_SID ?? "").trim(),
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
-  twilioFrom: process.env.TWILIO_FROM ?? "",
-  twilioMessagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID ?? "",
+  twilioFrom: (process.env.TWILIO_FROM ?? "").trim(),
+  twilioMessagingServiceSid: (process.env.TWILIO_MESSAGING_SERVICE_SID ?? "").trim(),
   // Dialing code prepended to national-format numbers (Google Places returns
   // plenty of them) so they can be normalized to E.164. e.g. "+386".
   smsDefaultCountryCode: (process.env.SMS_DEFAULT_COUNTRY_CODE ?? "").trim(),

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AvenyoLogo } from "@/components/brand/Logo";
+import { BrandHomeLink } from "@/components/BrandHomeLink";
 
 const LINKS = [
   { href: "/examples", label: "Primeri" },
@@ -41,14 +42,14 @@ export function SiteNavBar() {
       <nav className="mx-auto flex h-16 w-full max-w-[1180px] items-center gap-8 px-6 lg:px-10">
         {/* Below sm the wordmark is dropped rather than scaled down — the brand's
             floor for the lockup is 28px and there isn't room for it beside the CTA. */}
-        <Link href="/" className="flex items-center">
+        <BrandHomeLink className="flex items-center">
           <span className="hidden sm:flex">
             <AvenyoLogo size={28} />
           </span>
           <span className="flex sm:hidden">
             <AvenyoLogo size={28} wordmark={false} />
           </span>
-        </Link>
+        </BrandHomeLink>
 
         <div className="ml-auto hidden items-center gap-7 text-sm text-[var(--muted)] md:flex">
           {LINKS.map((l) => (

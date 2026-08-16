@@ -13,7 +13,12 @@ import { buildAndStorePreview } from "@/lib/preview/generate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 180; // bespoke AI generation streams a full HTML doc
+// A build is now up to four model calls deep: the Opus design, two Haiku review
+// passes, and — when the page fails its brief — a second Opus call to repair it.
+// A measured end-to-end run with a repair took just under ten minutes, and that
+// is before any queueing behind previewConcurrency. 180 was already optimistic
+// for the design alone; it would now cut off most repairs mid-flight.
+export const maxDuration = 800;
 
 export async function POST(
   req: NextRequest,

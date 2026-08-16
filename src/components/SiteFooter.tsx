@@ -2,6 +2,7 @@ import Link from "next/link";
 import { env } from "@/lib/env";
 import { BRAND } from "@/lib/brand";
 import { AvenyoLogo } from "@/components/brand/Logo";
+import { BrandHomeLink } from "@/components/BrandHomeLink";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -11,7 +12,9 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-[1180px] px-6 py-14 lg:px-10">
         <div className="flex flex-col gap-10 sm:flex-row sm:items-start sm:justify-between">
           <div className="max-w-xs">
-            <AvenyoLogo size={28} />
+            <BrandHomeLink className="inline-flex">
+              <AvenyoLogo size={28} />
+            </BrandHomeLink>
             <p className="mt-4 text-sm leading-relaxed text-[var(--muted)]">
               Sodobne spletne strani za lokalna podjetja. Predlog pripravim vnaprej
               in brezplačno.
