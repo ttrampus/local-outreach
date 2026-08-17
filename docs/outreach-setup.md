@@ -207,7 +207,15 @@ generated, not whether the internet can reach it.
 **Why:** worth it once opening your phone for each text is the bottleneck. It also
 moves social-only leads off the DM path, since SMS outranks DM in the picker.
 
-1. Sign up at twilio.com and complete verification.
+**A trial account cannot do this at all — upgrade before you start.** Twilio's
+trial only sends its own predefined templates, so an outreach body comes back as
+`Invalid template name. Trial accounts can only use predefined SMS templates.
+(Twilio 572006)` — after the credentials, the sender and the request have all
+been accepted. A trial send from the Twilio console succeeds because the console
+uses one of those templates, which makes the trial look usable when it isn't.
+Upgrading to pay-as-you-go lifts it; nothing in this app changes.
+
+1. Sign up at twilio.com, complete verification, and **upgrade to pay-as-you-go**.
 2. Buy a Slovenian number (Phone Numbers → Buy a number, SMS-capable).
 3. Copy the Account SID and Auth Token from the console home page.
 4. In `.env.local`:
