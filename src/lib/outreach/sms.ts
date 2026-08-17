@@ -88,6 +88,18 @@ export async function verifyTwilio(): Promise<{ ok: boolean; detail?: string; er
         `/IncomingPhoneNumbers.json?PhoneNumber=${encodeURIComponent(env.twilioFrom)}`,
     )) as { incoming_phone_numbers?: unknown[] };
     if (!owned.incoming_phone_numbers?.length) {
+      // A trial number is not returned by IncomingPhoneNumbers — the listing comes
+      // back empty for an account that is demonstrably sending from it. Failing
+      // here would call a working setup broken, which is worse than missing a
+      // typo: on a trial the only number you can send from is the one Twilio gave
+      // you, so there is little to typo. Keep the hard check for paid accounts,
+      // where the listing is authoritative and a wrong number is a real mistake.
+      if (String(account.type ?? "").toLowerCase() === "trial") {
+        return {
+          ok: true,
+          detail: `sending from ${env.twilioFrom} (trial account — Twilio does not list trial numbers, so this one is unverified until a real send)`,
+        };
+      }
       return { ok: false, error: `TWILIO_FROM ${env.twilioFrom} is not a number on this account.` };
     }
     return { ok: true, detail: `sending from ${env.twilioFrom}` };
