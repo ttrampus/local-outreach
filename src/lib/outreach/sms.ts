@@ -82,6 +82,20 @@ export async function verifyTwilio(): Promise<{ ok: boolean; detail?: string; er
       return { ok: true, detail: `messaging service "${svc.friendly_name as string}"` };
     }
 
+    // An alphanumeric sender ID ("Avenyo") is not a number and is not owned by
+    // anyone — there is no account resource to check it against, so the only
+    // thing that can be validated is the shape carriers will accept. It is also
+    // send-only by definition: a reply has nowhere to arrive.
+    if (!/^\+?\d/.test(env.twilioFrom)) {
+      if (!/^[A-Za-z0-9 ]{1,11}$/.test(env.twilioFrom) || !/[A-Za-z]/.test(env.twilioFrom)) {
+        return {
+          ok: false,
+          error: `TWILIO_FROM "${env.twilioFrom}" is neither a number nor a usable sender ID (max 11 chars, letters/digits/spaces, at least one letter).`,
+        };
+      }
+      return { ok: true, detail: `sending as "${env.twilioFrom}" (sender ID — one-way, replies are not possible)` };
+    }
+
     // A number that isn't on the account can't be sent from, whatever it says.
     const owned = (await get(
       `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(env.twilioAccountSid)}` +
