@@ -304,7 +304,7 @@ If that works, the pipeline works.
 
 ## Definition of done
 
-- [ ] `npm run test:outreach` → `✓ 29 passed, 0 failed`
+- [ ] `npm run test:outreach` → `✓ 30 passed, 0 failed`
 - [ ] Email row reads `automatic`, SMS row reads `automatic` (or `assisted` if you skipped Twilio)
 - [ ] Deliverability: SPF, DKIM, DMARC, MX all `✓`
 - [ ] `npm run test:outreach -- --live` → real email and text arrive, email in the **inbox**

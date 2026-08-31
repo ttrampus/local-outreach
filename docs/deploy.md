@@ -257,6 +257,36 @@ sudo systemctl enable --now avenyo
 sudo systemctl status avenyo        # should say active (running)
 ```
 
+Then sandbox it. The service renders HTML written by a model and fetches pages
+from the open internet, so it should be able to touch as little of the box as
+possible:
+
+```bash
+sudo mkdir -p /etc/systemd/system/avenyo.service.d
+sudo tee /etc/systemd/system/avenyo.service.d/hardening.conf > /dev/null <<'EOF'
+[Service]
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+EOF
+
+sudo systemctl daemon-reload && sudo systemctl restart avenyo
+```
+
+`ProtectHome` is deliberately NOT in that list: the app lives under
+`/home/avenyo` and writes its database and previews there, so turning it on
+breaks the app for no gain on a box that runs nothing else.
+
+Lock the database down while you are here — it holds personal data for every
+prospect ever discovered, and it is created world-readable:
+
+```bash
+chmod 600 ~/app/dev.db
+```
+
 Logs, when you need them: `journalctl -u avenyo -f`
 
 ## 9. HTTPS
@@ -314,13 +344,20 @@ up nightly:
 ```bash
 sudo tee /etc/cron.daily/avenyo-backup > /dev/null <<'EOF'
 #!/bin/sh
-install -d -o avenyo /home/avenyo/backups
-sqlite3 /home/avenyo/app/dev.db ".backup /home/avenyo/backups/dev-$(date +%F).db"
+set -e
+install -d -m 700 -o avenyo /home/avenyo/backups
+DEST="/home/avenyo/backups/dev-$(date +%F).db"
+sqlite3 /home/avenyo/app/dev.db ".backup $DEST"
+chmod 600 "$DEST"
+chown avenyo:avenyo "$DEST"
 find /home/avenyo/backups -name 'dev-*.db' -mtime +14 -delete
 EOF
 sudo chmod +x /etc/cron.daily/avenyo-backup
 sudo apt-get install -y sqlite3
 ```
+
+Note the `700`/`600`. A backup holds exactly the personal data the live database
+holds, so there is no reason for it to be readable more widely than the original.
 
 Use `.backup` rather than `cp` — it's safe while the app is writing. Pull a copy
 down to your laptop from time to time; a backup that only exists on the same
