@@ -40,10 +40,27 @@ function prune(now: number): void {
  * Best-effort client address. Behind a reverse proxy the socket address is the
  * proxy's, so the forwarded header is all there is — it is trusted only as a
  * bucket key for rate limiting, never for authorisation.
+ *
+ * The RIGHTMOST entry, not the leftmost, and that is the whole point. Caddy (like
+ * every sane proxy) APPENDS the address it saw to any X-Forwarded-For the client
+ * already sent, so the left of that list is attacker-written text and only the
+ * last hop was added by something we run. Reading the left entry — which this did
+ * until it was deployed behind a proxy — meant an attacker could mint a fresh
+ * bucket per request by varying the header, and the throttle counted to one
+ * forever while unlimited guesses went through against a single shared password.
+ *
+ * This assumes exactly one trusted proxy in front of the app, which is what
+ * docs/deploy.md builds. Put another one there (Cloudflare's proxy, say) and the
+ * rightmost entry becomes that one's view of its upstream — still not
+ * client-controlled, so the throttle keeps working, but revisit this if the
+ * topology ever grows a hop.
  */
 export function clientKey(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
+  if (fwd) {
+    const hops = fwd.split(",").map((h) => h.trim()).filter(Boolean);
+    if (hops.length) return hops[hops.length - 1]!;
+  }
   return req.headers.get("x-real-ip")?.trim() || "unknown";
 }
 

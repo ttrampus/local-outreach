@@ -9,6 +9,7 @@
 //      and [at]/(dot)-style obfuscation;
 //   2. when the homepage yields nothing, crawls a few likely contact pages.
 import { env } from "@/lib/env";
+import { safeFetch } from "@/lib/http/safeFetch";
 
 // Reject asset filenames, tracking/builder noise, and placeholder addresses that a
 // naive email regex would otherwise pick up.
@@ -118,9 +119,11 @@ async function fetchText(url: string, timeoutMs: number): Promise<string | null>
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
+    // safeFetch, not fetch. This is the more exposed of the two crawl paths: it
+    // follows links found INSIDE a page we did not write, so the hostnames reach
+    // it at two removes from anything we chose.
+    const res = await safeFetch(url, {
       signal: controller.signal,
-      redirect: "follow",
       headers: { "User-Agent": "Mozilla/5.0 (compatible; LeadQualifier/1.0)" },
     });
     if (!res.ok) return null;

@@ -16,6 +16,7 @@
 import { env } from "@/lib/env";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { discoverEmail } from "@/lib/email/discover";
+import { safeFetch } from "@/lib/http/safeFetch";
 
 export type Tier = "HOT" | "WARM" | "COLD";
 
@@ -286,9 +287,11 @@ export async function analyzeSite(website: string): Promise<SiteSignals> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), env.siteFetchTimeoutMs);
     try {
-      res = await fetch(url, {
+      // safeFetch, not fetch: this URL comes from a business's Google listing,
+      // so it is chosen by someone else. It follows redirects itself, checking
+      // every hop, which is why "redirect" is no longer passed here.
+      res = await safeFetch(url, {
         signal: controller.signal,
-        redirect: "follow",
         headers: { "User-Agent": "Mozilla/5.0 (compatible; LeadQualifier/1.0)" },
       });
       break; // got a response (ok or not) — no need to try the next candidate

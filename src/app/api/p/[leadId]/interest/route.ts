@@ -16,6 +16,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyInterestToken } from "@/lib/auth/interestToken";
+import { clientKey } from "@/lib/auth/loginThrottle";
+import { rateLimit } from "@/lib/http/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +42,17 @@ export async function POST(
   { params }: { params: Promise<{ leadId: string }> },
 ) {
   const { leadId } = await params;
+
+  // Cheaper than the contact form (one flag, no mail) and already gated by the
+  // token, so this is only here to stop a valid token being replayed into a write
+  // loop. Generous enough that a prospect double-tapping the button never sees it.
+  const limited = rateLimit("interest:ip", clientKey(req), 30, 10 * 60 * 1000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { ok: false },
+      { status: 429, headers: { ...CORS, "retry-after": String(limited.retryAfter) } },
+    );
+  }
 
   const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
   const token = parsed.success ? parsed.data.token : undefined;
