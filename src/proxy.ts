@@ -32,6 +32,10 @@ const PUBLIC_PATHS = new Set([
   // Stripe signs its own requests and cannot carry our cookie. The route verifies
   // the signature itself, which is the real authentication here.
   "/api/stripe/webhook",
+  // The opt-out link in every outreach email. Followed by prospects who have no
+  // session, and POSTed by mail clients (RFC 8058 one-click) that send no cookie.
+  // The route verifies its own HMAC, which is the real authentication here.
+  "/api/unsubscribe",
 ]);
 
 /** Public including everything beneath them. */

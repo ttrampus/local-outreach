@@ -56,6 +56,10 @@ model Lead {
   lastViewedAt        DateTime?
   interestedAt        DateTime?             // prospect clicked "I'm interested" on the demo
   repliedAt           DateTime?             // operator marked the prospect replied — pauses the follow-up sequence
+  // Prospect asked to be left alone, via the unsubscribe link in an email. This is
+  // the one signal that is not a funnel stage: it says never contact this business
+  // again, on any channel, and it is honoured before anything else is considered.
+  unsubscribedAt      DateTime?
 
   // Portfolio -------------------------------------------------------------
   // Hand-picked for the public /examples page. A flag rather than a curated id

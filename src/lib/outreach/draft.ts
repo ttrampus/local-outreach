@@ -126,12 +126,17 @@ function personalDetail(
   return ` and the work you do as a local ${label}.`;
 }
 
-function previewLine(lead: Lead): string {
-  if (lead.deployedUrl) {
-    return `You can see the full preview live here:\n${lead.deployedUrl}`;
-  }
-  if (lead.previewImagePath) {
-    return `I've attached a preview image so you can see exactly what it would look like.`;
+/**
+ * How the message points at the work. Always a link, never an attachment: mail
+ * from this domain is plain text, so an attached PNG was never shown inline, and
+ * attachments from an unknown sender are both ignored by people and penalised by
+ * spam filters. The live page is the better artefact regardless — it is the real
+ * site, and opening it is a signal we can see.
+ */
+function previewLine(lead: Lead, previewUrl?: string): string {
+  const link = lead.deployedUrl || previewUrl || null;
+  if (link) {
+    return `You can see the full preview here:\n${link}`;
   }
   return `I'd be glad to send over a quick preview so you can see it for yourself.`;
 }
@@ -152,7 +157,7 @@ export function buildDraft(
 
 I came across ${name}${detail}
 
-I put together a free, modern website preview to show what a refreshed site could look like — no obligation. ${previewLine(lead)}
+I put together a free, modern website preview to show what a refreshed site could look like — no obligation. ${previewLine(lead, opts.previewUrl)}
 
 If you like it, I can have it live this week. I keep pricing simple: ${OUTREACH_PRICE_SENTENCE}. The preview isn't a mock-up — it becomes your actual site, so nothing is built twice.
 
@@ -164,7 +169,7 @@ Best,
   // Most replies to cold outreach come from a follow-up, not the first message.
   const followup1 = `Hi ${name} team,
 
-Just following up on the website preview I sent — did you get a chance to take a look? ${previewLine(lead)}
+Just following up on the website preview I sent — did you get a chance to take a look? ${previewLine(lead, opts.previewUrl)}
 
 No pressure at all. If a detail feels off, tell me and I'll adjust it.
 

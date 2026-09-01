@@ -477,7 +477,7 @@ const cases = {
     },
   },
 
-  // The real SMTP code path — nodemailer, the attachment, the headers — against a
+  // The real SMTP code path — nodemailer, the headers, the opt-out — against a
   // server that hands the transmitted message back for inspection.
   smtp: {
     title: "Email delivered over SMTP (throwaway server)",
@@ -511,7 +511,7 @@ const cases = {
           assertRecordedSent(db, ids, "smtp");
         });
 
-        await check("the transmitted message carries subject, body, reply-to and preview", () => {
+        await check("the transmitted message carries subject, body and reply-to", () => {
           eq(smtp.received.length, 1, "messages received");
           const wire = smtp.received[0];
           contains(wire, "To: prospect@example.com", "To header");
@@ -520,7 +520,42 @@ const cases = {
           contains(wire, "A mockup of your new site", "subject");
           contains(wire, "Selftest Owner", "owner name substituted in body");
           absent(wire, "[Your name]", "placeholder left in body");
-          contains(wire, "website-preview.png", "preview attached");
+        });
+
+        // The half of deliverability that is ours to get right. Gmail weighs the
+        // ABSENCE of these against cold mail, and one-click only works when both
+        // headers are present — so assert them on the wire, not in the source.
+        await check("the message carries a working opt-out", () => {
+          const wire = smtp.received[0];
+          contains(wire, "List-Unsubscribe:", "List-Unsubscribe header");
+          contains(wire, "/api/unsubscribe?lead=", "opt-out URL in the header");
+          contains(wire, "List-Unsubscribe-Post: List-Unsubscribe=One-Click", "RFC 8058 one-click");
+          contains(wire, "Don't want to hear from me again?", "visible opt-out in the body");
+        });
+
+        // A PNG that no plain-text client displays, arriving unsolicited from a
+        // domain with no reputation. It was costing deliverability and buying
+        // nothing; the body links to the live preview instead.
+        await check("no attachment is sent", () => {
+          absent(smtp.received[0], "website-preview.png", "preview attached");
+        });
+
+        // The invariant the whole opt-out exists to enforce. A prospect who has
+        // asked to be left alone must not be reachable by pressing Send either.
+        await check("an unsubscribed lead is never sent to", async () => {
+          const ids = seedLead(db, "smtp-unsub", {
+            channel: "email",
+            email: "optedout@example.com",
+          });
+          db.prepare("UPDATE Lead SET unsubscribedAt = ? WHERE id = ?")
+            .run(new Date().toISOString(), ids.leadId);
+
+          const before = smtp.received.length;
+          const r = await deliverOutreach(ids.outreachId);
+          eq(r.ok, false, "refused");
+          contains(r.error, "asked not to be contacted", "reason");
+          eq(smtp.received.length, before, "nothing went over the wire");
+          assertNotRecorded(db, ids, "unsubscribed");
         });
       } finally {
         smtp.close();

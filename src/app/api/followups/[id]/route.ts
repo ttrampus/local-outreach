@@ -35,7 +35,7 @@ export async function POST(
   const followup = await prisma.outreach.findUnique({
     where: { id },
     include: {
-      lead: { select: { status: true, repliedAt: true, interestedAt: true } },
+      lead: { select: { status: true, repliedAt: true, interestedAt: true, unsubscribedAt: true } },
     },
   });
   if (!followup) return NextResponse.json({ error: "Follow-up not found" }, { status: 404 });

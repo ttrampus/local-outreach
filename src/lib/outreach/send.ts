@@ -23,6 +23,7 @@ import { env } from "@/lib/env";
 import { isSmtpConfigured, sendMail, gmailComposeUrl } from "./mailer";
 import { isSmsConfigured, sendSms, smsComposeUrl, toE164 } from "./sms";
 import { scheduleNextFollowup } from "./followups";
+import { unsubscribeUrl } from "./unsubscribeToken";
 
 export interface DeliverResult {
   ok: boolean;
@@ -56,7 +57,14 @@ type OutreachWithLead = {
   contact: string | null;
   subject: string | null;
   body: string;
-  lead: { id: string; email: string | null; phone: string | null; status: string; previewImagePath: string | null };
+  lead: {
+    id: string;
+    email: string | null;
+    phone: string | null;
+    status: string;
+    previewImagePath: string | null;
+    unsubscribedAt: Date | null;
+  };
 };
 
 async function load(outreachId: string): Promise<OutreachWithLead | null> {
@@ -64,7 +72,14 @@ async function load(outreachId: string): Promise<OutreachWithLead | null> {
     where: { id: outreachId },
     include: {
       lead: {
-        select: { id: true, email: true, phone: true, status: true, previewImagePath: true },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          status: true,
+          previewImagePath: true,
+          unsubscribedAt: true,
+        },
       },
     },
   });
@@ -101,9 +116,36 @@ function resolveContact(o: OutreachWithLead): string | null {
  * — a failed SMTP/Twilio call, a channel with no contact, a channel with no
  * delivery path — returns ok:false and leaves the record untouched.
  */
+
+/**
+ * Append the visible opt-out. The List-Unsubscribe header alone is not enough:
+ * it is honoured by Gmail and Outlook but invisible in plenty of clients, and EU
+ * marketing rules expect a person to be able to see how to stop being contacted
+ * without hunting through message source. One line, at the bottom, in the same
+ * plain text as the rest — anything more elaborate reads as bulk mail, which is
+ * exactly the impression the message is trying not to give.
+ */
+function withOptOut(body: string, url: string | null): string {
+  if (!url) return body;
+  return `${body}\n\n—\nDon't want to hear from me again? ${url}`;
+}
+
 export async function deliverOutreach(outreachId: string): Promise<DeliverResult> {
   const o = await load(outreachId);
   if (!o) return { ok: false, method: "manual", error: "Outreach record not found." };
+
+  // Before anything else, including the channel switch. An opt-out is not a
+  // funnel stage to be weighed against others — it is the prospect saying do not
+  // contact me, and it binds every channel, not just the one they said it on.
+  // Checked here rather than only in the follow-up gate because this function is
+  // also what an operator hits by pressing Send by hand.
+  if (o.lead.unsubscribedAt) {
+    return {
+      ok: false,
+      method: "manual",
+      error: "This business asked not to be contacted. Nothing was sent.",
+    };
+  }
 
   const contact = resolveContact(o);
   const subject = o.subject ?? "";
@@ -122,11 +164,12 @@ export async function deliverOutreach(outreachId: string): Promise<DeliverResult
       }
       if (isSmtpConfigured()) {
         try {
+          const optOut = unsubscribeUrl(o.lead.id, env.appBaseUrl);
           await sendMail({
             to: contact,
             subject,
-            text: body,
-            previewImagePath: o.lead.previewImagePath,
+            text: withOptOut(body, optOut),
+            unsubscribeUrl: optOut,
           });
         } catch (err) {
           // Don't record a send that didn't happen — let the operator retry.

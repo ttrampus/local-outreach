@@ -13,6 +13,7 @@ export interface SequenceGate {
   status: string;
   repliedAt: Date | null;
   interestedAt: Date | null;
+  unsubscribedAt: Date | null;
 }
 
 // Once a prospect engages we stop nudging: a reply means the operator takes over;
@@ -22,6 +23,7 @@ const ENGAGED_STATUSES = new Set(["interested", "customer", "deployed", "lost"])
 /** True when a lead's follow-up sequence must not advance (prospect has engaged). */
 export function isSequencePaused(lead: SequenceGate): boolean {
   return (
+    lead.unsubscribedAt != null ||
     lead.repliedAt != null ||
     lead.interestedAt != null ||
     ENGAGED_STATUSES.has(lead.status)
@@ -30,6 +32,9 @@ export function isSequencePaused(lead: SequenceGate): boolean {
 
 /** Why a sequence is paused, for display. */
 export function pauseReason(lead: SequenceGate): string | null {
+  // First, and never overridden: the others describe how a conversation is going,
+  // this one says there is not to be a conversation.
+  if (lead.unsubscribedAt) return "unsubscribed";
   if (lead.repliedAt) return "replied";
   if (lead.interestedAt) return "interested";
   if (lead.status === "customer" || lead.status === "deployed") return "customer";
@@ -88,7 +93,15 @@ export async function listFollowups(): Promise<FollowupBuckets> {
     orderBy: { scheduledAt: "asc" },
     include: {
       lead: {
-        select: { id: true, name: true, tier: true, status: true, repliedAt: true, interestedAt: true },
+        select: {
+          id: true,
+          name: true,
+          tier: true,
+          status: true,
+          repliedAt: true,
+          interestedAt: true,
+          unsubscribedAt: true,
+        },
       },
     },
   });
