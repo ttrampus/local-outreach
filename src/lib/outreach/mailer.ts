@@ -45,6 +45,12 @@ export interface SendMailInput {
   /** Reply-To, so prospect replies land in the operator's normal inbox. */
   replyTo?: string;
   /**
+   * The HTML alternative. Sent alongside `text`, never instead of it — the two
+   * parts must carry the same message (see htmlBody.ts). Omitted for
+   * transactional mail, which has nothing to gain from markup.
+   */
+  html?: string;
+  /**
    * The recipient's opt-out URL. Supplied for outreach; omitted for
    * transactional mail (a contact-form notification to the operator is not
    * marketing and has nothing to unsubscribe from).
@@ -85,6 +91,7 @@ export async function sendMail(input: SendMailInput): Promise<void> {
     replyTo: input.replyTo || env.ownerEmail || undefined,
     subject: input.subject,
     text: input.text,
+    ...(input.html ? { html: input.html } : {}),
     headers,
   });
 }

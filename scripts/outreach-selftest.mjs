@@ -530,7 +530,16 @@ const cases = {
           contains(wire, "List-Unsubscribe:", "List-Unsubscribe header");
           contains(wire, "/api/unsubscribe?lead=", "opt-out URL in the header");
           contains(wire, "List-Unsubscribe-Post: List-Unsubscribe=One-Click", "RFC 8058 one-click");
-          contains(wire, "Don't want to hear from me again?", "visible opt-out in the body");
+          contains(wire, "Not interested?", "visible opt-out in the body");
+        });
+
+        // Both parts, always. An HTML-only message, or one whose alternatives
+        // disagree, is a spam heuristic older than most spam filters.
+        await check("the message is multipart with a plain-text alternative", () => {
+          const wire = smtp.received[0];
+          contains(wire, "multipart/alternative", "multipart container");
+          contains(wire, "Content-Type: text/plain", "text part");
+          contains(wire, "Content-Type: text/html", "html part");
         });
 
         // A PNG that no plain-text client displays, arriving unsolicited from a

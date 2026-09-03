@@ -24,6 +24,9 @@ import { isSmtpConfigured, sendMail, gmailComposeUrl } from "./mailer";
 import { isSmsConfigured, sendSms, smsComposeUrl, toE164 } from "./sms";
 import { scheduleNextFollowup } from "./followups";
 import { unsubscribeUrl } from "./unsubscribeToken";
+import { getEmailStrings } from "./emailStrings";
+import { toHtmlEmail } from "./htmlBody";
+import { detectLocale } from "@/lib/preview/i18n";
 
 export interface DeliverResult {
   ok: boolean;
@@ -62,6 +65,8 @@ type OutreachWithLead = {
     email: string | null;
     phone: string | null;
     status: string;
+    address: string | null;
+    deployedUrl: string | null;
     previewImagePath: string | null;
     unsubscribedAt: Date | null;
   };
@@ -77,6 +82,8 @@ async function load(outreachId: string): Promise<OutreachWithLead | null> {
           email: true,
           phone: true,
           status: true,
+          address: true,
+          deployedUrl: true,
           previewImagePath: true,
           unsubscribedAt: true,
         },
@@ -125,9 +132,9 @@ function resolveContact(o: OutreachWithLead): string | null {
  * plain text as the rest — anything more elaborate reads as bulk mail, which is
  * exactly the impression the message is trying not to give.
  */
-function withOptOut(body: string, url: string | null): string {
+function withOptOut(body: string, url: string | null, label: string): string {
   if (!url) return body;
-  return `${body}\n\n—\nDon't want to hear from me again? ${url}`;
+  return `${body}\n\n—\n${label}\n${url}`;
 }
 
 export async function deliverOutreach(outreachId: string): Promise<DeliverResult> {
@@ -165,10 +172,20 @@ export async function deliverOutreach(outreachId: string): Promise<DeliverResult
       if (isSmtpConfigured()) {
         try {
           const optOut = unsubscribeUrl(o.lead.id, env.appBaseUrl);
+          // Written by Claude in the prospect's language, so everything the app
+          // adds around it has to be in the same one.
+          const strings = getEmailStrings(detectLocale({ address: o.lead.address ?? undefined }));
+          const previewLink = o.lead.deployedUrl || `${env.appBaseUrl}/p/${o.lead.id}`;
           await sendMail({
             to: contact,
             subject,
-            text: withOptOut(body, optOut),
+            text: withOptOut(body, optOut, strings.optOut),
+            html: toHtmlEmail(body, {
+              linkUrl: previewLink,
+              linkLabel: strings.previewLink,
+              optOutUrl: optOut,
+              optOutLabel: strings.optOut,
+            }),
             unsubscribeUrl: optOut,
           });
         } catch (err) {
