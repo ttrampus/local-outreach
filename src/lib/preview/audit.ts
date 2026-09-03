@@ -446,6 +446,133 @@ export async function auditRenderedPage(page: Page): Promise<RenderedAudit> {
   return { findings, height: info.height, sections: info.sections };
 }
 
+/**
+ * Audit the page AT PHONE WIDTH. The caller must have set a ~390px viewport and
+ * let the reflow settle; nothing here resizes anything.
+ *
+ * This exists because the mobile screenshot was being captured and then never
+ * looked at. Every rendered check in this file ran at 1280px, so a page could be
+ * immaculate on the desktop shot the operator reviews and broken on the phone
+ * where the prospect actually opens it — which is the wrong way round, since the
+ * link arrives in an email read on a handset.
+ *
+ * The checks are the failures that are specific to narrow viewports and invisible
+ * at 1280px: content wider than the screen, type that shrank below readable, and
+ * controls too small to hit with a thumb.
+ */
+export async function auditMobilePage(page: Page): Promise<Finding[]> {
+  const findings: Finding[] = [];
+
+  const m = await page.evaluate(() => {
+    const vw = window.innerWidth;
+    const describe = (el: Element): string => {
+      const tag = el.tagName.toLowerCase();
+      const cls = (el.getAttribute("class") ?? "").trim().split(/\s+/).filter(Boolean)[0];
+      return cls ? `${tag}.${cls}` : tag;
+    };
+
+    // Anything sticking out past the right edge. Fixed/sticky decoration that is
+    // deliberately bled off-screen is excluded: it cannot scroll the document.
+    const overflowing: { el: string; right: number; width: number }[] = [];
+    for (const el of Array.from(document.body.querySelectorAll("*"))) {
+      const st = getComputedStyle(el);
+      if (st.position === "fixed" || st.position === "sticky") continue;
+      if (st.display === "none" || st.visibility === "hidden") continue;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.right > vw + 1 || r.width > vw + 1) {
+        overflowing.push({ el: describe(el), right: Math.round(r.right), width: Math.round(r.width) });
+      }
+    }
+
+    // Smallest rendered body copy. Sampled from elements that actually hold text,
+    // so a 10px legal line is caught but an icon font is not.
+    let smallest: { size: number; el: string; text: string } | null = null;
+    const TEXTY = "p,li,td,dd,dt,figcaption,blockquote,span,a,label,small";
+    for (const el of Array.from(document.querySelectorAll(TEXTY))) {
+      const text = (el.textContent ?? "").trim();
+      if (text.length < 12) continue; // labels and single words are not body copy
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      const size = parseFloat(getComputedStyle(el).fontSize);
+      if (!Number.isFinite(size)) continue;
+      if (!smallest || size < smallest.size) {
+        smallest = { size, el: describe(el), text: text.slice(0, 40) };
+      }
+    }
+
+    // Controls too small for a thumb. 44px is Apple's number and the one most
+    // design systems settled on; below ~32px it is a genuine miss-tap risk.
+    const small: { el: string; h: number; w: number }[] = [];
+    for (const el of Array.from(document.querySelectorAll("a,button,input[type=submit]"))) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if ((el.textContent ?? "").trim().length === 0) continue;
+      if (r.height < 32) small.push({ el: describe(el), h: Math.round(r.height), w: Math.round(r.width) });
+    }
+
+    return {
+      vw,
+      scrollWidth: document.documentElement.scrollWidth,
+      overflowing: overflowing.slice(0, 5),
+      overflowCount: overflowing.length,
+      smallest,
+      small: small.slice(0, 5),
+      smallCount: small.length,
+    };
+  });
+
+  // The one that ruins a page outright: the document itself scrolls sideways.
+  if (m.scrollWidth > m.vw + 1) {
+    const worst = m.overflowing[0];
+    findings.push(
+      blocking(
+        "mobile-h-scroll",
+        `page scrolls horizontally on a ${m.vw}px screen (${m.scrollWidth}px wide)` +
+          (worst ? ` — widest offender ${worst.el} at ${worst.width}px` : ""),
+      ),
+    );
+  } else if (m.overflowCount > 0) {
+    // No document scroll (something clipped it) but content is still off-screen,
+    // so part of the page is unreachable rather than merely awkward.
+    const worst = m.overflowing[0]!;
+    findings.push(
+      blocking(
+        "mobile-clipped",
+        `${m.overflowCount} element(s) extend past the ${m.vw}px viewport — e.g. ${worst.el} ends at ${worst.right}px`,
+      ),
+    );
+  }
+
+  if (m.smallest && m.smallest.size < 14) {
+    findings.push(
+      blocking(
+        "mobile-tiny-text",
+        `body copy renders at ${m.smallest.size.toFixed(1)}px on mobile (${m.smallest.el}: "${m.smallest.text}") — the floor is 16px`,
+      ),
+    );
+  } else if (m.smallest && m.smallest.size < 16) {
+    findings.push(
+      cosmetic(
+        "mobile-small-text",
+        `smallest body copy is ${m.smallest.size.toFixed(1)}px on mobile (${m.smallest.el}) — the floor is 16px`,
+      ),
+    );
+  }
+
+  if (m.smallCount > 0) {
+    const worst = m.small[0]!;
+    findings.push(
+      cosmetic(
+        "mobile-tap-target",
+        `${m.smallCount} tappable element(s) under 32px tall — e.g. ${worst.el} at ${worst.h}px`,
+      ),
+    );
+  }
+
+  return findings;
+}
+
 /** One-line summary for logs. */
 export function summarize(findings: Finding[]): string {
   if (!findings.length) return "clean";

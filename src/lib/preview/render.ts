@@ -4,7 +4,7 @@
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { auditRenderedPage, type RenderedAudit } from "./audit";
+import { auditRenderedPage, auditMobilePage, type RenderedAudit, type Finding } from "./audit";
 
 const PREVIEW_IMG_DIR = path.join(process.cwd(), "public", "previews");
 const PREVIEW_HTML_DIR = path.join(process.cwd(), "data", "previews");
@@ -98,11 +98,16 @@ export async function renderPreview(
     // breaks the resize must not cost us the desktop artifact we already have.
     let mobileImagePath: string | null = null;
     let mobileShot: Buffer | null = null;
+    let mobileFindings: Finding[] = [];
     try {
       await page.setViewportSize(MOBILE_VIEWPORT);
       await page.waitForTimeout(500); // let the responsive reflow settle
       mobileShot = await page.screenshot({ path: mobileFsPath, fullPage: false });
       mobileImagePath = mobileWebPath;
+      // While we are down here. Every other rendered check runs at 1280px, so
+      // without this a page can be perfect on the shot the operator reviews and
+      // broken on the phone the prospect actually opens the link on.
+      mobileFindings = await auditMobilePage(page);
     } catch {
       // leave null — the panel simply won't offer a Mobile toggle for this render
     }
@@ -116,8 +121,11 @@ export async function renderPreview(
       await page.setViewportSize({ width: 1280, height: 1000 });
       await page.waitForTimeout(300);
       audit = await auditRenderedPage(page);
+      audit = { ...audit, findings: [...audit.findings, ...mobileFindings] };
     } catch (err) {
       console.warn(`[render] audit failed for ${placeId}:`, err);
+      // The desktop pass throwing must not discard what the phone pass already found.
+      if (mobileFindings.length) audit = { findings: mobileFindings, height: 0, sections: 0 };
     }
 
     return { imagePath: imgWebPath, mobileImagePath, htmlPath, desktopShot, mobileShot, audit };

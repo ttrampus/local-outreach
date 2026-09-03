@@ -18,6 +18,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyInterestToken } from "@/lib/auth/interestToken";
 import { clientKey } from "@/lib/auth/loginThrottle";
 import { rateLimit } from "@/lib/http/rateLimit";
+import { notifyInterest } from "@/lib/outreach/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +63,7 @@ export async function POST(
 
   const lead = await prisma.lead.findUnique({
     where: { id: leadId },
-    select: { id: true, status: true, interestedAt: true },
+    select: { id: true, name: true, phone: true, email: true, status: true, interestedAt: true },
   });
   if (!lead) return NextResponse.json({ ok: false }, { status: 404, headers: CORS });
 
@@ -73,6 +74,18 @@ export async function POST(
       ...(TERMINAL.has(lead.status) ? {} : { status: "interested" }),
     },
   });
+
+  // Only on the FIRST press. The endpoint is idempotent and a prospect reloading
+  // the page would otherwise re-notify; the second alert for the same lead
+  // carries no information and teaches the operator to ignore the first.
+  if (!lead.interestedAt) {
+    await notifyInterest({
+      leadId: lead.id,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true }, { headers: CORS });
 }

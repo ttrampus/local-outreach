@@ -95,6 +95,13 @@ export const env = {
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
   twilioFrom: (process.env.TWILIO_FROM ?? "").trim(),
   twilioMessagingServiceSid: (process.env.TWILIO_MESSAGING_SERVICE_SID ?? "").trim(),
+  // Push notification for the one event worth interrupting the operator for: a
+  // prospect pressing "I'm interested". Optional — without a topic the app still
+  // emails the owner. The topic name is the only secret ntfy has, so make it long
+  // and random; anyone who knows it can read your notifications.
+  ntfyTopic: (process.env.NOTIFY_NTFY_TOPIC ?? "").trim(),
+  ntfyServer: (process.env.NOTIFY_NTFY_SERVER ?? "https://ntfy.sh").trim(),
+
   // Dialing code prepended to national-format numbers (Google Places returns
   // plenty of them) so they can be normalized to E.164. e.g. "+386".
   smsDefaultCountryCode: (process.env.SMS_DEFAULT_COUNTRY_CODE ?? "").trim(),

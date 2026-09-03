@@ -187,6 +187,17 @@ export function injectOwnerBar(
     #__lo.__lo-min .__lo-yes{font-size:13px;padding:8px 14px;}
     #__lo.__lo-min .__lo-mark{width:24px;height:24px;}
 
+    /* Desktop has the room, and this is the one thing on the page asking for a
+       decision — at phone proportions it reads as an afterthought. Phones keep
+       the tighter sizing below, where the screen is the constraint. */
+    @media(min-width:621px){
+      #__lo{width:min(780px,calc(100% - 24px));padding:20px 24px;gap:22px;}
+      #__lo .__lo-title{font-size:17px;}
+      #__lo .__lo-sub{font-size:14px;margin-top:5px;}
+      #__lo .__lo-yes{font-size:15px;padding:13px 26px;}
+      #__lo .__lo-no{font-size:14px;padding:13px 10px;}
+      #__lo .__lo-badge{font-size:11px;}
+    }
     @media(max-width:620px){#__lo{flex-direction:column;align-items:stretch;gap:12px;}
       #__lo .__lo-actions{justify-content:space-between;}#__lo .__lo-yes{flex:1;}
       /* collapsed stays a single row, or it saves no height at all */
@@ -277,6 +288,17 @@ function injectShowcaseBar(html: string, t: Strings): string {
     #__lo .__lo-sub{font-size:13px;color:rgba(255,255,255,.74);line-height:1.4;margin-top:3px;}
     #__lo .__lo-yes{display:inline-block;text-decoration:none;background:#fff;color:#0d0f14;
       font-weight:600;font-size:14px;padding:11px 20px;border-radius:999px;white-space:nowrap;flex-shrink:0;}
+    /* Desktop has the room, and this is the one thing on the page asking for a
+       decision — at phone proportions it reads as an afterthought. Phones keep
+       the tighter sizing below, where the screen is the constraint. */
+    @media(min-width:621px){
+      #__lo{width:min(780px,calc(100% - 24px));padding:20px 24px;gap:22px;}
+      #__lo .__lo-title{font-size:17px;}
+      #__lo .__lo-sub{font-size:14px;margin-top:5px;}
+      #__lo .__lo-yes{font-size:15px;padding:13px 26px;}
+      #__lo .__lo-no{font-size:14px;padding:13px 10px;}
+      #__lo .__lo-badge{font-size:11px;}
+    }
     @media(max-width:620px){#__lo{flex-direction:column;align-items:stretch;gap:12px;}
       #__lo .__lo-yes{text-align:center;}}
     @media print{#__lo{display:none;}}
