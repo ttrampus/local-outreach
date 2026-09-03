@@ -58,10 +58,12 @@ export const PRICING = {
  * is the last clause, not the first.
  */
 export const OUTREACH_PRICE_SENTENCE =
-  `€${PRICING.buildEur} to finish it and put it live on your domain — including ` +
-  `every change you want made to it first, there's no per-edit charge — ` +
-  `and €${PRICING.careMonthlyEur}/month if you'd like me to host it and look after it ` +
-  `afterwards (optional, cancel anytime)`;
+  `€${PRICING.buildEur} to make it yours — once that's settled I change whatever ` +
+  `you want changed (text, photos, colours, layout) until it's right, at no extra ` +
+  `charge, and then it goes live on your domain — plus €${PRICING.careMonthlyEur}/month ` +
+  `if you'd like me to host it and look after it afterwards (optional, cancel anytime)`;
 
 /** The same thing compressed, for a follow-up that has to stay short. */
-export const OUTREACH_PRICE_SHORT = `€${PRICING.buildEur} to put it live, €${PRICING.careMonthlyEur}/month to look after it`;
+export const OUTREACH_PRICE_SHORT =
+  `€${PRICING.buildEur} to make it yours, changed however you want, ` +
+  `€${PRICING.careMonthlyEur}/month to look after it`;

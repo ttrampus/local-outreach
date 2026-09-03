@@ -161,7 +161,9 @@ I put together a free, modern website preview to show what a refreshed site coul
 
 If you like it, I can have it live this week. I keep pricing simple: ${OUTREACH_PRICE_SENTENCE}. The preview isn't a mock-up — it becomes your actual site, so nothing is built twice.
 
-Happy to adjust the design to match your style. Would it be worth a quick look?
+Nothing on it is fixed either: the text, the photos, the colours, the layout, whole sections — all of it can be changed to whatever you want.
+
+If you'd like it, press the "I'm interested" button on the preview, or just reply to this email — whichever is easier.
 
 Best,
 [Your name]`;

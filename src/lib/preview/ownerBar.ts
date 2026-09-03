@@ -29,12 +29,14 @@ interface Strings {
   showcaseTitle: string;
   showcaseSub: string;
   showcaseCta: string;
+  minimize: string;
+  expand: string;
 }
 
 const SL: Strings = {
   badge: "Brezplačen predogled",
   title: (name) => `Predlog spletne strani za ${name}`,
-  sub: `Predlog je izhodišče — pred objavo ga dodelamo po vaših željah (fotografije, besedila, oblika). Izdelava ${PRICING.buildEur} €, za ${PRICING.careMonthlyEur} € / mesec zanjo skrbim naprej.`,
+  sub: `Izdelava ${PRICING.buildEur} € — nato spremenim vse, kar želite (besedila, fotografije, barve, postavitev), brez doplačila, in stran objavimo na vaši domeni. Za ${PRICING.careMonthlyEur} € / mesec zanjo skrbim naprej.`,
   yes: "Zanima me",
   later: "Mogoče kasneje",
   thanksWithContact: "Hvala! Kmalu se oglasim. Lahko pa me kontaktirate tudi neposredno:",
@@ -46,12 +48,14 @@ const SL: Strings = {
   showcaseTitle: "Želite takšno spletno stran?",
   showcaseSub: "Za vaše podjetje jo pripravimo brezplačno — plačate šele, če vam je všeč.",
   showcaseCta: "Želim takšno",
+  minimize: "Skrij podrobnosti",
+  expand: "Prikaži podrobnosti",
 };
 
 const EN: Strings = {
   badge: "Free preview",
   title: (name) => `A website proposal for ${name}`,
-  sub: `This is a starting point — before it goes live we adjust it to your liking (photos, text, design). €${PRICING.buildEur} to build, €${PRICING.careMonthlyEur}/month if you'd like me to look after it.`,
+  sub: `€${PRICING.buildEur} to make it yours — then I change anything you want (text, photos, colours, layout) at no extra charge, and it goes live on your domain. €${PRICING.careMonthlyEur}/month if you'd like me to look after it.`,
   yes: "I'm interested",
   later: "Maybe later",
   thanksWithContact: "Thanks! I'll be in touch. You can also reach me directly:",
@@ -63,6 +67,8 @@ const EN: Strings = {
   showcaseTitle: "Want a site like this?",
   showcaseSub: "We build one for your business free — you only pay if you like it.",
   showcaseCta: "I want one",
+  minimize: "Hide details",
+  expand: "Show details",
 };
 
 // The bar is the only thing on a prospect's preview that is ours rather than
@@ -157,8 +163,26 @@ export function injectOwnerBar(
     #__lo.__lo-done .__lo-actions{display:none;}
     #__lo.__lo-done .__lo-sub{display:none;}
     #__lo.__lo-done .__lo-contact{display:flex;}
+
+    /* The toggle. A prospect who has read the pitch still wants to look at the
+       site underneath it, and on a phone the full bar is a third of the screen.
+       Collapsing leaves the one control that matters — "I'm interested" — rather
+       than hiding the bar entirely, which "Maybe later" already does. */
+    #__lo .__lo-toggle{background:transparent;color:rgba(255,255,255,.55);font-size:15px;
+      line-height:1;padding:9px 7px;order:-1;}
+    #__lo .__lo-toggle:hover{color:rgba(255,255,255,.9);}
+    #__lo.__lo-min{width:auto;max-width:calc(100% - 24px);padding:8px 10px 8px 14px;gap:10px;}
+    #__lo.__lo-min .__lo-badge,#__lo.__lo-min .__lo-sub,#__lo.__lo-min .__lo-no{display:none;}
+    #__lo.__lo-min .__lo-title{font-size:13px;font-weight:600;white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis;}
+    #__lo.__lo-min .__lo-yes{font-size:13px;padding:8px 14px;}
+    #__lo.__lo-min .__lo-mark{width:24px;height:24px;}
+
     @media(max-width:620px){#__lo{flex-direction:column;align-items:stretch;gap:12px;}
-      #__lo .__lo-actions{justify-content:space-between;}#__lo .__lo-yes{flex:1;}}
+      #__lo .__lo-actions{justify-content:space-between;}#__lo .__lo-yes{flex:1;}
+      /* collapsed stays a single row, or it saves no height at all */
+      #__lo.__lo-min{flex-direction:row;align-items:center;gap:8px;}
+      #__lo.__lo-min .__lo-yes{flex:0 0 auto;}}
     @media print{#__lo{display:none;}}
     ${MARK_CSS}
   </style>
@@ -172,6 +196,8 @@ export function injectOwnerBar(
     </div>
   </div>
   <div class="__lo-actions">
+    <button type="button" class="__lo-toggle" aria-expanded="true"
+      aria-label="${esc(t.minimize)}" title="${esc(t.minimize)}">&#9660;</button>
     <button type="button" class="__lo-no">${esc(t.later)}</button>
     <button type="button" class="__lo-yes">${esc(t.yes)}</button>
   </div>
@@ -184,6 +210,22 @@ export function injectOwnerBar(
   try{if(localStorage.getItem(KEY)==="1"){bar.parentNode.removeChild(bar);return;}}catch(e){}
   var done=false;try{done=localStorage.getItem("__lo_interested_"+id)==="1";}catch(e){}
   if(done)bar.classList.add("__lo-done");
+
+  // Collapsed state survives a reload: someone who shrank the bar to look at the
+  // page does not want it back at full height on the next one.
+  var MINKEY="__lo_min_"+id,tog=bar.querySelector(".__lo-toggle");
+  var LBL=${JSON.stringify({ minimize: t.minimize, expand: t.expand })};
+  function setMin(on,persist){
+    bar.classList.toggle("__lo-min",on);
+    tog.innerHTML=on?"&#9650;":"&#9660;";
+    tog.setAttribute("aria-expanded",on?"false":"true");
+    tog.setAttribute("aria-label",on?LBL.expand:LBL.minimize);
+    tog.setAttribute("title",on?LBL.expand:LBL.minimize);
+    if(persist){try{localStorage.setItem(MINKEY,on?"1":"0");}catch(e){}}
+  }
+  var wasMin=false;try{wasMin=localStorage.getItem(MINKEY)==="1";}catch(e){}
+  if(wasMin)setMin(true,false);
+  tog.addEventListener("click",function(){setMin(!bar.classList.contains("__lo-min"),true);});
   var thanks=${JSON.stringify(thanks)};
   bar.querySelector(".__lo-no").addEventListener("click",function(){
     try{localStorage.setItem(KEY,"1");}catch(e){}

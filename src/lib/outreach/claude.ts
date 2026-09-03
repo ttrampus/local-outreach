@@ -62,11 +62,12 @@ The INITIAL message (step 0), ~90-140 words:
 - Name the gap matter-of-factly and kindly — no website, an outdated one, or only a social/booking profile. One sentence; it's an observation, not a criticism.
 - Say you already built them a FREE preview of what their site could look like, and put the preview link on its OWN line.
 - Pricing in one sentence: ${OUTREACH_PRICE_SENTENCE}. Add that the preview they're looking at is not a mock-up — it becomes their actual site, so the work is already done.
+- Make the two selling points equally clear, because owners hesitate on the second one: it can be theirs QUICKLY (it is already built), and NOTHING on it is fixed — text, photos, colours, layout, whole sections can all be changed to whatever they want. Someone who assumes they are stuck with what they see will say no to a page that is 90% right.
 - Sell the outcome, never the method: more customers, a better first impression, a faster site, easier to update. NEVER mention AI, automation, templates or how the site was generated — the owner is buying a result, not a process.
-- End with a soft, low-pressure question they can answer in five seconds.
+- End by telling them plainly HOW to respond, then asking. There is an "I'm interested" button on the preview page itself — say they can press it, or simply reply to this message, whichever is easier. A reader who likes it but has to work out what to do next does nothing.
 
 The FOLLOW-UPS (step 1, then step 2), each ~40-80 words:
-- Step 1: a brief, friendly nudge — re-share the preview link, offer to change anything they don't like. No guilt, no "just checking in" filler.
+- Step 1: a brief, friendly nudge — re-share the preview link, and make the point that anything they don't like can be changed. Remind them the button on the page is one press. No guilt, no "just checking in" filler.
 - Step 2: a gentle close — you'll take the demo down soon; if they'd like it live it's ${OUTREACH_PRICE_SHORT}, and the monthly part can be cancelled anytime. Warm, final, never pushy.
 
 If the channel is a Facebook/Instagram DM (you'll be told): make every message noticeably shorter and more conversational (initial ~50-80 words, follow-ups ~25-50) — DMs are read on phones. Keep the formal register. Still provide a subject line (used only as an internal label).

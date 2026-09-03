@@ -14,18 +14,23 @@ export interface EmailStrings {
    * The opt-out. Deliberately NOT "unsubscribe": nobody subscribed to a cold
    * email, and offering to end a subscription they never started reads as either
    * a mistake or a dark pattern. What is actually on offer is "I will stop".
+   *
+   * It also has to read as a BUTTON rather than an instruction. "Let me know"
+   * describes composing a reply, which is a different and much larger ask than
+   * the single click this actually is — and a reader who thinks it means writing
+   * an email simply does not bother.
    */
   optOut: string;
 }
 
 const EN: EmailStrings = {
   previewLink: "See your website preview",
-  optOut: "Not interested? Let me know and I won't contact you again.",
+  optOut: "Not interested? Click here and I won't contact you again.",
 };
 
 const SL: EmailStrings = {
   previewLink: "Oglejte si predlog spletne strani",
-  optOut: "Vas ne zanima? Sporočite mi in vas ne bom več kontaktiral.",
+  optOut: "Vas ne zanima? Kliknite tukaj in vas ne bom več kontaktiral.",
 };
 
 const STRINGS: Record<Locale, EmailStrings> = { en: EN, sl: SL };
