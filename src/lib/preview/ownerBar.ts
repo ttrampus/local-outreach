@@ -167,10 +167,19 @@ export function injectOwnerBar(
     /* The toggle. A prospect who has read the pitch still wants to look at the
        site underneath it, and on a phone the full bar is a third of the screen.
        Collapsing leaves the one control that matters — "I'm interested" — rather
-       than hiding the bar entirely, which "Maybe later" already does. */
-    #__lo .__lo-toggle{background:transparent;color:rgba(255,255,255,.55);font-size:15px;
-      line-height:1;padding:9px 7px;order:-1;}
-    #__lo .__lo-toggle:hover{color:rgba(255,255,255,.9);}
+       than hiding the bar entirely, which "Maybe later" already does.
+       
+       Pinned to the corner and half outside the panel, the way a dismiss control
+       on a dialog is. In the action row it sat next to "Maybe later" and read as
+       a third choice about the offer, which it is not — it is a control over the
+       panel. Overlapping the edge also keeps it clear of the buttons without
+       adding vertical padding, which would undo the point of collapsing. */
+    #__lo .__lo-toggle{position:absolute;top:-9px;right:-9px;width:26px;height:26px;
+      display:flex;align-items:center;justify-content:center;padding:0;
+      background:#0d0f14;border:1px solid rgba(255,255,255,.18);border-radius:999px;
+      color:rgba(255,255,255,.6);font-size:11px;line-height:1;z-index:1;
+      box-shadow:0 2px 8px rgba(0,0,0,.4);}
+    #__lo .__lo-toggle:hover{color:#fff;border-color:rgba(255,255,255,.35);}
     #__lo.__lo-min{width:auto;max-width:calc(100% - 24px);padding:8px 10px 8px 14px;gap:10px;}
     #__lo.__lo-min .__lo-badge,#__lo.__lo-min .__lo-sub,#__lo.__lo-min .__lo-no{display:none;}
     #__lo.__lo-min .__lo-title{font-size:13px;font-weight:600;white-space:nowrap;
@@ -195,9 +204,9 @@ export function injectOwnerBar(
       <div class="__lo-contact">${contactLinks(t)}</div>
     </div>
   </div>
+  <button type="button" class="__lo-toggle" aria-expanded="true"
+    aria-label="${esc(t.minimize)}" title="${esc(t.minimize)}">&#9660;</button>
   <div class="__lo-actions">
-    <button type="button" class="__lo-toggle" aria-expanded="true"
-      aria-label="${esc(t.minimize)}" title="${esc(t.minimize)}">&#9660;</button>
     <button type="button" class="__lo-no">${esc(t.later)}</button>
     <button type="button" class="__lo-yes">${esc(t.yes)}</button>
   </div>
