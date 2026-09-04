@@ -62,8 +62,13 @@ export function toHtmlEmail(text: string, opts: HtmlEmailOptions = {}): string {
       const html = esc(block).replace(URL_RE, (url) => {
         // Only the preview link gets prose for its anchor; any other URL keeps
         // its address as its text, because replacing THAT with words would be
-        // the disguise this file's header warns about.
-        const label = linkUrl && url === linkUrl && linkLabel ? linkLabel : url;
+        // the disguise this file's header warns about. Dropping the scheme and a
+        // trailing slash is not a disguise — the domain, which is the part a
+        // reader checks, is still exactly what it says.
+        const label =
+          linkUrl && url === linkUrl && linkLabel
+            ? linkLabel
+            : url.replace(/^https?:\/\//, "").replace(/\/$/, "");
         return `<a href="${escAttr(url)}" style="color:#1a56db">${esc(label)}</a>`;
       });
       return `<p style="margin:0 0 14px">${html.replace(/\n/g, "<br>")}</p>`;
