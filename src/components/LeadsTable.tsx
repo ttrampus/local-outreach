@@ -57,6 +57,16 @@ export interface SiteMessage {
 }
 
 const TIERS = ["HOT", "WARM", "COLD"] as const;
+// Which contact details a lead has. Not the same as the channel drafting picks
+// (that takes the single best one) — this is "what could I reach them by at all",
+// which is the question when you're deciding what to work through today.
+const REACH = [
+  { value: "email", label: "Email" },
+  { value: "phone", label: "Phone / SMS" },
+  { value: "social", label: "Social DM" },
+  { value: "none", label: "No contact" },
+];
+
 const SORTS = [
   { value: "score", label: "Score" },
   { value: "reviews", label: "Reviews" },
@@ -68,6 +78,8 @@ export function LeadsTable() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({ HOT: 0, WARM: 0, COLD: 0 });
   const [tier, setTier] = useState<string>("");
+  const [reach, setReach] = useState<string>("");
+  const [reachCounts, setReachCounts] = useState<Record<string, number>>({});
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("score");
   const [loading, setLoading] = useState(true);
@@ -85,6 +97,7 @@ export function LeadsTable() {
     setLoading(true);
     const params = new URLSearchParams();
     if (tier) params.set("tier", tier);
+    if (reach) params.set("reach", reach);
     if (q.trim()) params.set("q", q.trim());
     params.set("sort", sort);
     try {
@@ -92,10 +105,11 @@ export function LeadsTable() {
       const data = await res.json();
       setLeads(data.leads ?? []);
       setCounts(data.counts ?? {});
+      setReachCounts(data.reachCounts ?? {});
     } finally {
       setLoading(false);
     }
-  }, [tier, q, sort]);
+  }, [tier, reach, q, sort]);
 
   useEffect(() => {
     const t = setTimeout(load, q ? 250 : 0); // debounce text search
@@ -165,6 +179,25 @@ export function LeadsTable() {
           </button>
         </div>
       </div>
+      {/* Reach filter — what contact details the lead actually has. */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span className="text-[11px] uppercase tracking-wide text-[var(--muted)] mr-1">
+          Reachable by
+        </span>
+        <Chip active={reach === ""} onClick={() => setReach("")}>
+          Any <span className="opacity-60">{reachCounts.all ?? 0}</span>
+        </Chip>
+        {REACH.map((r) => (
+          <Chip
+            key={r.value}
+            active={reach === r.value}
+            onClick={() => setReach(reach === r.value ? "" : r.value)}
+          >
+            {r.label} <span className="opacity-60">{reachCounts[r.value] ?? 0}</span>
+          </Chip>
+        ))}
+      </div>
+
       {regen.msg && (
         <div className="-mt-2 mb-4 text-xs text-[var(--muted)]">{regen.msg}</div>
       )}
