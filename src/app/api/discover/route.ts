@@ -106,9 +106,11 @@ export async function POST(req: Request) {
     );
   }
 
+  const sweepTag = isSweep && "sweep" in data ? { sweep: data.sweep, batchId: crypto.randomUUID() } : undefined;
+
   const created = [];
   for (const { query, location } of pairs) {
-    const run = await createSearchRun(query, location);
+    const run = await createSearchRun(query, location, sweepTag);
     created.push({ runId: run.id, query, location });
   }
 

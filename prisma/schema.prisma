@@ -124,11 +124,17 @@ model Outreach {
 
 /// A discovery run, so past searches and their counts are visible.
 model SearchRun {
-  id          String   @id @default(cuid())
-  query       String
-  location    String
-  status      String   @default("running") // running | done | error
-  error       String?
+  id            String   @id @default(cuid())
+  query         String
+  location      String
+  status        String   @default("running") // running | done | error
+  error         String?
+
+  // Set only for a region created by a sweep launch, so the UI can group the
+  // ~20 per-region rows of one launch into a single collapsible entry instead
+  // of flooding the run list.
+  sweep         String?
+  sweepBatchId  String?
 
   totalFound  Int      @default(0) // raw places returned by search
   newLeads    Int      @default(0) // places not previously in DB

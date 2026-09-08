@@ -31,10 +31,24 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
-/** Create a SearchRun row in "running" state and return it. */
-export async function createSearchRun(query: string, location: string) {
+/**
+ * Create a SearchRun row in "running" state and return it. `sweepTag`, when
+ * given, marks the row as belonging to one sweep launch so the UI can group its
+ * per-region rows together.
+ */
+export async function createSearchRun(
+  query: string,
+  location: string,
+  sweepTag?: { sweep: string; batchId: string },
+) {
   return prisma.searchRun.create({
-    data: { query, location, status: "running" },
+    data: {
+      query,
+      location,
+      status: "running",
+      sweep: sweepTag?.sweep,
+      sweepBatchId: sweepTag?.batchId,
+    },
   });
 }
 
@@ -51,6 +65,25 @@ export async function getSweepProgress(sweep: string, query: string): Promise<Se
 export async function clearSweepProgress(sweep: string, query: string): Promise<number> {
   const { count } = await prisma.sweepProgress.deleteMany({ where: { sweep, query } });
   return count;
+}
+
+/**
+ * Delete SearchRun rows from the run ledger. Never deletes leads — the FK is
+ * ON DELETE SET NULL, so any lead attributed to a deleted run just loses its
+ * category label. Rows still "running" are skipped (the background job holds
+ * the only reference to its id; deleting out from under it would just orphan
+ * the write) — the caller gets back which ids were actually removed.
+ */
+export async function deleteSearchRuns(ids: string[]): Promise<string[]> {
+  const deletable = await prisma.searchRun.findMany({
+    where: { id: { in: ids }, status: { not: "running" } },
+    select: { id: true },
+  });
+  const deletableIds = deletable.map((r) => r.id);
+  if (deletableIds.length) {
+    await prisma.searchRun.deleteMany({ where: { id: { in: deletableIds } } });
+  }
+  return deletableIds;
 }
 
 /**

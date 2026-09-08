@@ -5,12 +5,44 @@ import { SWEEP_REGIONS } from "@/lib/regions";
 
 const SLOVENIA_COUNT = SWEEP_REGIONS.slovenia.length;
 
+// Query is free text handed straight to Google's Text Search — anything you'd
+// type into Google Maps' search box works ("hair salon", "24 hour pharmacy",
+// "vegan restaurant"). These are just a starting-point autocomplete, not a
+// fixed list — typing something else is fine.
+const CATEGORY_SUGGESTIONS = [
+  "hair salon",
+  "beauty salon",
+  "nail salon",
+  "barber shop",
+  "dentist",
+  "physiotherapist",
+  "veterinary clinic",
+  "gym",
+  "yoga studio",
+  "massage therapist",
+  "tattoo studio",
+  "photographer",
+  "wedding photographer",
+  "restaurant",
+  "cafe",
+  "bakery",
+  "florist",
+  "auto repair shop",
+  "plumber",
+  "electrician",
+  "law firm",
+  "accountant",
+  "real estate agency",
+  "architect",
+];
+
 interface Pair {
   query: string;
   location: string;
 }
 
-interface Run {
+interface SingleRun {
+  kind: "single";
   id: string;
   query: string;
   location: string;
@@ -23,6 +55,33 @@ interface Run {
   createdAt: string;
 }
 
+interface SweepRun {
+  kind: "sweep";
+  sweep: string;
+  sweepBatchId: string;
+  query: string;
+  status: string;
+  regionsTotal: number;
+  regionsRunning: number;
+  regionsErrored: number;
+  totalFound: number;
+  newLeads: number;
+  cachedHits: number;
+  detailCalls: number;
+  createdAt: string;
+  ids: string[];
+  regions: {
+    id: string;
+    location: string;
+    status: string;
+    error: string | null;
+    totalFound: number;
+    newLeads: number;
+  }[];
+}
+
+type Run = SingleRun | SweepRun;
+
 export function SearchLauncher() {
   const [pairs, setPairs] = useState<Pair[]>([{ query: "", location: "" }]);
   const [runs, setRuns] = useState<Run[]>([]);
@@ -33,6 +92,8 @@ export function SearchLauncher() {
     null,
   );
   const [clearing, setClearing] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
   // Look up how much of the Slovenia sweep is already covered for whatever
   // category is currently typed in the first row.
@@ -175,10 +236,46 @@ export function SearchLauncher() {
     }
   }
 
+  // Remove rows from the run ledger (never touches leads — see the API route).
+  async function deleteRuns(key: string, ids: string[]) {
+    setError(null);
+    setDeletingKey(key);
+    try {
+      const res = await fetch("/api/search-runs", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Request failed (${res.status})`);
+      }
+      setRefresh((n) => n + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDeletingKey(null);
+    }
+  }
+
+  function toggleExpanded(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-8">
       {/* Form */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-5">
+        <datalist id="category-suggestions">
+          {CATEGORY_SUGGESTIONS.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
         <div className="space-y-2">
           {pairs.map((p, i) => (
             <div key={i} className="flex gap-2">
@@ -186,6 +283,7 @@ export function SearchLauncher() {
                 value={p.query}
                 onChange={(e) => updatePair(i, "query", e.target.value)}
                 placeholder="Category — e.g. hair salon"
+                list="category-suggestions"
                 className="flex-1 bg-[var(--panel-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
               />
               <input
@@ -206,6 +304,10 @@ export function SearchLauncher() {
             </div>
           ))}
         </div>
+        <p className="mt-1.5 text-[11px] text-[var(--muted)]">
+          Category is free text — same as typing into Google Maps search. Start typing for
+          suggestions, or use anything else Google would match (e.g. &quot;24 hour pharmacy&quot;).
+        </p>
 
         <div className="flex items-center justify-between mt-4">
           <button
@@ -267,39 +369,133 @@ export function SearchLauncher() {
                 <th className="px-4 py-3 font-medium">New</th>
                 <th className="px-4 py-3 font-medium">Cached</th>
                 <th className="px-4 py-3 font-medium">Details billed</th>
+                <th className="px-4 py-3 font-medium w-8" />
               </tr>
             </thead>
             <tbody>
               {runs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-[var(--muted)]">
+                  <td colSpan={7} className="px-4 py-8 text-center text-[var(--muted)]">
                     No searches yet.
                   </td>
                 </tr>
               )}
-              {runs.map((r) => (
-                <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{r.query}</div>
-                    <div className="text-[11px] text-[var(--muted)]">{r.location}</div>
-                    {r.error && (
-                      <div className="text-[11px] text-[var(--hot)] mt-0.5">{r.error}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusPill status={r.status} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-[var(--muted)]">{r.totalFound}</td>
-                  <td className="px-4 py-3 font-mono text-[var(--warm)]">{r.newLeads}</td>
-                  <td className="px-4 py-3 font-mono text-[var(--muted)]">{r.cachedHits}</td>
-                  <td className="px-4 py-3 font-mono text-[var(--muted)]">{r.detailCalls}</td>
-                </tr>
-              ))}
+              {runs.map((r) =>
+                r.kind === "single" ? (
+                  <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="font-medium">{r.query}</div>
+                      <div className="text-[11px] text-[var(--muted)]">{r.location}</div>
+                      {r.error && (
+                        <div className="text-[11px] text-[var(--hot)] mt-0.5">{r.error}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill status={r.status} />
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[var(--muted)]">{r.totalFound}</td>
+                    <td className="px-4 py-3 font-mono text-[var(--warm)]">{r.newLeads}</td>
+                    <td className="px-4 py-3 font-mono text-[var(--muted)]">{r.cachedHits}</td>
+                    <td className="px-4 py-3 font-mono text-[var(--muted)]">{r.detailCalls}</td>
+                    <td className="px-4 py-3">
+                      {r.status !== "running" && (
+                        <button
+                          onClick={() => deleteRuns(r.id, [r.id])}
+                          disabled={deletingKey === r.id}
+                          aria-label="Delete run"
+                          title="Delete this run"
+                          className="text-[var(--muted)] hover:text-[var(--hot)] disabled:opacity-50"
+                        >
+                          🗑
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  <SweepRowGroup
+                    key={r.sweepBatchId}
+                    run={r}
+                    isExpanded={expanded.has(r.sweepBatchId)}
+                    onToggle={() => toggleExpanded(r.sweepBatchId)}
+                    onDelete={() => deleteRuns(r.sweepBatchId, r.ids)}
+                    deleting={deletingKey === r.sweepBatchId}
+                  />
+                ),
+              )}
             </tbody>
           </table>
         </div>
       </div>
     </div>
+  );
+}
+
+function SweepRowGroup({
+  run,
+  isExpanded,
+  onToggle,
+  onDelete,
+  deleting,
+}: {
+  run: SweepRun;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <>
+      <tr className="border-b border-[var(--border)] last:border-0 bg-[var(--panel-2)]/40">
+        <td className="px-4 py-3">
+          <button
+            onClick={onToggle}
+            className="flex items-center gap-1.5 font-medium hover:text-[var(--accent)]"
+          >
+            <span className="text-[10px] text-[var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
+            🇸🇮 {run.query}
+          </button>
+          <div className="text-[11px] text-[var(--muted)]">
+            Slovenia sweep — {run.regionsTotal} regions
+            {run.regionsErrored > 0 && `, ${run.regionsErrored} errored`}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <StatusPill status={run.status} />
+        </td>
+        <td className="px-4 py-3 font-mono text-[var(--muted)]">{run.totalFound}</td>
+        <td className="px-4 py-3 font-mono text-[var(--warm)]">{run.newLeads}</td>
+        <td className="px-4 py-3 font-mono text-[var(--muted)]">{run.cachedHits}</td>
+        <td className="px-4 py-3 font-mono text-[var(--muted)]">{run.detailCalls}</td>
+        <td className="px-4 py-3">
+          {run.status !== "running" && (
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              aria-label="Delete sweep"
+              title="Delete every region row in this sweep"
+              className="text-[var(--muted)] hover:text-[var(--hot)] disabled:opacity-50"
+            >
+              🗑
+            </button>
+          )}
+        </td>
+      </tr>
+      {isExpanded &&
+        run.regions.map((reg) => (
+          <tr key={reg.id} className="border-b border-[var(--border)] last:border-0">
+            <td className="pl-10 pr-4 py-2 text-[13px] text-[var(--muted)]">{reg.location}</td>
+            <td className="px-4 py-2">
+              <StatusPill status={reg.status} />
+            </td>
+            <td className="px-4 py-2 font-mono text-[13px] text-[var(--muted)]">
+              {reg.totalFound}
+            </td>
+            <td className="px-4 py-2 font-mono text-[13px] text-[var(--warm)]">{reg.newLeads}</td>
+            <td className="px-4 py-2" colSpan={2} />
+            <td className="px-4 py-2" />
+          </tr>
+        ))}
+    </>
   );
 }
 
