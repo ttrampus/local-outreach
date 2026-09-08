@@ -38,6 +38,21 @@ export async function createSearchRun(query: string, location: string) {
   });
 }
 
+/** Locations already swept for this (sweep, query) — safe to skip on a re-launch. */
+export async function getSweepProgress(sweep: string, query: string): Promise<Set<string>> {
+  const rows = await prisma.sweepProgress.findMany({
+    where: { sweep, query },
+    select: { location: true },
+  });
+  return new Set(rows.map((r) => r.location));
+}
+
+/** Forget sweep progress for (sweep, query), so the next launch re-covers every region. */
+export async function clearSweepProgress(sweep: string, query: string): Promise<number> {
+  const { count } = await prisma.sweepProgress.deleteMany({ where: { sweep, query } });
+  return count;
+}
+
 /**
  * Run discovery for one (query, location) pair against the active LeadSource.
  * Never throws — failures are written to the SearchRun row.
@@ -215,12 +230,30 @@ export async function runDiscovery(
  * per-SKU daily/monthly cost ceilings tight (parallel runs race the read-then-act
  * cap check and can overshoot). Each runDiscovery swallows its own errors, so one
  * bad region never aborts the rest of the sweep.
+ *
+ * When `sweep` is given, each region that finishes as "done" (even if it stopped
+ * early on a cost cap — it was still searched) is recorded in SweepProgress, so a
+ * later sweep launch skips it instead of re-spending Text Search calls on it.
  */
 export async function runDiscoveryBatch(
   runs: { runId: string; query: string; location: string }[],
+  sweep?: string,
 ): Promise<void> {
   for (const r of runs) {
     await runDiscovery(r.runId, r.query, r.location);
+    if (sweep) {
+      const run = await prisma.searchRun.findUnique({
+        where: { id: r.runId },
+        select: { status: true },
+      });
+      if (run?.status === "done") {
+        await prisma.sweepProgress.upsert({
+          where: { sweep_query_location: { sweep, query: r.query, location: r.location } },
+          create: { sweep, query: r.query, location: r.location },
+          update: {},
+        });
+      }
+    }
   }
 }
 

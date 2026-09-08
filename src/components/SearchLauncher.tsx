@@ -29,6 +29,33 @@ export function SearchLauncher() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0); // bump to re-trigger the poll effect
+  const [sweepProgress, setSweepProgress] = useState<{ done: number; total: number } | null>(
+    null,
+  );
+  const [clearing, setClearing] = useState(false);
+
+  // Look up how much of the Slovenia sweep is already covered for whatever
+  // category is currently typed in the first row.
+  const sweepQuery = pairs[0]?.query.trim();
+  useEffect(() => {
+    if (!sweepQuery) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/discover?sweep=slovenia&query=${encodeURIComponent(sweepQuery)}`,
+        );
+        if (!res.ok || !alive) return;
+        const data = await res.json();
+        if (alive) setSweepProgress({ done: data.done.length, total: data.total });
+      } catch {
+        // Best-effort — the sweep button still works without this hint.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [sweepQuery, refresh]);
 
   // Fetch runs on mount and whenever `refresh` is bumped (e.g. after launching).
   // Self-reschedules only while a run is still in progress, so polling stops on
@@ -108,11 +135,43 @@ export function SearchLauncher() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? `Request failed (${res.status})`);
       }
+      const data = await res.json();
+      if (data.runs.length === 0 && data.message) {
+        setError(data.message);
+      }
       setRefresh((n) => n + 1);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // Forget sweep progress for the first row's category, so the next sweep
+  // re-covers every region instead of skipping the ones already done.
+  async function clearSweepProgressFor() {
+    setError(null);
+    const query = pairs[0]?.query.trim();
+    if (!query) {
+      setError("Enter a category in the first row to clear its sweep progress.");
+      return;
+    }
+    setClearing(true);
+    try {
+      const res = await fetch("/api/discover", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, sweep: "slovenia" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `Request failed (${res.status})`);
+      }
+      setRefresh((n) => n + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -156,13 +215,26 @@ export function SearchLauncher() {
             + Add another pair
           </button>
           <div className="flex items-center gap-2">
+            {sweepQuery && sweepProgress && sweepProgress.done > 0 && (
+              <button
+                onClick={clearSweepProgressFor}
+                disabled={clearing}
+                title="Forget which regions were already covered, so the next sweep re-covers all of them."
+                className="text-sm text-[var(--muted)] hover:text-[var(--hot)] disabled:opacity-50"
+              >
+                {clearing ? "Clearing…" : "Clear sweep progress"}
+              </button>
+            )}
             <button
               onClick={launchSweep}
               disabled={submitting}
-              title={`Runs the first row's category across all ${SLOVENIA_COUNT} Slovenian regions (location ignored).`}
+              title={`Runs the first row's category across Slovenian regions not already covered (location ignored).`}
               className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--text)] text-sm font-medium hover:border-[var(--accent)] disabled:opacity-50"
             >
-              🇸🇮 Sweep all Slovenia ({SLOVENIA_COUNT})
+              🇸🇮 Sweep all Slovenia{" "}
+              {sweepQuery && sweepProgress
+                ? `(${sweepProgress.done}/${sweepProgress.total} done)`
+                : `(${SLOVENIA_COUNT})`}
             </button>
             <button
               onClick={launch}
@@ -174,9 +246,10 @@ export function SearchLauncher() {
           </div>
         </div>
         <p className="mt-2 text-[11px] text-[var(--muted)]">
-          Sweep fans the first row&apos;s category across {SLOVENIA_COUNT} regions, then stops
-          fetching new businesses once your daily/monthly cost cap is reached — rerun on
-          later days to continue where it left off.
+          Sweep fans the first row&apos;s category across {SLOVENIA_COUNT} regions, skipping any
+          already covered by a previous sweep of the same category, and stops fetching new
+          businesses once your daily/monthly cost cap is reached — rerun (any day) to continue
+          where it left off. Use &quot;Clear sweep progress&quot; to start that category over.
         </p>
         {error && <p className="mt-3 text-sm text-[var(--hot)]">{error}</p>}
       </div>

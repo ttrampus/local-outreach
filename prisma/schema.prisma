@@ -141,6 +141,19 @@ model SearchRun {
   updatedAt   DateTime @updatedAt
 }
 
+/// Marks a (sweep, query, location) region as already covered, so re-launching a
+/// sweep skips regions it already searched instead of re-spending Text Search
+/// calls on them. Cleared explicitly to force a full re-sweep.
+model SweepProgress {
+  id        String   @id @default(cuid())
+  sweep     String
+  query     String
+  location  String
+  createdAt DateTime @default(now())
+
+  @@unique([sweep, query, location])
+}
+
 /// Raw API response cache, keyed by placeId. Never re-fetch a cached place.
 model PlaceCache {
   placeId   String   @id
