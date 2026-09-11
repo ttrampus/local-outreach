@@ -28,10 +28,10 @@ export function SiteFooter() {
                 <Link href="/examples" className="transition-colors hover:text-[var(--accent)]">
                   Primeri
                 </Link>
-                <Link href="/#cena" className="transition-colors hover:text-[var(--accent)]">
+                <Link href="/#quote" className="transition-colors hover:text-[var(--accent)]">
                   Cena
                 </Link>
-                <Link href="/#vprasanja" className="transition-colors hover:text-[var(--accent)]">
+                <Link href="/#faq" className="transition-colors hover:text-[var(--accent)]">
                   Vprašanja
                 </Link>
               </div>

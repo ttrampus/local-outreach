@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restavracija</title>
+<meta name="description" content="">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;500;700&family=Inter:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ---- LocalSite core styles (shared) ---- */
+[hidden]{display:none!important}
+.no-gallery [data-section="gallery"],.photos-pending [data-section="gallery"]{display:none!important}
+.ls-img{display:block;width:100%;height:100%;object-fit:cover;filter:var(--ph-filter,none)}
+.ls-ph{position:relative;overflow:hidden}
+.ls-ph.q-lo .ls-img{filter:var(--ph-filter-lo,var(--ph-filter,none))}
+/* Low-resolution photos get film grain: it hides JPEG blocking and upscaling mush */
+.ls-ph.q-lo::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:var(--grain,.28);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.ls-stars{--s:16px;display:inline-block;vertical-align:middle;width:calc(var(--s)*5);height:var(--s);flex:none;
+  background:linear-gradient(90deg,var(--star-on,currentColor) var(--fill,100%),var(--star-off,rgba(127,127,127,.3)) 0);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-2 -2 28 28'%3E%3Cpath d='M12 1.8l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 18l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z'/%3E%3C/svg%3E") 0 0/var(--s) var(--s) repeat-x;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-2 -2 28 28'%3E%3Cpath d='M12 1.8l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 18l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z'/%3E%3C/svg%3E") 0 0/var(--s) var(--s) repeat-x}
+.ls-map{position:relative;overflow:hidden}
+.ls-map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:var(--map-filter,none)}
+.ls-map.is-loaded [data-map-facade]{display:none}
+[data-gallery] .ls-img{cursor:pointer}
+/* lightbox: a full-viewport stage, so the photo sits dead centre whatever its shape.
+   The explicit margin matters — the sitewide `*{margin:0}` reset kills a dialog's
+   default `margin:auto`, which is what parks an unsized modal against the edge. */
+dialog.ls-lightbox{position:fixed;inset:0;width:100%;max-width:100%;height:100%;max-height:100%;margin:0;padding:0;border:0;background:rgba(0,0,0,.93);overflow:hidden}
+dialog.ls-lightbox::backdrop{background:rgba(0,0,0,.92)}
+.ls-lightbox .lb-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:clamp(16px,6vw,80px)}
+.ls-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;cursor:pointer;box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.ls-lightbox .lb-nav,.ls-lightbox .lb-close{position:absolute;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:300 30px/1 system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ls-lightbox .lb-nav:hover,.ls-lightbox .lb-close:hover{background:rgba(255,255,255,.3)}
+.ls-lightbox .lb-nav{top:50%;transform:translateY(-50%);width:52px;height:52px}
+.ls-lightbox .lb-prev{left:clamp(8px,2vw,26px)}
+.ls-lightbox .lb-next{right:clamp(8px,2vw,26px)}
+.ls-lightbox .lb-close{top:clamp(8px,2vw,26px);right:clamp(8px,2vw,26px);width:44px;height:44px;font-size:26px}
+.ls-lightbox .lb-count{position:absolute;left:0;right:0;bottom:clamp(10px,2vw,22px);text-align:center;color:rgba(255,255,255,.75);font:400 13px/1 system-ui,sans-serif;letter-spacing:.1em}
+.ls-lightbox.is-single .lb-nav,.ls-lightbox.is-single .lb-count{display:none}
+@media (max-width:640px){.ls-lightbox .lb-nav{width:42px;height:42px;font-size:24px}}
+.ls-skip{position:absolute;left:-999px;top:0;z-index:100;padding:12px 16px;background:#000;color:#fff}
+.ls-skip:focus{left:12px;top:12px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+:root{
+  --gold:#faae33; --rust:#823513; --saffron:#9f531b; --spice:#402011; --clove:#281006; --cardamom:#6b2e12; --chili:#d1255c;
+  --d:Antonio,'Bebas Neue','Druk Wide',Impact,sans-serif; --t:Inter,Geist,system-ui,sans-serif;
+  --ph-filter:saturate(1.05) contrast(1.06);
+  --ph-filter-lo:sepia(.35) saturate(1.1) contrast(1.12) blur(.3px);
+  --grain:.35;
+}
+*{box-sizing:border-box;margin:0}
+html{background:var(--rust);color:var(--gold);font-family:var(--d);-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-size:18px;line-height:1.2;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px dotted var(--gold);outline-offset:4px}
+.wrap{max-width:1440px;margin:0 auto;padding-inline:clamp(16px,3vw,40px)}
+.micro{font-family:var(--t);font-weight:500;font-size:13px;line-height:1.3;letter-spacing:.01em}
+.ui{font-family:var(--d);font-weight:500;font-size:13px;letter-spacing:.01em;text-transform:uppercase}
+.pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 17px;border:1px solid var(--gold);border-radius:9999px;color:var(--gold);font-family:var(--d);font-weight:500;font-size:13px;letter-spacing:.01em;text-transform:uppercase;background:transparent;cursor:pointer;transition:background .15s,color .15s}
+.pill:hover{background:var(--gold);color:var(--clove)}
+.pill-fill{background:var(--gold);color:var(--clove);padding:10px 20px}
+.pill-fill:hover{background:#ffc160}
+.rule{border:0;border-top:1px dotted var(--gold);margin:0}
+.badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:9999px;background:var(--gold);color:var(--clove);font-family:var(--d);font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.02em}
+.badge-hot{background:var(--chili);color:#fff}
+.badge-dim{background:var(--spice);color:var(--gold)}
+
+/* botanical watermark */
+.leaf{position:absolute;pointer-events:none;color:var(--saffron);opacity:.22;z-index:-1}
+
+/* nav */
+.nav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;padding-block:20px}
+.nav-l{display:flex;gap:8px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:29px;line-height:1;text-transform:uppercase;letter-spacing:-.005em}
+.nav-r{display:flex;justify-content:flex-end;gap:8px}
+
+/* hero poster */
+.hero{position:relative;isolation:isolate;padding-block:48px 72px;overflow:hidden}
+.eyebrow{font-weight:500;font-size:13px;letter-spacing:.01em;text-transform:uppercase}
+.poster{font-weight:700;font-size:213px;line-height:.8;letter-spacing:-.02em;text-transform:uppercase;display:block;width:100%;margin:22px 0 0;padding-bottom:.07em}
+.hero-row{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:end;margin-top:40px}
+/* 22ch fitted the demo line but broke a real one: the moment a phone number is
+   in the sentence it fell to three ragged lines under a poster-width headline. */
+.hero-sub{font-weight:500;font-size:29px;line-height:1.1;text-transform:uppercase;max-width:34ch}
+.hero-cta{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+
+/* sections */
+.sec{padding-block:96px;position:relative;isolation:isolate}
+.big{font-weight:700;font-size:101px;line-height:.9;letter-spacing:-.016em;text-transform:uppercase}
+.mid{font-weight:700;font-size:65px;line-height:.95;letter-spacing:-.01em;text-transform:uppercase}
+.split{display:grid;grid-template-columns:5fr 7fr;gap:40px;align-items:start}
+.cap{margin-top:22px;max-width:44ch;text-transform:uppercase}
+
+/* menu */
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:10px;list-style:none;padding:0}
+.dish{background:var(--spice);border-radius:6px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-content:start}
+.dish h3{font-weight:700;font-size:29px;line-height:1.1;letter-spacing:-.005em;text-transform:uppercase}
+.dish p{grid-column:1/-1;opacity:.82}
+.dish [data-f="price"]{align-self:start}
+.dish .badge-hot{justify-self:start}
+.dish:first-of-type{grid-column:1/-1;background:var(--clove)}
+
+/* feature (photo raw on canvas) */
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:end}
+.feature-ph{display:none;aspect-ratio:4/3;max-height:520px}
+.feature.has-photo .feature-ph{display:block}
+.feature:not(.has-photo){grid-template-columns:1fr}
+
+/* gallery: small raw photos */
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;list-style:none;padding:0}
+.gal li{aspect-ratio:1;position:relative}
+.gal figure{position:absolute;inset:0}
+
+/* score + reviews */
+.score{font-weight:700;font-size:195px;line-height:.8;letter-spacing:-.02em;display:block}
+.score-row{display:flex;align-items:center;gap:14px;margin-top:44px;flex-wrap:wrap}
+.score-row .ls-stars{--s:22px;--star-on:var(--gold);--star-off:var(--cardamom)}
+.revs{display:grid;gap:10px;list-style:none;padding:0}
+.rev{background:var(--spice);border-radius:6px;padding:20px;display:grid;gap:16px}
+.rev blockquote{font-weight:500;font-size:29px;line-height:1.1;text-transform:uppercase;letter-spacing:-.005em}
+.rev .ls-stars{--s:14px;--star-on:var(--gold);--star-off:var(--cardamom)}
+
+/* visit */
+.visit{display:grid;grid-template-columns:5fr 7fr;gap:10px}
+.box{background:var(--spice);border-radius:6px;padding:20px}
+.hours{list-style:none;padding:0;margin-top:16px}
+.hours li{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-top:1px dotted var(--cardamom);font-weight:500;font-size:18px;text-transform:uppercase}
+.hours li.is-today{background:var(--gold);color:var(--clove);border-radius:9999px;border-color:transparent}
+.hours li.is-today + li{border-color:transparent}
+.contact{margin-top:24px;display:grid;gap:10px}
+.contact .mid{font-size:42px}
+.map{border-radius:6px;min-height:480px;background:var(--clove)}
+.facade{position:absolute;inset:0;padding:20px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;overflow:hidden}
+.facade .big{font-size:72px}
+
+footer{background:var(--clove);padding-block:40px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:16px 32px;flex-wrap:wrap}
+.callbar{display:none}
+
+@media (max-width:1000px){
+  .nav-l{display:none}
+  .nav{grid-template-columns:1fr auto}
+  .brand{justify-self:start}
+  .hero-row,.split,.feature,.visit{grid-template-columns:1fr}
+  .hero-cta{justify-content:flex-start}
+  .big{font-size:72px}.mid{font-size:48px}
+  .score{font-size:140px}
+  .gal{grid-template-columns:1fr 1fr}
+}
+@media (max-width:600px){
+  .sec{padding-block:64px}
+  .hero{padding-block:24px 56px}
+  .hero-sub{font-size:24px}
+  .menu{grid-template-columns:1fr}
+  .dish h3,.rev blockquote{font-size:24px}
+  .big{font-size:56px}
+  .nav-r .pill-fill{display:none}
+  .map{min-height:380px}
+  footer{padding-bottom:110px}
+  .callbar{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--clove);border-top:1px dotted var(--gold)}
+  .callbar .pill{padding:13px}
+}
+</style>
+</head>
+<body>
+<a class="ls-skip" href="#main">Preskoči na vsebino</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sprig" viewBox="0 0 200 320"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M100 318C98 230 104 150 100 8"/><path d="M100 60c-26-8-44-28-50-52 26 2 46 22 50 52zM100 60c26-8 44-28 50-52-26 2-46 22-50 52zM101 120c-34-8-58-34-66-66 34 4 60 30 66 66zM101 120c34-8 58-34 66-66-34 4-60 30-66 66zM101 186c-38-8-66-40-74-76 38 4 68 36 74 76zM101 186c38-8 66-40 74-76-38 4-68 36-74 76zM101 250c-40-8-70-42-78-80 40 4 72 38 78 80zM101 250c40-8 70-42 78-80-40 4-72 38-78 80z"/></g></symbol>
+</svg>
+
+<header class="wrap nav">
+  <nav class="nav-l" aria-label="Glavni meni"><a class="pill" href="#meni" data-t="nav_menu"></a><a class="pill" href="#mnenja" data-t="nav_reviews"></a><a class="pill" href="#obisk" data-t="nav_visit"></a></nav>
+  <a class="brand" href="#" data-bind="short"></a>
+  <div class="nav-r"><a class="pill pill-fill" data-href="tel" data-t="book"></a></div>
+</header>
+<hr class="rule">
+
+<section class="hero wrap" aria-label="Uvod">
+  <svg class="leaf" style="right:-40px;top:-20px;width:420px;height:672px;transform:rotate(18deg)"><use href="#sprig"/></svg>
+  <svg class="leaf" style="left:38%;bottom:-160px;width:300px;height:480px;transform:rotate(-24deg)"><use href="#sprig"/></svg>
+  <p class="eyebrow" data-t="hero_eyebrow"></p>
+  <h1 class="poster" data-fit="fill" data-fit-max="360" data-fit-min="64" data-bind="short"></h1>
+  <div class="hero-row">
+    <p class="hero-sub" data-t="hero_sub"></p>
+    <div class="hero-cta"><a class="pill pill-fill" data-href="tel" data-t="book_long"></a><a class="pill" href="#meni" data-t="nav_menu"></a></div>
+  </div>
+  <div class="hero-meta">
+    <span class="badge" data-open-status></span>
+    <span class="badge badge-dim" data-requires="rating"><span data-bind="rating"></span>&nbsp;/ 5 Google</span>
+    <span class="badge badge-dim" data-bind="street"></span>
+  </div>
+</section>
+
+<main id="main">
+  <hr class="rule">
+  <section class="sec wrap" id="meni" data-section="services">
+    <div class="split">
+      <div><h2 class="big" data-t="menu_title"></h2><p class="micro cap" data-t="menu_text"></p></div>
+      <ul class="menu" data-services>
+        <template><li class="dish"><h3 data-f="name"></h3><span class="badge" data-f="price"></span><p class="micro" data-f="desc"></p><span class="badge badge-hot" data-f="note"></span></li></template>
+      </ul>
+    </div>
+  </section>
+
+  <hr class="rule">
+  <section class="sec wrap">
+    <svg class="leaf" style="left:-60px;top:40px;width:320px;height:512px;transform:rotate(-12deg)"><use href="#sprig"/></svg>
+    <div class="feature" data-photo-host>
+      <div><h2 class="big" data-t="feature_title"></h2><p class="micro cap" data-t="feature_text"></p></div>
+      <div class="feature-ph" data-photo-slot data-min-px="500000"></div>
+    </div>
+  </section>
+
+  <section class="wrap" data-section="gallery" style="padding-bottom:96px">
+    <ul class="gal" data-gallery data-max="8"><template><li><figure data-f="photo"></figure></li></template></ul>
+  </section>
+
+  <hr class="rule">
+  <section class="sec wrap" id="mnenja" data-section="reviews">
+    <div class="split">
+      <div data-requires="rating"><span class="score" data-bind="rating"></span><div class="score-row"><span class="ls-stars" data-stars></span><span class="ui" data-t="score_text"></span></div></div>
+      <div>
+        <ul class="revs" data-reviews data-limit="3" data-max="180" data-hide-empty><template><li class="rev"><span class="ls-stars" data-f="stars"></span><blockquote data-f="text"></blockquote><span class="micro" data-f="author"></span></li></template></ul>
+        <p style="margin-top:16px"><a class="pill" data-href="reviews" data-t="all_reviews"></a></p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+  <section class="sec wrap" id="obisk">
+    <h2 class="big" data-t="visit_title" style="margin-bottom:40px"></h2>
+    <div class="visit">
+      <div class="box" data-section="hours">
+        <span class="badge" data-open-status></span>
+        <ul class="hours" data-hours><template><li><span data-f="day"></span><span data-f="val"></span></li></template></ul>
+        <div class="contact"><span class="micro" data-t="contact_label"></span><a class="mid" data-href="tel" data-bind="phone"></a><a class="micro" data-href="email" data-bind="email"></a></div>
+      </div>
+      <div class="map ls-map" data-section="map" data-map>
+        <div class="facade" data-map-facade><span class="eyebrow" data-t="map_label"></span><p class="big"><span data-bind="street"></span><br><span data-bind="city"></span></p><button class="pill pill-fill" type="button" data-map-load data-t="map_load"></button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot"><span class="brand" data-bind="short"></span><span class="micro" data-bind="name_raw"></span><span class="micro" data-bind="address"></span><span class="micro">© <span data-bind="year"></span></span></div>
+</footer>
+<div class="callbar"><a class="pill pill-fill" data-href="tel" data-t="book"></a><a class="pill" data-href="directions" data-t="directions_short"></a></div>
+
+<script type="application/json" id="template-defaults">
+{
+  "schema_type": "Restaurant",
+  "services": [
+    {"name": "Dnevna malica", "desc": "Juha, glavna jed in solata. Vsak dan drugačna.", "note": "Med tednom"},
+    {"name": "Jedi z žara", "desc": "Meso in zelenjava, pečena na odprtem ognju."},
+    {"name": "Domače jedi", "desc": "Jedi po receptih, ki jih kuhamo že leta."},
+    {"name": "Sladice", "desc": "Domače pecivo in sladice dneva."},
+    {"name": "Za s seboj", "desc": "Pokličite naprej in hrano pripravimo za prevzem."}
+  ],
+  "labels": {
+    "meta_title": "{name} | {type}, {city}",
+    "meta_description": "{type} na naslovu {street}, {city}. Rezervacije in naročila za s seboj: {phone}.",
+    "nav_menu": "Meni", "nav_reviews": "Mnenja", "nav_visit": "Kontakt",
+    "book": "Rezerviraj", "book_long": "Rezerviraj mizo", "directions_short": "Pot",
+    "hero_eyebrow": "{type}, {city}",
+    "hero_sub": "Rezervacije in hrana za s seboj po telefonu {phone}.",
+    "menu_title": "Meni", "menu_text": "Ponudba se spreminja s sezono. Za današnje jedi nas pokličite.",
+    "feature_title": "Pripravljeno na ognju", "feature_text": "Vse, kar gre na žar, pripravimo sproti, ko naročite.",
+    "score_text": "{count} {count_word} na Googlu",
+    "review_anon": "Gost na Googlu", "all_reviews": "Vsa mnenja na Googlu",
+    "visit_title": "Pridite na obisk", "contact_label": "Rezervacije in naročila",
+    "map_label": "Kje smo", "map_load": "Prikaži zemljevid"
+  }
+}
+</script>
+
+<!-- ============ BUSINESS DATA — replace on every generation (demo data below is fictional) ============ -->
+<script type="application/json" id="business-data">
+{
+  "name_raw": "Gostilna Trnovski pristan",
+  "name": "Gostilna Trnovski pristan",
+  "short_name": "Trnovski pristan",
+  "type": "Gostilna",
+  "categories": [
+    "restaurant",
+    "food",
+    "point_of_interest",
+    "establishment"
+  ],
+  "address": "Trnovski pristan 4a, 1000 Ljubljana, Slovenija",
+  "phone": "+386 40 493 144",
+  "rating": 4.9,
+  "review_count": 623,
+  "hours": [
+    "ponedeljek: Zaprto",
+    "torek: 16:00–22:00",
+    "sreda: 16:00–22:00",
+    "četrtek: 16:00–22:00",
+    "petek: 16:00–22:00",
+    "sobota: 12:00–22:00",
+    "nedelja: Zaprto"
+  ],
+  "reviews": [
+    {
+      "text": "Zelo prijetno sobotno kosilo. Njihova hisna pasteta za umret dobra. Vso meso, ki smo ga narocili je bilo okusno. Postrezba skupaj z iskreno prijaznostjo res na nivoju. Zelo redko naletis na tako fajno gostilno v centru mesta. Priporocam.",
+      "rating": 5,
+      "author": "Nastja Trajkovič"
+    },
+    {
+      "text": "Zelo prijeten ambient, prijazen gostitelj, ki odlicno predstavi jedi in vina. Da o hrani ne govorim, odlično pripravljena, postrežena ter zelo okusna. Resnično pestra slovenska kulinarika, toplo priporočam 😉.",
+      "rating": 5,
+      "author": "Mateja Remic"
+    },
+    {
+      "text": "Zelo prijeten ambient za druženje ob dobri hrani in vinu. Zelo prijazen lastnik, ki nam je priporočil in predstavil njihove najbolj značilne jedi in vino, ki se je prilegalo tem. Zagotovo se bomo še vrnili :)",
+      "rating": 5,
+      "author": "Luka"
+    },
+    {
+      "text": "Odlična gostilna z atmosfero kjer se počutiš kot doma in šefom ki je hkrati tudi natakar ki z odličnimi nasveti poskrbi za nepozabno kulinarično doživetje kjer pozabiš na čas. Priporočilo za narezek, domači kruh, različne jedi iz krškopoljskega pujsa ter divjačinski golaž ter tudi druge morske jedi, posebna pohvala tudi za domače štruklje, vsekakor vredno ponovnega obiska.",
+      "rating": 5,
+      "author": "puol5"
+    },
+    {
+      "text": "Imeli smo čudovito kulinarično izkušnjo. Okusna in lepo postrežena hrana, prijazen lastnik, ki skrbi za prijetno počutje gostov, lep, umirjen ambient. Tudi prijatelji iz tujine so bili navdušeni. Zagotovo še pridemo.",
+      "rating": 5,
+      "author": "Martina Jug"
+    }
+  ],
+  "photos": [
+    {
+      "src": "photos/t06/00.webp",
+      "width": 1170,
+      "height": 1551
+    },
+    {
+      "src": "photos/t06/01.webp",
+      "width": 1800,
+      "height": 1350
+    },
+    {
+      "src": "photos/t06/02.webp",
+      "width": 1200,
+      "height": 1600
+    },
+    {
+      "src": "photos/t06/03.webp",
+      "width": 1350,
+      "height": 1800
+    },
+    {
+      "src": "photos/t06/04.webp",
+      "width": 1800,
+      "height": 1350
+    },
+    {
+      "src": "photos/t06/05.webp",
+      "width": 1600,
+      "height": 1200
+    },
+    {
+      "src": "photos/t06/06.webp",
+      "width": 1800,
+      "height": 1350
+    },
+    {
+      "src": "photos/t06/07.webp",
+      "width": 1800,
+      "height": 1321
+    }
+  ],
+  "google_maps_url": "https://maps.google.com/?cid=10596782148957613732&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+}
+</script>
+<script>
+/* ==========================================================================
+   LocalSite core — renders #business-data JSON into the template's slots.
+   Shared by all templates (inlined at build time). No dependencies.
+   ========================================================================== */
+(function () {
+  'use strict';
+  var doc = document, root = doc.documentElement;
+  var $ = function (s, r) { return (r || doc).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
+
+  function readJSON(id) {
+    var el = doc.getElementById(id);
+    if (!el) return {};
+    try { return JSON.parse(el.textContent); } catch (e) { console.error('[LocalSite] Invalid JSON in #' + id, e); return {}; }
+  }
+  function isEmpty(v) { return v == null || v === '' || (Array.isArray(v) && v.length === 0); }
+  function isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+  function merge(a, b) {
+    var o = {}, k;
+    for (k in a) o[k] = a[k];
+    for (k in b) if (!isEmpty(b[k])) o[k] = (isObj(a[k]) && isObj(b[k])) ? merge(a[k], b[k]) : b[k];
+    return o;
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  var CORE_LABELS = {
+    status_open: 'Odprto do {t}',
+    status_closed: 'Zaprto, odpremo {when} ob {t}',
+    status_closed_plain: 'Trenutno zaprto',
+    today_word: 'danes', tomorrow_word: 'jutri',
+    days_acc: ['v nedeljo', 'v ponedeljek', 'v torek', 'v sredo', 'v četrtek', 'v petek', 'v soboto'],
+    reviews_word: { one: 'mnenje', two: 'mnenji', few: 'mnenja', other: 'mnenj' },
+    map_title: 'Zemljevid: {name}',
+    photo_alt: '{name}, fotografija {n}',
+    photo_close: 'Zapri', photo_prev: 'Prej\u0161nja fotografija', photo_next: 'Naslednja fotografija'
+  };
+
+  var T = readJSON('template-defaults');
+  var B = readJSON('business-data');
+  var D = merge(T, B);
+  D.labels = merge(CORE_LABELS, merge(T.labels || {}, B.labels || {}));
+  var L = D.labels;
+  var params = new URLSearchParams(location.search);
+  if (params.has('nophotos')) D.photos = [];
+
+  /* ---------- derived values ---------- */
+  var locale = D.locale || 'sl-SI';
+  var lang = locale.split('-')[0];
+  var legalRe = /[\s,]+(s\.\s?p\.|d\.\s?o\.\s?o\.|d\.\s?n\.\s?o\.|k\.\s?d\.|d\.\s?d\.|z\.\s?o\.\s?o\.|gmbh|ltd\.?|llc)\s*$/i;
+  var name = D.name || String(D.name_raw || '').replace(legalRe, '').trim();
+  var short = D.short_name || name;
+  var addrParts = String(D.address || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  var street = addrParts[0] || '';
+  var cityLine = addrParts[1] || '';
+  var pc = cityLine.match(/^(\d{4,5})\s+(.+)$/);
+  var city = D.city || (pc ? pc[2] : cityLine);
+  var tel = String(D.phone || '').replace(/[^\d+]/g, '');
+  var rating = D.rating != null && D.rating !== '' ? Number(D.rating) : null;
+  var count = D.review_count ? Number(D.review_count) : null;
+  var plural = function (n) { try { return new Intl.PluralRules(lang).select(n); } catch (e) { return n === 1 ? 'one' : 'other'; } };
+  var countWord = count != null ? (L.reviews_word[plural(count)] || L.reviews_word.other) : '';
+  var fmt1 = function (n) { return n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); };
+
+  /* ---------- opening hours ---------- */
+  var DAYS = { ponedeljek: 1, torek: 2, sreda: 3, 'četrtek': 4, cetrtek: 4, petek: 5, sobota: 6, nedelja: 0,
+    monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0 };
+  var hours = (D.hours || []).map(function (line) {
+    var m = String(line).match(/^\s*([^:]+?)\s*:\s*(.+)$/);
+    var day = m ? m[1] : String(line), val = m ? m[2].trim() : '';
+    var ranges = [];
+    val.replace(/(\d{1,2})[:.](\d{2})\s*[–—-]\s*(\d{1,2})[:.](\d{2})/g, function (_, a, b, c, d) { ranges.push([+a * 60 + +b, +c * 60 + +d]); });
+    var idx = DAYS[day.toLowerCase().trim()];
+    return { day: day, val: val, idx: idx == null ? null : idx, closed: /zaprt|closed/i.test(val), ranges: ranges };
+  });
+  var byIdx = {};
+  hours.forEach(function (h) { if (h.idx != null) byIdx[h.idx] = h; });
+  var hm = function (m) { return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+  var hm2 = function (m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  function fill(s, o) { return String(s || '').replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ''; }); }
+  function nowParts() {
+    var p = {};
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: D.timezone || 'Europe/Ljubljana', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+      return { wd: { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday], min: (+p.hour % 24) * 60 + +p.minute };
+    } catch (e) { var d = new Date(); return { wd: d.getDay(), min: d.getHours() * 60 + d.getMinutes() }; }
+  }
+  var now = nowParts();
+  function openStatus() {
+    if (!Object.keys(byIdx).length) return null;
+    var t = byIdx[now.wd], i, r;
+    if (t && !t.closed) for (i = 0; i < t.ranges.length; i++) { r = t.ranges[i]; if (now.min >= r[0] && now.min < r[1]) return { open: true, text: fill(L.status_open, { t: hm(r[1]) }) }; }
+    for (var k = 0; k < 8; k++) {
+      var d = (now.wd + k) % 7, h = byIdx[d];
+      if (!h || h.closed) continue;
+      for (i = 0; i < h.ranges.length; i++) {
+        if (k === 0 && h.ranges[i][0] <= now.min) continue;
+        var when = k === 0 ? L.today_word : k === 1 ? L.tomorrow_word : L.days_acc[d];
+        return { open: false, text: fill(L.status_closed, { when: when, t: hm(h.ranges[i][0]) }) };
+      }
+    }
+    return { open: false, text: L.status_closed_plain };
+  }
+  var status = openStatus();
+  var today = byIdx[now.wd];
+
+  /* ---------- values + links available to data-bind / data-href / labels ---------- */
+  var V = {
+    name: name, short: short, name_raw: D.name_raw, type: D.type, city: city, street: street,
+    postal: pc ? pc[1] : '', city_line: cityLine, address: D.address, phone: D.phone, email: D.email,
+    rating: rating != null ? fmt1(rating) : '', count: count != null ? count.toLocaleString(locale) : '',
+    count_word: countWord, year: String(new Date().getFullYear()),
+    today_hours: today ? today.val : '', open_status: status ? status.text : ''
+  };
+  var q = encodeURIComponent([D.name_raw || name, D.address].filter(Boolean).join(', '));
+  var H = {
+    tel: tel ? 'tel:' + tel : '',
+    email: D.email ? 'mailto:' + D.email : '',
+    directions: D.address ? 'https://www.google.com/maps/dir/?api=1&destination=' + q : '',
+    reviews: D.google_maps_url || (D.address ? 'https://www.google.com/maps/search/?api=1&query=' + q : ''),
+    booking: D.booking_url || '', website: D.website || '',
+    instagram: D.instagram || '', facebook: D.facebook || ''
+  };
+  /* Label syntax: {token} inserts a value, [words] marks an accent span, | is a line break. */
+  function tpl(s) { return esc(fill(s, V)).replace(/\[([^\]]+)\]/g, '<span class="hl">$1</span>').replace(/\s*\|\s*/g, '<br>'); }
+
+  /* ---------- list rendering ---------- */
+  function setF(node, f, v) {
+    var els = $$('[data-f="' + f + '"]', node);
+    if (node.matches && node.matches('[data-f="' + f + '"]')) els.push(node);
+    els.forEach(function (el) { if (isEmpty(v)) el.hidden = true; else el.textContent = v; });
+  }
+  function renderList(box, items, each) {
+    var t = $('template', box);
+    if (!t) return 0;
+    var lim = +box.getAttribute('data-limit') || items.length;
+    items.slice(0, lim).forEach(function (it, i) {
+      var n = t.content.firstElementChild.cloneNode(true);
+      each(n, it, i);
+      box.appendChild(n);
+    });
+    return Math.min(lim, items.length);
+  }
+
+  $$('[data-hours]').forEach(function (box) {
+    if (!hours.length) { (box.closest('[data-section]') || box).hidden = true; return; }
+    renderList(box, hours, function (n, h) {
+      setF(n, 'day', h.day); setF(n, 'val', h.val);
+      if (h.idx === now.wd) n.classList.add('is-today');
+      if (h.closed) n.classList.add('is-closed');
+    });
+  });
+
+  function cleanReview(t, max) {
+    t = String(t || '').replace(/\s+/g, ' ').trim();
+    var cut = /(…|\.\.\.)$/.test(t);
+    t = t.replace(/(…|\.\.\.)$/, '').trim();
+    if (max && t.length > max) { t = t.slice(0, max); cut = true; }
+    if (!cut) return t;
+    var s = Math.max(t.lastIndexOf('. '), t.lastIndexOf('! '), t.lastIndexOf('? '));
+    if (s > t.length * 0.8) return t.slice(0, s + 1);
+    return t.replace(/[\s,;:(–-]+[^\s]*$/, '') + '…';
+  }
+  var minStars = D.review_min_rating != null ? D.review_min_rating : 4;
+  var reviews = (D.reviews || []).map(function (r) { return typeof r === 'string' ? { text: r } : r; })
+    .filter(function (r) { return r && r.text && (r.rating == null || r.rating >= minStars); });
+  $$('[data-reviews]').forEach(function (box) {
+    var max = +box.getAttribute('data-max') || 0;
+    var offset = +box.getAttribute('data-offset') || 0;
+    var n = renderList(box, reviews.slice(offset), function (node, r) {
+      setF(node, 'text', cleanReview(r.text, max));
+      setF(node, 'author', r.author || L.review_anon || '');
+      setF(node, 'when', r.when || '');
+      var st = $('[data-f="stars"]', node);
+      if (st) { if (r.rating) st.style.setProperty('--fill', (r.rating / 5 * 100) + '%'); else st.hidden = true; }
+    });
+    if (!n && box.hasAttribute('data-hide-empty')) (box.closest('[data-section]') || box).hidden = true;
+  });
+  if (!reviews.length && rating == null) $$('[data-section="reviews"]').forEach(function (s) { s.hidden = true; });
+
+  $$('[data-services]').forEach(function (box) {
+    var n = renderList(box, D.services || [], function (node, s, i) {
+      if (typeof s === 'string') s = { name: s };
+      setF(node, 'name', s.name); setF(node, 'desc', s.desc); setF(node, 'price', s.price);
+      setF(node, 'note', s.note); setF(node, 'category', s.category); setF(node, 'n', String(i + 1).padStart(2, '0'));
+      node.setAttribute('data-i', i);
+      if (s.category) node.setAttribute('data-cat', s.category);
+    });
+    if (!n) (box.closest('[data-section]') || box).hidden = true;
+  });
+  $$('[data-list]').forEach(function (box) {
+    var arr = D[box.getAttribute('data-list')] || L[box.getAttribute('data-list')] || [];
+    var n = renderList(box, arr, function (node, s, i) {
+      if (typeof s === 'string') s = { name: s };
+      Object.keys(s).forEach(function (k) { setF(node, k, s[k]); });
+      setF(node, 'n', String(i + 1).padStart(2, '0'));
+    });
+    if (!n) (box.closest('[data-section]') || box).hidden = true;
+  });
+
+  /* ---------- bindings (run after lists so cloned template rows get filled too) ---------- */
+  $$('[data-t]').forEach(function (el) {
+    var s = L[el.getAttribute('data-t')];
+    if (isEmpty(s)) { el.hidden = true; return; }
+    el.innerHTML = tpl(s);
+  });
+  $$('[data-bind]').forEach(function (el) {
+    var v = V[el.getAttribute('data-bind')];
+    if (isEmpty(v)) { if (!el.hasAttribute('data-keep')) el.hidden = true; } else el.textContent = v;
+  });
+  $$('[data-href]').forEach(function (el) {
+    var h = H[el.getAttribute('data-href')];
+    if (!h) { el.hidden = true; return; }
+    el.setAttribute('href', h);
+    if (/^https?:/.test(h)) { el.target = '_blank'; el.rel = 'noopener'; }
+  });
+  $$('[data-requires]').forEach(function (el) {
+    var miss = el.getAttribute('data-requires').split(/\s+/).some(function (k) { return isEmpty(V[k]) && isEmpty(D[k]) && isEmpty(H[k]); });
+    if (miss) el.hidden = true;
+  });
+  $$('[data-stars]').forEach(function (el) {
+    if (rating == null) { el.hidden = true; return; }
+    el.style.setProperty('--fill', (Math.max(0, Math.min(5, rating)) / 5 * 100) + '%');
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', fmt1(rating) + ' / 5');
+  });
+  $$('[data-open-status-dot]').forEach(function (el) { if (status) el.classList.add(status.open ? 'is-open' : 'is-closed'); });
+  $$('[data-open-status]').forEach(function (el) {
+    if (!status) { el.hidden = true; return; }
+    el.textContent = status.text;
+    el.classList.add(status.open ? 'is-open' : 'is-closed');
+  });
+  $$('[data-initials]').forEach(function (el) {
+    el.textContent = (name.match(/\b\p{Lu}/gu) || [name.charAt(0)]).slice(0, 2).join('');
+  });
+
+  /* ---------- map (shown straight away; set map_mode:"click" for a consent-gated facade) ---------- */
+  $$('[data-map]').forEach(function (el) {
+    if (!D.address) { (el.closest('[data-section="map"]') || el).hidden = true; return; }
+    var src = D.map_embed_url || ('https://maps.google.com/maps?q=' + q + '&z=16&hl=' + lang + '&output=embed');
+    var load = function () {
+      if (el.classList.contains('is-loaded')) return;
+      var f = doc.createElement('iframe');
+      f.src = src; f.title = fill(L.map_title, V); f.loading = 'lazy';
+      f.referrerPolicy = 'no-referrer-when-downgrade'; f.allowFullscreen = true;
+      el.appendChild(f); el.classList.add('is-loaded');
+    };
+    var btn = $('[data-map-load]', el);
+    if ((D.map_mode || 'embed') !== 'click' || !btn) load(); else btn.addEventListener('click', load);
+  });
+
+  /* ---------- photos: probe, grade, and distribute (hero → slots → gallery) ---------- */
+  var photos = (D.photos || []).map(function (p) { return typeof p === 'string' ? { src: p } : p; }).filter(function (p) { return p && p.src; });
+  function grade(p) {
+    var px = p.w * p.h, r = p.w / p.h;
+    p.q = px >= 1900000 ? 'hi' : px >= 600000 ? 'mid' : 'lo';
+    p.o = r > 1.15 ? 'landscape' : r < 0.87 ? 'portrait' : 'square';
+    p.px = px;
+  }
+  function probe(p) {
+    return new Promise(function (res) {
+      var im = new Image(), done = false;
+      var fin = function (ok) {
+        if (done) return; done = true;
+        p.ok = ok;
+        p.w = im.naturalWidth || p.width || 0; p.h = im.naturalHeight || p.height || 0;
+        if (ok && p.w && p.h) grade(p); else p.ok = false;
+        res(p);
+      };
+      im.onload = function () { fin(true); };
+      im.onerror = function () { fin(false); };
+      setTimeout(function () { fin(!!(p.width && p.height)); }, 7000);
+      im.src = p.src;
+    });
+  }
+  function putImg(wrap, p, i, eager) {
+    var img = doc.createElement('img');
+    img.src = p.src; img.alt = p.alt || fill(L.photo_alt, { name: name, n: i + 1 });
+    img.decoding = 'async';
+    if (eager) img.fetchPriority = 'high'; else img.loading = 'lazy';
+    img.className = 'ls-img';
+    img.style.objectPosition = p.focus || '50% 42%';
+    img.onerror = function () { var g = wrap.closest('[data-gallery-item]'); (g || wrap).hidden = true; };
+    wrap.classList.add('ls-ph', 'q-' + p.q, 'o-' + p.o);
+    wrap.appendChild(img);
+    return img;
+  }
+  function setRoot(add, rem) { root.classList.add.apply(root.classList, add); if (rem) root.classList.remove.apply(root.classList, rem); }
+
+  function distribute(list) {
+    var pool = list.filter(function (p) { return p.ok; }).sort(function (a, b) { return b.px - a.px; });
+    var used = 0;
+    var hero = $('[data-hero-photo]');
+    if (hero && pool.length) {
+      var o = hero.getAttribute('data-orient') || 'landscape';
+      var min = +hero.getAttribute('data-min-px') || 1500000;
+      var pick = pool.filter(function (p) { return p.px >= min && (o === 'any' || p.o === o || (o === 'landscape' && p.o === 'square' && p.w >= 1800)); })[0];
+      if (pick) { putImg(hero, pick, used++, true); pool.splice(pool.indexOf(pick), 1); setRoot(['has-hero-photo'], ['hero-type']); }
+    }
+    $$('[data-photo-slot]').forEach(function (slot) {
+      var min = +slot.getAttribute('data-min-px') || 250000;
+      var maxpx = +slot.getAttribute('data-max-px') || Infinity;
+      var ok = pool.filter(function (p) { return p.px >= min && p.px <= maxpx; });
+      /* data-pick="low": small slots (avatars, thumbs) take the weakest photos first, saving sharp ones for big frames */
+      var pick = slot.getAttribute('data-pick') === 'low' ? ok[ok.length - 1] : ok[0];
+      if (pick) { putImg(slot, pick, used++); pool.splice(pool.indexOf(pick), 1); slot.classList.add('is-filled'); (slot.closest('[data-photo-host]') || slot).classList.add('has-photo'); }
+    });
+    var gcount = 0;
+    $$('[data-gallery]').forEach(function (box) {
+      var t = $('template', box), max = +box.getAttribute('data-max') || 12;
+      if (!t) return;
+      pool.slice(0, max).forEach(function (p) {
+        var n = t.content.firstElementChild.cloneNode(true);
+        var w = $('[data-f="photo"]', n) || n;
+        n.setAttribute('data-gallery-item', '');
+        n.classList.add('o-' + p.o, 'q-' + p.q);
+        putImg(w, p, used++);
+        box.appendChild(n); gcount++;
+      });
+      pool = pool.slice(max);
+    });
+    setRoot([gcount ? 'has-gallery' : 'no-gallery', used ? 'has-photos' : 'no-photos'], ['photos-pending']);
+    fitAll();
+  }
+  if (!photos.length) setRoot(['hero-type', 'no-gallery', 'no-photos']);
+  else { setRoot(['hero-type', 'photos-pending']); Promise.all(photos.map(probe)).then(distribute); }
+
+  /* ---------- gallery lightbox: the whole set in one viewer, not one photo per click ---------- */
+  var lbBox = null, lbList = [], lbAt = 0;
+  function lbBuild() {
+    var d = doc.createElement('dialog');
+    d.className = 'ls-lightbox';
+    d.innerHTML =
+      '<div class="lb-stage"><img alt=""></div>' +
+      '<button class="lb-close" type="button" aria-label="' + L.photo_close + '">\u00d7</button>' +
+      '<button class="lb-nav lb-prev" type="button" aria-label="' + L.photo_prev + '">\u2039</button>' +
+      '<button class="lb-nav lb-next" type="button" aria-label="' + L.photo_next + '">\u203a</button>' +
+      '<p class="lb-count"><span class="lb-i"></span> / <span class="lb-n"></span></p>';
+    $('.lb-close', d).addEventListener('click', function () { d.close(); });
+    $('.lb-prev', d).addEventListener('click', function () { lbGo(-1); });
+    $('.lb-next', d).addEventListener('click', function () { lbGo(1); });
+    /* the photo itself pages forward; the dark space around it closes */
+    $('img', d).addEventListener('click', function () { lbGo(1); });
+    d.addEventListener('click', function (e) { if (e.target === d || e.target === $('.lb-stage', d)) d.close(); });
+    d.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { e.preventDefault(); lbGo(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); lbGo(-1); }
+    });
+    var x0 = null;
+    d.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    d.addEventListener('touchend', function (e) {
+      if (x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) > 40) lbGo(dx < 0 ? 1 : -1);
+    });
+    doc.body.appendChild(d);
+    return d;
+  }
+  function lbShow(i) {
+    var n = lbList.length;
+    if (!n) return;
+    lbAt = ((i % n) + n) % n;
+    var im = $('img', lbBox);
+    im.src = lbList[lbAt].src; im.alt = lbList[lbAt].alt;
+    $('.lb-i', lbBox).textContent = lbAt + 1;
+    $('.lb-n', lbBox).textContent = n;
+    lbBox.classList.toggle('is-single', n < 2);
+    /* warm both neighbours so paging never shows a blank frame */
+    [lbList[(lbAt + 1) % n], lbList[(lbAt - 1 + n) % n]].forEach(function (p) { var w = new Image(); w.src = p.src; });
+  }
+  function lbGo(step) { if (lbList.length > 1) lbShow(lbAt + step); }
+  doc.addEventListener('click', function (e) {
+    var img = e.target.closest && e.target.closest('[data-gallery] .ls-img');
+    if (!img) return;
+    var imgs = $$('.ls-img', img.closest('[data-gallery]')).filter(function (el) { return !el.closest('[hidden]'); });
+    lbList = imgs.map(function (el) { return { src: el.currentSrc || el.src, alt: el.alt }; });
+    lbBox = lbBox || lbBuild();
+    lbShow(imgs.indexOf(img));
+    lbBox.showModal();
+  });
+
+  /* ---------- fit giant type to its container ---------- */
+  function fitAll() {
+    $$('[data-fit]').forEach(function (el) {
+      el.style.fontSize = ''; el.style.whiteSpace = 'nowrap';
+      var max = parseFloat(getComputedStyle(el).fontSize);
+      var min = +el.getAttribute('data-fit-min') || 32;
+      var cs = getComputedStyle(el);
+      var avail = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      var r = doc.createRange(); r.selectNodeContents(el);
+      var need = r.getBoundingClientRect().width;
+      var grow = el.getAttribute('data-fit') === 'fill';
+      if (need > avail + 1 || (grow && need < avail * 0.97)) {
+        var s = Math.floor(max * avail / need * 0.985);
+        var cap = +el.getAttribute('data-fit-max') || (grow ? 480 : max);
+        s = Math.min(s, cap);
+        if (s < min) { s = min; el.style.whiteSpace = 'normal'; }
+        el.style.fontSize = s + 'px';
+      }
+    });
+  }
+  fitAll();
+  if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(fitAll);
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fitAll, 120); });
+
+  /* ---------- document meta + structured data ---------- */
+  if (L.meta_title) doc.title = fill(L.meta_title, V);
+  var md = $('meta[name="description"]');
+  if (md && L.meta_description) md.setAttribute('content', fill(L.meta_description, V));
+  var ld = {
+    '@context': 'https://schema.org', '@type': D.schema_type || 'LocalBusiness',
+    name: name, legalName: D.name_raw || undefined, telephone: D.phone || undefined,
+    address: { '@type': 'PostalAddress', streetAddress: street, postalCode: V.postal, addressLocality: city, addressCountry: D.country_code || 'SI' },
+    url: location.href.split(/[?#]/)[0]
+  };
+  var DN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], spec = [];
+  hours.forEach(function (h) { if (h.idx != null && !h.closed) h.ranges.forEach(function (r) { spec.push({ '@type': 'OpeningHoursSpecification', dayOfWeek: 'https://schema.org/' + DN[h.idx], opens: hm2(r[0]), closes: hm2(r[1]) }); }); });
+  if (spec.length) ld.openingHoursSpecification = spec;
+  var s = doc.createElement('script'); s.type = 'application/ld+json'; s.textContent = JSON.stringify(ld); doc.head.appendChild(s);
+
+  root.classList.add('ls-ready');
+  window.LocalSite = { data: D, values: V, links: H, hours: hours, status: status };
+})();
+
+</script>
+</body>
+</html>

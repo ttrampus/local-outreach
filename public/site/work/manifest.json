@@ -1,0 +1,72 @@
+[
+ {
+  "slug": "frizerski-studio-tamara",
+  "name": "Frizerski studio Tamara",
+  "type": "Frizerski salon",
+  "template": "t01",
+  "placeId": "ChIJY3ogh4UyZUcRMyVSb1MGOw4"
+ },
+ {
+  "slug": "lepotni-center-aloe-vera",
+  "name": "Lepotni center Aloe Vera",
+  "type": "Masažni in kozmetični salon",
+  "template": "t02",
+  "placeId": "ChIJeQ3FO78zZUcRjes10zdJrzs"
+ },
+ {
+  "slug": "dd-brivnica",
+  "name": "D.D. Brivnica",
+  "type": "Brivnica",
+  "template": "t03",
+  "placeId": "ChIJiVxzoW4tZUcR4v4u0ros0Zc"
+ },
+ {
+  "slug": "fotooko",
+  "name": "Fotooko",
+  "type": "Fotografski studio",
+  "template": "t04",
+  "placeId": "ChIJiR4GHY4tZUcR06jVcsWXgvk"
+ },
+ {
+  "slug": "avtosola-modri-voznik",
+  "name": "Avtošola Modri voznik",
+  "type": "Avtošola",
+  "template": "t05",
+  "placeId": "ChIJ2chGlWAyZUcRoXxvhj50XEE"
+ },
+ {
+  "slug": "gostilna-trnovski-pristan",
+  "name": "Gostilna Trnovski pristan",
+  "type": "Gostilna",
+  "template": "t06",
+  "placeId": "ChIJefqaUAAtZUcRpK7RZjhVD5M"
+ },
+ {
+  "slug": "ambius-pohistvo",
+  "name": "Ambius pohištvo",
+  "type": "Mizarstvo in pohištvo",
+  "template": "t07",
+  "placeId": "ChIJqS4yQ3PNekcR5LmDSr4aKp0"
+ },
+ {
+  "slug": "crno-zrno",
+  "name": "Črno Zrno",
+  "type": "Kavarna",
+  "template": "t08",
+  "placeId": "ChIJO33T02QtZUcRorw9CCVcZCw"
+ },
+ {
+  "slug": "avto-svetek-studenec",
+  "name": "Avto-Svetek Studenec",
+  "type": "Avtoservis",
+  "template": "t09",
+  "placeId": "ChIJKT99SRsyZUcRYbWiXcWTyac"
+ },
+ {
+  "slug": "modri-zob",
+  "name": "Modri Zob",
+  "type": "Zobozdravstvena ordinacija",
+  "template": "t10",
+  "placeId": "ChIJ87RH_YMyZUcR3aIIo_urP9Y"
+ }
+]

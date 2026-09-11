@@ -123,7 +123,7 @@ export default async function ExamplesPage() {
                 Pripravim jo brezplačno in vnaprej. Plačate šele, če vam je všeč.
               </p>
               <Link
-                href="/#kontakt"
+                href="/#contact"
                 className="mt-10 inline-block rounded-xl bg-white px-7 py-3.5 text-[15px] font-medium text-[#0b0e14] transition-opacity hover:opacity-90"
               >
                 Želim predlog

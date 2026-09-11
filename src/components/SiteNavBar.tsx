@@ -5,11 +5,14 @@ import { useEffect, useState } from "react";
 import { AvenyoLogo } from "@/components/brand/Logo";
 import { BrandHomeLink } from "@/components/BrandHomeLink";
 
+// The section ids belong to public/avenyo-site.html, which is what `/` serves.
+// They are English because that page ships English markup and translates at
+// runtime; the labels here stay Slovene, like the rest of this bar.
 const LINKS = [
   { href: "/examples", label: "Primeri" },
-  { href: "/#kako", label: "Kako poteka" },
-  { href: "/#cena", label: "Cena" },
-  { href: "/#vprasanja", label: "Vprašanja" },
+  { href: "/#process", label: "Kako poteka" },
+  { href: "/#quote", label: "Cena" },
+  { href: "/#faq", label: "Vprašanja" },
 ];
 
 /**
@@ -60,7 +63,7 @@ export function SiteNavBar() {
         </div>
 
         <Link
-          href="/#kontakt"
+          href="/#contact"
           className="ml-auto rounded-lg bg-white px-4 py-2 text-sm font-medium text-[#0b0e14] transition-opacity hover:opacity-90 md:ml-0"
         >
           Želim predlog

@@ -39,6 +39,33 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
+
+  /**
+   * The marketing site at the root is `public/avenyo-site.html` — a hand-authored
+   * standalone page, not a React route. It is the file the design is actually
+   * worked on in, so it is served as-is rather than transcribed into JSX where
+   * the two copies would immediately drift apart.
+   *
+   * This is an `afterFiles` rewrite (the plain-array form), which Next only
+   * consults once the filesystem has no answer for the path. That is exactly the
+   * behaviour wanted here: it fires for `/` because no `app/page.tsx` exists, and
+   * it cannot shadow `/app`, `/examples`, `/p/:leadId` or any API route.
+   */
+  async rewrites() {
+    return [{ source: "/", destination: "/avenyo-site.html" }];
+  },
+
+  /**
+   * ...which leaves the same page reachable at two URLs. Send the file path to
+   * the canonical one so search engines are never asked to choose, and so a link
+   * someone copies out of the address bar is the one worth sharing.
+   *
+   * No loop: a redirect is matched against the incoming request, and the rewrite
+   * above resolves internally without starting a new one.
+   */
+  async redirects() {
+    return [{ source: "/avenyo-site.html", destination: "/", permanent: true }];
+  },
 };
 
 export default nextConfig;

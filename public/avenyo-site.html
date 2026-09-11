@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avenyo — Websites for local businesses</title>
+<meta name="description" content="Custom websites for local businesses. Built fast, easy to update, and made to turn visitors into calls and bookings.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================================
+   Avenyo — built on the shadcn/ui design language (refero style 0fd67ec5).
+   The rules that define that system, and which this file holds to:
+     · Strictly achromatic. Red (#e7000b) appears ONLY for destructive/error.
+       No accent fills, no gradients, no coloured shadows.
+     · Exactly two radii: 18px interactive, 24px containers. Nothing else.
+     · Geist with aggressive negative tracking at display sizes (-0.05em @48px)
+       — "engineered rather than editorial". Body locked at 14px/400.
+     · Elevation is hairline + 1px + 2px stacked, barely perceptible.
+     · Three-tone surface hierarchy (canvas → alt → paper) replaces dividers.
+   ========================================================================== */
+:root{
+  --ink:#0a0a0a; --ink-soft:#171717; --mid:#737373; --hairline:#e5e5e5;
+  --canvas:#f5f5f5; --surface-alt:#fafafa; --paper:#ffffff;
+  --destructive:#e7000b;
+
+  --font:'Geist', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --max:1280px; --gap-section:80px; --pad-card:20px;
+  --r-interactive:18px; --r-container:24px;
+
+  /* barely-perceptible stack — reads as "card" without drama */
+  --elev:0 0 0 1px var(--hairline), 0 1px 2px 0 rgba(10,10,10,.04), 0 2px 4px -2px rgba(10,10,10,.04);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--canvas); color:var(--ink-soft);
+  font-family:var(--font); font-size:14px; font-weight:400; line-height:1.5;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+img{max-width:100%; display:block}
+a{color:inherit; text-decoration:none}
+h1,h2,h3,h4,p,ul,ol,figure{margin:0}
+ul{padding:0; list-style:none}
+button{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--ink); outline-offset:2px; border-radius:6px}
+.vh{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *{transition-duration:.001ms !important; animation-duration:.001ms !important; animation-iteration-count:1 !important}
+}
+
+.wrap{width:100%; max-width:var(--max); margin:0 auto; padding:0 24px}
+.section{padding:var(--gap-section) 0}
+.section-tight{padding:40px 0}
+
+/* type — negative tracking scales with size */
+.display{font-size:clamp(40px,4.6vw,66px); line-height:1.04; font-weight:600; color:var(--ink); letter-spacing:-.05em}
+.h{font-size:32px; line-height:1.2; font-weight:600; color:var(--ink); letter-spacing:-.035em}
+.sub{font-size:18px; line-height:1.4; font-weight:500; color:var(--ink); letter-spacing:-.02em}
+.lead{font-size:16px; line-height:1.55; color:var(--mid); letter-spacing:-.01em}
+.body{font-size:14px; line-height:1.55; color:var(--mid)}
+.meta{font-size:13px; line-height:1.5; color:var(--mid)}
+.caption{font-size:12px; line-height:1.5; color:var(--mid)}
+.measure{max-width:52ch}
+.mono{font-family:var(--mono); font-size:12px; letter-spacing:0; color:var(--mid)}
+
+/* buttons — tonal contrast only, no shadow */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:9px 16px; border-radius:var(--r-interactive); font-size:14px; font-weight:500;
+  border:1px solid transparent; cursor:pointer; transition:background .15s ease, border-color .15s ease}
+.btn-dark{background:var(--ink); color:var(--paper)}
+.btn-dark:hover{background:#262626}
+.btn-neutral{background:var(--canvas); color:var(--ink); border-color:var(--hairline)}
+.btn-neutral:hover{background:var(--paper)}
+.btn-lg{padding:11px 20px}
+
+/* badges — 18px pills, three variants */
+.tag{display:inline-flex; align-items:center; padding:3px 10px; border-radius:var(--r-interactive);
+  font-size:12px; font-weight:500; color:var(--ink-soft); background:var(--canvas); border:1px solid transparent}
+.tag-outline{background:transparent; border-color:var(--hairline); color:var(--mid)}
+.tag-solid{background:var(--ink-soft); color:var(--paper)}
+.tag-row{display:flex; flex-wrap:wrap; gap:6px}
+
+/* cards */
+.card{background:var(--paper); border-radius:var(--r-container); padding:var(--pad-card); box-shadow:var(--elev)}
+.divider{height:1px; background:var(--hairline)}
+
+/* nav */
+.nav{position:sticky; top:0; z-index:60; background:rgba(245,245,245,.82); backdrop-filter:saturate(180%) blur(12px)}
+.nav-inner{display:flex; align-items:center; gap:24px; height:64px}
+.logo{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:600; color:var(--ink); letter-spacing:-.02em}
+.logo-mark{width:24px; height:24px; border-radius:8px; background:var(--ink);
+  display:grid; place-items:center; color:var(--paper); font-size:12px; font-weight:600}
+.nav-links{display:flex; gap:20px; margin:0 auto}
+.nav-links a{font-size:14px; color:var(--mid); transition:color .15s}
+.nav-links a:hover{color:var(--ink)}
+/* One rhythm on the right: the divider separates "info" from "action" so the
+   phone number, the language switch and the CTA stop looking randomly spaced. */
+.nav-actions{display:flex; align-items:center; gap:14px}
+.nav-actions .nav-sep{width:1px; height:20px; background:var(--hairline); flex:none}
+.nav-actions .phone{font-family:var(--mono); font-size:13px; color:var(--mid); white-space:nowrap; transition:color .15s}
+.nav-actions .phone:hover{color:var(--ink)}
+
+/* hero */
+.hero{padding:clamp(56px,9vh,104px) 0 clamp(64px,10vh,112px)}
+.hero-grid{display:grid; grid-template-columns:1.08fr .92fr; gap:clamp(40px,5vw,72px); align-items:center}
+.hero p.lead{margin-top:22px; font-size:17px}
+.hero-form{display:flex; gap:8px; margin-top:26px; flex-wrap:wrap}
+.input{flex:1 1 260px; min-width:0; background:var(--canvas); color:var(--ink);
+  border:1px solid var(--hairline); border-radius:var(--r-interactive); padding:10px 14px;
+  font-family:var(--font); font-size:14px}
+.input::placeholder{color:var(--mid)}
+.input:focus{outline:none; border-color:var(--ink); background:var(--paper)}
+.hero-note{margin-top:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.dot{width:5px; height:5px; border-radius:50%; background:var(--ink); flex:none}
+
+/* rotating word */
+.rotor{display:inline-grid; vertical-align:baseline}
+.rotor span{grid-area:1/1; opacity:0; transform:translateY(.24em);
+  transition:opacity .4s ease, transform .4s ease; white-space:nowrap}
+.rotor span.on{opacity:1; transform:none}
+
+/* browser mock */
+.mock{background:var(--paper); border-radius:var(--r-container); padding:12px; box-shadow:var(--elev)}
+.mock-bar{display:flex; align-items:center; gap:6px; padding:2px 4px 10px}
+.mock-dot{width:8px; height:8px; border-radius:50%; background:var(--hairline)}
+.mock-url{margin-left:6px; flex:1; height:22px; border-radius:var(--r-interactive); background:var(--canvas);
+  display:flex; align-items:center; padding:0 10px; font-family:var(--mono); font-size:11px; color:var(--mid)}
+.mock-body{background:var(--canvas); border-radius:var(--r-container); padding:16px}
+.mock-shot{border-radius:var(--r-interactive); overflow:hidden; box-shadow:0 0 0 1px var(--hairline)}
+.mock-shot img{width:100%; height:clamp(230px,26vw,320px); object-fit:cover; object-position:top}
+.mock-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px}
+.mock-tile{background:var(--paper); border-radius:var(--r-interactive); padding:10px;
+  font-size:11px; color:var(--mid); box-shadow:0 0 0 1px var(--hairline)}
+.mock-tile b{display:block; color:var(--ink); font-size:14px; font-weight:600; margin-bottom:1px; letter-spacing:-.02em}
+
+/* marquee */
+.marquee{overflow:hidden; -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.marquee-track{display:flex; width:max-content; gap:8px; animation:slide 38s linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@keyframes slide{from{transform:translate3d(0,0,0)} to{transform:translate3d(-50%,0,0)}}
+.marquee .tag{display:inline-flex; align-items:center; gap:8px; font-size:13.5px; padding:9px 16px;
+  background:var(--paper); white-space:nowrap; box-shadow:0 0 0 1px var(--hairline); color:var(--ink-soft)}
+.marquee .tag svg{width:15px; height:15px; color:var(--mid); flex:none}
+
+/* section heads */
+.head{max-width:620px; margin-bottom:32px}
+.head p{margin-top:12px}
+.head-split{display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:32px}
+.head-split .head{margin-bottom:0}
+
+/* before / after */
+.pain{background:var(--paper); border-radius:var(--r-container); padding:40px; box-shadow:var(--elev)}
+.pain h2{color:var(--ink); font-size:28px; line-height:1.22; font-weight:600; letter-spacing:-.035em}
+.pain .body{margin-top:12px}
+.pain-grid{display:grid; grid-template-columns:.85fr 1.15fr; gap:40px; align-items:center}
+.pain ul{display:grid; gap:10px; margin-top:22px}
+.pain li{display:flex; gap:10px; font-size:15px; font-weight:500; color:var(--ink); line-height:1.4}
+.arrow{flex:none; width:20px; height:20px; margin-top:2px; color:var(--mid)}
+
+.ba{position:relative; border-radius:var(--r-container); overflow:hidden; background:var(--paper);
+  box-shadow:0 0 0 1px var(--hairline); user-select:none; touch-action:none}
+.ba-pane{position:relative; height:320px}
+.ba-face{position:absolute; inset:0; padding:20px; display:flex; flex-direction:column; gap:10px}
+.ba-old{background:var(--surface-alt)}
+.ba-new{background:var(--paper); clip-path:inset(0 0 0 var(--split,50%))}
+.ba-topbar{display:flex; align-items:center; gap:6px}
+.ba-topbar i{width:7px; height:7px; border-radius:50%; background:var(--hairline); display:block}
+.ba-title{font-size:20px; font-weight:600; color:var(--ink); line-height:1.2; letter-spacing:-.03em}
+.ba-old .ba-title{font-family:Georgia,'Times New Roman',serif; font-size:18px; color:var(--mid); letter-spacing:0}
+.ba-line{height:7px; border-radius:var(--r-interactive); background:var(--hairline)}
+.ba-old .ba-line{background:#dcdcdc; height:6px}
+.ba-cta{display:inline-flex; align-self:flex-start; margin-top:auto; padding:9px 14px;
+  border-radius:var(--r-interactive); background:var(--ink); color:var(--paper); font-size:12px; font-weight:500}
+.ba-old .ba-cta{background:#c9c9c9; color:#fff; border-radius:3px; font-size:11px}
+.ba-badge{position:absolute; top:14px; z-index:4; font-size:11px; font-weight:500; padding:4px 9px;
+  border-radius:var(--r-interactive); background:rgba(10,10,10,.78); color:#fff; backdrop-filter:blur(4px)}
+.ba-badge.l{left:14px} .ba-badge.r{right:14px}
+.ba-handle{position:absolute; top:0; bottom:0; left:var(--split,50%); width:2px;
+  background:var(--paper); z-index:5; transform:translateX(-1px)}
+.ba-grip{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:36px; height:36px; border-radius:50%; background:var(--paper);
+  display:grid; place-items:center; color:var(--ink); box-shadow:0 0 0 1px var(--hairline), 0 2px 8px rgba(0,0,0,.14)}
+.ba-range{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:ew-resize; z-index:6; margin:0}
+.ba-hint{margin-top:10px; color:var(--mid); font-size:12px}
+
+/* stats */
+/* The three figures previously floated on bare canvas with nothing around them.
+   They now sit in one panel, divided, with a label above — same information,
+   but it reads as a designed element rather than stray text. */
+.statwrap{background:var(--paper); border-radius:var(--r-container); box-shadow:var(--elev);
+  padding:6px clamp(10px,2vw,22px)}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:0}
+.stats > div + div{border-left:1px solid var(--hairline)}
+.stat{display:flex; flex-direction:column; gap:8px; padding:26px clamp(12px,2.2vw,28px)}
+.stat b{font-size:clamp(34px,3.6vw,46px); line-height:1; font-weight:600; color:var(--ink); letter-spacing:-.05em}
+.stat span{font-size:13.5px; color:var(--mid); max-width:22ch; line-height:1.45}
+
+/* services */
+.svc-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.svc{display:flex; flex-direction:column; gap:8px}
+.svc-icon{width:36px; height:36px; border-radius:var(--r-interactive); background:var(--canvas);
+  display:grid; place-items:center; color:var(--ink); margin-bottom:4px}
+.svc h3{font-size:16px; font-weight:600; color:var(--ink); letter-spacing:-.02em}
+.svc p{font-size:14px; color:var(--mid)}
+
+/* quote builder */
+.quote{display:grid; grid-template-columns:1.1fr .9fr; gap:12px; align-items:start}
+.q-field{margin-bottom:24px}
+.q-field:last-child{margin-bottom:0}
+.q-label{font-size:14px; font-weight:600; color:var(--ink); margin-bottom:10px; letter-spacing:-.01em}
+.q-opts{display:flex; flex-wrap:wrap; gap:6px}
+.chip{padding:9px 14px; border-radius:var(--r-interactive); border:1px solid var(--hairline);
+  background:var(--paper); font-size:14px; color:var(--mid); cursor:pointer; transition:.15s}
+.chip:hover{color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+.q-out{background:var(--ink); color:var(--paper); border-radius:var(--r-container); padding:28px;
+  position:sticky; top:76px; display:flex; flex-direction:column; gap:16px}
+.q-price{display:flex; align-items:baseline; gap:8px}
+.q-price b{font-size:42px; line-height:1; font-weight:600; letter-spacing:-.05em}
+.q-price span{font-size:13px; color:#a3a3a3}
+.q-meta{display:flex; gap:6px; flex-wrap:wrap}
+.q-meta .tag{background:rgba(255,255,255,.1); color:#e5e5e5; border-color:transparent}
+.q-inc{display:grid; gap:8px}
+.q-inc li{display:flex; gap:8px; font-size:14px; color:#d4d4d4}
+.q-inc .check{color:#a3a3a3}
+.q-out .btn{background:var(--paper); color:var(--ink); width:100%}
+.q-out .btn:hover{background:#e5e5e5}
+.q-fine{font-size:12px; color:#8a8a8a}
+
+/* process */
+.proc{display:grid; grid-template-columns:.9fr 1.1fr; gap:12px; align-items:stretch}
+.proc-list{display:grid; gap:6px; align-content:start}
+.proc-btn{text-align:left; width:100%; background:var(--paper); border:1px solid var(--hairline);
+  border-radius:var(--r-container); padding:18px 20px; cursor:pointer; transition:.15s; display:grid; gap:4px}
+.proc-btn:hover{border-color:var(--mid)}
+.proc-btn[aria-selected="true"]{background:var(--ink); border-color:var(--ink)}
+.proc-btn h3{font-size:17px; font-weight:600; color:var(--ink); letter-spacing:-.025em}
+.proc-btn small{font-size:13px; color:var(--mid); font-family:var(--mono)}
+.proc-btn[aria-selected="true"] h3{color:var(--paper)}
+.proc-btn[aria-selected="true"] small{color:#a3a3a3}
+.proc-panel{background:var(--paper); border-radius:var(--r-container);
+  overflow:hidden; display:flex; flex-direction:column; box-shadow:var(--elev)}
+.proc-panel img{width:100%; height:250px; object-fit:cover; object-position:top; transition:opacity .3s ease}
+.proc-panel img.fading{opacity:0}
+.proc-copy{padding:24px; display:grid; gap:8px}
+.proc-copy h4{font-size:18px; font-weight:600; color:var(--ink); letter-spacing:-.025em}
+.proc-copy p{font-size:14px; color:var(--mid)}
+
+/* Process stage graphics.
+   Each stage draws what that stage actually is, in CSS — a ringing call, a
+   wireframe assembling itself, fields being wired up, a site going live. The
+   previous version showed the same unrelated screenshot for all four, which
+   told the reader nothing. */
+.stage{position:relative; height:270px; background:var(--canvas); overflow:hidden;
+  display:grid; place-items:center; padding:22px}
+.stage[hidden]{display:none}
+
+/* 1 — call */
+.sg-call{width:min(280px,100%); background:var(--paper); border-radius:var(--r-container);
+  box-shadow:var(--elev); padding:18px; display:grid; gap:14px}
+.sg-call-top{display:flex; align-items:center; gap:11px}
+.sg-av{width:38px; height:38px; border-radius:50%; background:var(--ink); color:var(--paper);
+  display:grid; place-items:center; font-size:13px; font-weight:600; flex:none}
+.sg-call-t b{display:block; font-size:14px; color:var(--ink); letter-spacing:-.02em}
+.sg-call-t span{font-size:12px; color:var(--mid); font-family:var(--mono)}
+.sg-wave{display:flex; align-items:center; gap:3px; height:30px}
+.sg-wave i{flex:1; background:var(--ink); border-radius:2px; height:20%;
+  animation:sgWave 1.1s ease-in-out infinite}
+@keyframes sgWave{0%,100%{height:16%}50%{height:88%}}
+.sg-call-btns{display:flex; gap:8px}
+.sg-pill{flex:1; text-align:center; border-radius:var(--r-interactive); padding:8px;
+  font-size:12px; font-weight:500}
+.sg-pill.ok{background:var(--ink); color:var(--paper)}
+.sg-pill.no{background:var(--canvas); color:var(--mid)}
+
+/* 2 — draft wireframe assembling */
+.sg-wire{width:min(300px,100%); background:var(--paper); border-radius:var(--r-container);
+  box-shadow:var(--elev); padding:16px; display:grid; gap:9px}
+.sg-wire .bar{height:9px; border-radius:5px; background:var(--hairline);
+  animation:sgIn .5s ease backwards}
+.sg-wire .block{height:64px; border-radius:12px; background:var(--hairline);
+  animation:sgIn .5s ease backwards}
+.sg-wire .row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
+.sg-wire .row div{height:30px; border-radius:9px; background:var(--hairline);
+  animation:sgIn .5s ease backwards}
+@keyframes sgIn{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+
+/* 3 — build: fields wiring up */
+.sg-build{width:min(300px,100%); background:var(--paper); border-radius:var(--r-container);
+  box-shadow:var(--elev); padding:18px; display:grid; gap:10px}
+.sg-field{display:flex; align-items:center; gap:10px; border:1px solid var(--hairline);
+  border-radius:var(--r-interactive); padding:10px 12px; font-size:12.5px; color:var(--mid);
+  animation:sgTick .6s ease backwards}
+.sg-field b{margin-left:auto; width:16px; height:16px; border-radius:50%; background:var(--ink);
+  color:var(--paper); display:grid; place-items:center; font-size:10px}
+@keyframes sgTick{from{opacity:0; transform:translateX(-8px)}to{opacity:1; transform:none}}
+
+/* 4 — launch */
+.sg-live{width:min(300px,100%); display:grid; gap:10px}
+.sg-browser{background:var(--paper); border-radius:var(--r-container); box-shadow:var(--elev); overflow:hidden}
+.sg-browser .top{display:flex; align-items:center; gap:5px; padding:10px 12px; border-bottom:1px solid var(--hairline)}
+.sg-browser .top i{width:6px; height:6px; border-radius:50%; background:var(--hairline)}
+.sg-browser .url{margin-left:6px; font-family:var(--mono); font-size:10px; color:var(--mid)}
+.sg-browser img{width:100%; height:104px; object-fit:cover; object-position:top}
+.sg-badge{display:inline-flex; align-items:center; gap:7px; background:var(--ink); color:var(--paper);
+  border-radius:var(--r-interactive); padding:8px 13px; font-size:12px; font-weight:500; justify-self:start;
+  animation:sgPop .5s cubic-bezier(.2,.8,.3,1.3) .35s backwards}
+.sg-badge i{width:7px; height:7px; border-radius:50%; background:#4ade80; display:block;
+  animation:sgBlink 1.6s ease-in-out infinite}
+@keyframes sgBlink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes sgPop{from{opacity:0; transform:scale(.9)}to{opacity:1; transform:none}}
+
+/* faq */
+.faq{display:grid; gap:6px; max-width:820px}
+details.qa{background:var(--paper); border-radius:var(--r-container); padding:18px 22px; box-shadow:var(--elev)}
+details.qa summary{list-style:none; cursor:pointer; display:flex; align-items:center;
+  justify-content:space-between; gap:20px; font-size:15px; font-weight:600; color:var(--ink); letter-spacing:-.02em}
+details.qa summary::-webkit-details-marker{display:none}
+details.qa summary::after{content:"+"; font-size:18px; font-weight:400; color:var(--mid); line-height:1}
+details.qa[open] summary::after{content:"–"}
+details.qa p{margin-top:10px; font-size:14px; color:var(--mid); max-width:64ch}
+
+/* cta */
+.cta{background:var(--ink); border-radius:var(--r-container); padding:48px; color:var(--paper)}
+.cta-grid{display:grid; grid-template-columns:1fr 1fr; gap:44px; align-items:center}
+.cta h2{color:var(--paper); font-size:32px; line-height:1.16; font-weight:600; letter-spacing:-.04em}
+.cta .body{color:#a3a3a3; margin-top:14px}
+.cta-list{display:grid; gap:10px; margin-top:24px}
+.cta-list li{display:flex; gap:9px; font-size:14px; color:#d4d4d4}
+.cta-list .check{color:#a3a3a3}
+.cta-form{display:grid; gap:8px}
+.cta-form .input{background:#171717; border-color:#262626; color:var(--paper); width:100%; flex:none}
+.cta-form .input::placeholder{color:#737373}
+.cta-form .input:focus{background:#1f1f1f; border-color:#525252}
+.cta-form textarea.input{min-height:110px; resize:vertical; font-family:var(--font)}
+.cta-form .row{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.cta-form .btn{width:100%; background:var(--paper); color:var(--ink)}
+.cta-form .btn:hover{background:#e5e5e5}
+.cta-fine{font-size:12px; color:#737373; margin-top:2px}
+.form-note{font-size:13px; line-height:1.5; margin-top:10px; color:var(--mid)}
+.cta-form .form-note{color:#a3a3a3}
+.form-note.is-bad{color:#b4342a}
+.cta-form .form-note.is-bad{color:#f0a8a2}
+
+/* footer */
+.footer{padding:44px 0 40px; border-top:1px solid var(--hairline); margin-top:var(--gap-section)}
+.footer-grid{display:flex; justify-content:space-between; gap:32px; flex-wrap:wrap; align-items:flex-start}
+.footer-links{display:flex; gap:24px; flex-wrap:wrap}
+.footer-links a{font-size:14px; color:var(--mid)}
+.footer-links a:hover{color:var(--ink)}
+.footer-bottom{margin-top:32px; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap}
+
+/* Shared inline-check icon. This lived in the tab/work block that was removed
+   with the carousel; without it every check SVG rendered at its natural size. */
+.check{flex:none; width:15px; height:15px; margin-top:4px; color:var(--ink)}
+
+/* work gallery — landing pages shown whole, not cropped.
+   Each card frames a full-page capture in browser chrome; on hover the image
+   scrolls to reveal the rest of the page, which is how you show a landing page
+   without slicing a meaningless band out of the middle of it. */
+.workgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.wk{display:block; background:var(--paper); border-radius:var(--r-container); overflow:hidden;
+  box-shadow:var(--elev); transition:transform .25s ease, box-shadow .25s ease}
+.wk:hover{transform:translateY(-3px); box-shadow:0 0 0 1px var(--mid), 0 8px 24px -8px rgba(10,10,10,.16)}
+.wk-chrome{display:flex; box-sizing:border-box; align-items:center; gap:5px; padding:11px 14px; border-bottom:1px solid var(--hairline)}
+.wk-chrome i{width:7px; height:7px; border-radius:50%; background:var(--hairline); display:block}
+.wk-url{display:block; margin-left:6px; font-family:var(--mono); font-size:10.5px; color:var(--mid);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.wk-shot{display:block; position:relative; height:300px; overflow:hidden; background:var(--canvas)}
+.wk-shot img{width:100%; display:block; transition:transform 3.2s cubic-bezier(.3,.1,.3,1)}
+.wk:hover .wk-shot img{transform:translateY(calc(-100% + 300px))}
+.wk-foot{display:flex; box-sizing:border-box; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px}
+.wk-name{display:block; font-size:14px; font-weight:600; color:var(--ink); letter-spacing:-.02em}
+.wk-open{font-size:12px; color:var(--mid); display:inline-flex; align-items:center; gap:5px}
+.wk:hover .wk-open{color:var(--ink)}
+.wk-hint{margin-top:14px; text-align:center}
+/* Ten cards leave two empty cells in the last row of a three-column grid. This
+   fills them with the ask, at the point where someone has just finished looking
+   through the work — cheaper than padding the grid out to twelve. */
+.wk-cta{grid-column:span 2; display:flex; flex-direction:column; align-items:flex-start;
+  justify-content:center; gap:14px; padding:32px; border-radius:var(--r-container);
+  background:var(--surface-alt); box-shadow:var(--elev)}
+.wk-cta h3{font-size:24px; font-weight:600; color:var(--ink); letter-spacing:-.035em; line-height:1.2; max-width:22ch}
+.wk-cta p{font-size:14px; color:var(--mid); line-height:1.55; max-width:46ch}
+
+/* three kinds of job — plain columns, nothing hidden behind a swipe */
+.kinds{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.kind{background:var(--paper); border-radius:var(--r-container); padding:26px; box-shadow:var(--elev);
+  display:flex; flex-direction:column; gap:12px}
+.kind h3{font-size:19px; font-weight:600; color:var(--ink); letter-spacing:-.025em; line-height:1.25}
+.kind p{font-size:14px; color:var(--mid); line-height:1.55}
+.kind ul{display:grid; gap:7px; margin-top:auto; padding-top:6px}
+.kind li{display:flex; gap:8px; font-size:13.5px; color:var(--mid)}
+.kind li .check{width:14px; height:14px; margin-top:3px}
+
+/* language switch */
+.lang{display:inline-flex; background:var(--canvas); border-radius:var(--r-interactive);
+  padding:2px; box-shadow:0 0 0 1px var(--hairline)}
+.lang-btn{border:0; background:transparent; padding:5px 10px; border-radius:14px;
+  font-size:12px; font-weight:500; color:var(--mid); cursor:pointer; transition:.15s;
+  font-family:var(--mono)}
+.lang-btn.on{background:var(--paper); color:var(--ink); box-shadow:0 0 0 1px var(--hairline)}
+
+/* pricing cards */
+.seg{display:inline-flex; background:var(--canvas); border-radius:var(--r-interactive); padding:3px;
+  box-shadow:0 0 0 1px var(--hairline); margin-bottom:28px; flex-wrap:wrap}
+.seg-btn{border:0; background:transparent; padding:9px 18px; border-radius:15px; font-size:14px;
+  font-weight:500; color:var(--mid); cursor:pointer; transition:.15s; white-space:nowrap}
+.seg-btn[aria-pressed="true"]{background:var(--paper); color:var(--ink); box-shadow:0 0 0 1px var(--hairline)}
+.plans{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; align-items:stretch}
+.plan{position:relative; text-align:left; background:var(--paper); border:1px solid var(--hairline);
+  border-radius:var(--r-container); padding:24px; cursor:pointer; display:flex; flex-direction:column;
+  gap:14px; transition:.18s}
+.plan:hover{border-color:var(--mid)}
+.plan[aria-pressed="true"]{border-color:var(--ink); box-shadow:0 0 0 1px var(--ink)}
+.plan-name{font-size:15px; font-weight:600; color:var(--ink); letter-spacing:-.02em}
+.plan-price{display:flex; align-items:baseline; gap:6px}
+.plan-price b{font-size:34px; font-weight:600; color:var(--ink); letter-spacing:-.05em; line-height:1}
+.plan-price span{font-size:13px; color:var(--mid)}
+.plan-note{font-size:13px; color:var(--mid); line-height:1.5}
+.plan ul{display:grid; gap:7px; margin-top:auto; padding-top:6px}
+.plan li{display:flex; gap:7px; font-size:13px; color:var(--mid)}
+.plan li .check{width:13px; height:13px; margin-top:4px}
+.plan-mark{position:absolute; top:18px; right:18px; width:18px; height:18px; border-radius:50%;
+  border:1px solid var(--hairline); display:grid; place-items:center}
+.plan[aria-pressed="true"] .plan-mark{background:var(--ink); border-color:var(--ink)}
+.plan-mark i{width:6px; height:6px; border-radius:50%; background:transparent; display:block}
+.plan[aria-pressed="true"] .plan-mark i{background:var(--paper)}
+.total{margin-top:12px; background:var(--ink); color:var(--paper); border-radius:var(--r-container);
+  padding:22px 26px; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap}
+.total-l{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.total-l b{font-size:32px; font-weight:600; letter-spacing:-.05em; line-height:1}
+.total-l span{font-size:13px; color:#a3a3a3}
+.total .btn{background:var(--paper); color:var(--ink)}
+.total .btn:hover{background:#e5e5e5}
+
+/* before / after — real screenshot vs a deliberately dated page */
+.ba-old-page{background:#fff; padding:18px 20px; font-family:Georgia,'Times New Roman',serif; height:100%;
+  overflow:hidden}
+.ba-old-page .oldnav{border-bottom:2px solid #000080; padding-bottom:6px; margin-bottom:12px;
+  font-size:11px; color:#00e}
+.ba-old-page .oldnav a{color:#00e; text-decoration:underline; margin-right:10px}
+.ba-old-page h4{font-size:19px; color:#000080; margin:0 0 10px; font-weight:400}
+.ba-old-page p{font-size:12px; color:#333; line-height:1.35; margin:0 0 8px; max-width:46ch}
+.ba-old-page .oldbox{border:1px solid #999; background:#eee; padding:7px 9px; font-size:11px;
+  color:#444; display:inline-block; margin-top:4px}
+.ba-old-page .oldcounter{margin-top:12px; font-size:10px; color:#777}
+.ba-new-shot{position:absolute; inset:0; overflow:hidden}
+.ba-new-shot img{width:100%; height:100%; object-fit:cover; object-position:top left}
+
+/* responsive */
+@media (max-width:1000px){
+  .display{font-size:38px; letter-spacing:-.045em}
+  .h,.cta h2{font-size:28px}
+  .hero-grid,.pain-grid,.proc,.cta-grid{grid-template-columns:1fr}
+  .workgrid,.kinds,.plans{grid-template-columns:1fr 1fr}
+  .pain-grid,.cta-grid{gap:26px}
+  .svc-grid{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr}
+  .stat{padding:14px 0; border-bottom:1px solid var(--hairline)}
+  .nav-links,.nav-actions .phone{display:none}
+  .q-out{position:static}
+}
+@media (max-width:640px){
+  :root{--gap-section:56px}
+  .display{font-size:30px; letter-spacing:-.04em}
+  .h,.cta h2,.pain h2{font-size:24px}
+  .lead{font-size:15px}
+  .svc-grid{grid-template-columns:1fr}
+  .pain,.cta{padding:24px}
+  .proc-copy{padding:22px}
+  .workgrid,.kinds,.plans{grid-template-columns:1fr}
+  .wk-cta{grid-column:span 1; padding:26px}
+  .stat b{font-size:36px}
+  .cta-form .row{grid-template-columns:1fr}
+  .head-split{flex-direction:column; align-items:flex-start}
+  .ba-pane{height:280px}
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="logo" href="#top"><span class="logo-mark">A</span> Avenyo</a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#work" data-sl="Delo">Work</a>
+      <a href="#services" data-sl="Kaj dobite">What you get</a>
+      <a href="#quote" data-sl="Cenik">Pricing</a>
+      <a href="#process" data-sl="Postopek">Process</a>
+      <a href="#faq" data-sl="Pogosta vprašanja">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="phone" href="tel:+38664194936">+386 64 194 936</a>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <div class="lang" role="group" aria-label="Language / Jezik">
+        <button type="button" class="lang-btn on" data-lang="sl">SL</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <a class="btn btn-dark" href="#contact" data-sl="Povprašajte">Get a quote</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<section class="wrap hero">
+  <div class="hero-grid">
+    <div>
+      <h1 class="display">
+        <span data-sl="Spletna stran za">A website that gets your</span><br>
+        <span class="rotor" id="rotor" aria-hidden="true"><span class="on" data-sl="kavarno">café</span><span data-sl="vodovodni servis">plumbing round</span><span data-sl="ambulanto">clinic</span><span data-sl="salon">salon</span><span data-sl="studio">studio</span></span>
+        <span class="vh">business</span>
+        <br><span data-sl="ki pripelje stranke, klice in rezervacije.">found, booked and paid.</span>
+      </h1>
+      <p class="lead measure" data-sl="Gradim hitre, pregledne spletne strani za lokalna podjetja. Objavljene v približno dveh tednih, enostavne za urejanje in narejene tako, da ljudje res pokličejo, rezervirajo ali se oglasijo.">I build fast, clean websites for local businesses. Live in about two weeks, easy to update yourself, and put together so people actually call, book, or walk in.</p>
+
+      <form class="hero-form" data-form="hero" novalidate>
+        <label class="vh" for="hero-email">Email</label>
+        <input class="input" id="hero-email" name="email" type="email" placeholder="you@yourbusiness.com" autocomplete="email">
+        <button class="btn btn-dark btn-lg" type="submit">Get a quote</button>
+      </form>
+      <div class="hero-note">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="meta" data-sl="Brezplačen 15-minutni klic. Fiksna cena, preden se karkoli začne.">Free 15-minute call. Fixed price before anything starts.</span>
+      </div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar">
+        <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+        <span class="mock-url">avenyo.app/p/your-business</span>
+      </div>
+      <div class="mock-body">
+        <div class="mock-shot">
+          <img src="site/maison.webp" alt="">
+        </div>
+        <div class="mock-row">
+          <div class="mock-tile"><b>4.6</b><span data-sl="Google ocena">Google rating</span></div>
+          <div class="mock-tile"><b>52</b><span data-sl="mnenj">reviews</span></div>
+          <div class="mock-tile"><b>8–20</b><span data-sl="danes odprto">open today</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<section class="section-tight">
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track" id="track">
+      <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 9h2a2 2 0 1 1 0 4h-2"/><path d="M6 3v2M10 3v2M14 3v2"/></svg>Cafés</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5 20 18M8 15.5 20 6"/></svg>Barbers</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h6v4H4z"/><path d="M10 9h5a4 4 0 0 1 4 4v6"/><path d="M17 19h4"/></svg>Plumbers</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4c-3 0-4 1.5-4 4 0 4 1 11 2.5 11S12 15 12 15s.5 4 1.5 4S16 12 16 8c0-2.5-1-4-4-4z"/></svg>Dental clinics</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="5" r="2"/><path d="M12 8v5m0 0-4 6m4-6 4 6M7 11h10"/></svg>Yoga studios</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12a4 4 0 0 1 4-4h8a4 4 0 0 1 0 8H8a4 4 0 0 1-4-4z"/><path d="M9 8v8M15 8v8"/></svg>Bakeries</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Electricians</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="3"/><path d="M12 11v10M12 15c-3 0-5-1-6-3M12 15c3 0 5-1 6-3"/></svg>Florists</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><path d="M4 4h4M16 4h4M12 16v4"/></svg>Physios</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3v8a2 2 0 0 0 4 0V3M8 11v10"/><path d="M17 3c-1.5 2-2 4-2 6h4c0-2-.5-4-2-6zM17 9v12"/></svg>Restaurants</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18l-2-5H5z"/><circle cx="7" cy="16" r="2"/><circle cx="17" cy="16" r="2"/></svg>Garages</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h4l1.5-2h7L17 8h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>Photographers</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18M7 7c0 4 2 6 5 6M17 7c0 4-2 6-5 6"/></svg>Salons</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 21V9M12 9c0-3 2-5 5-5 0 3-2 5-5 5zM12 12c0-3-2-5-5-5 0 3 2 5 5 5z"/></svg>Landscapers</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 7h11l3 5-3 5H5z"/><path d="M9 7v10"/></svg>Butchers</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20 14 6l4 3L8 20z"/><path d="M14 6l1-3 3 2-1 3"/></svg>Tattoo studios</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 4v5.5M6.5 17 10 13.5M17.5 17 14 13.5"/></svg>Driving schools</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="1.8"/><circle cx="16" cy="8" r="1.8"/><circle cx="5.5" cy="13" r="1.6"/><circle cx="18.5" cy="13" r="1.6"/><path d="M12 12c3 0 5 3 5 5s-2 3-5 3-5-1-5-3 2-5 5-5z"/></svg>Vets</span>
+    </div>
+  </div>
+  <p class="wrap meta" style="margin-top:16px; text-align:center" data-sl="Za podjetja, kjer je stranka lokalna in odločitev hitra.">Built for businesses where the customer is local and the decision is quick.</p>
+</section>
+
+<!-- WORK -->
+<section class="wrap section" id="work">
+  <div class="head-split">
+    <div class="head">
+      <h2 class="h" data-sl="Nekaj naših strani">Some of the sites</h2>
+      <p class="lead" data-sl="Vsaka je prava stran za pravo podjetje. Zapeljite z miško čez, da vidite celotno stran, ali kliknite, da jo odprete.">Each one is a real page for a real business. Hover to scroll through the whole page, or click to open it.</p>
+    </div>
+    <a class="btn btn-neutral" href="#quote" data-sl="Izračunajte ceno">Price yours</a>
+  </div>
+
+  <div class="workgrid">
+    <a class="wk" href="site/work/frizerski-studio-tamara.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">frizerski-studio-tamara.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/frizerski-studio-tamara.webp" alt="Frizerski studio Tamara"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Frizerski studio Tamara</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/lepotni-center-aloe-vera.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">lepotni-center-aloe-vera.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/lepotni-center-aloe-vera.webp" alt="Lepotni center Aloe Vera"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Lepotni center Aloe Vera</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/dd-brivnica.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">dd-brivnica.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/dd-brivnica.webp" alt="D.D. Brivnica"></span>
+      <span class="wk-foot">
+        <span class="wk-name">D.D. Brivnica</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/fotooko.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">fotooko.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/fotooko.webp" alt="Fotooko"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Fotooko</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/avtosola-modri-voznik.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">avtosola-modri-voznik.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/avtosola-modri-voznik.webp" alt="Avtošola Modri voznik"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Avtošola Modri voznik</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/gostilna-trnovski-pristan.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">gostilna-trnovski-pristan.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/gostilna-trnovski-pristan.webp" alt="Gostilna Trnovski pristan"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Gostilna Trnovski pristan</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/ambius-pohistvo.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">ambius-pohistvo.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/ambius-pohistvo.webp" alt="Ambius pohištvo"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Ambius pohištvo</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/crno-zrno.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">crno-zrno.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/crno-zrno.webp" alt="Črno Zrno"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Črno Zrno</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/avto-svetek-studenec.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">avto-svetek-studenec.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/avto-svetek-studenec.webp" alt="Avto-Svetek Studenec"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Avto-Svetek Studenec</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <a class="wk" href="site/work/modri-zob.html" target="_blank" rel="noopener">
+      <span class="wk-chrome"><i></i><i></i><i></i><span class="wk-url">modri-zob.avenyo.app</span></span>
+      <span class="wk-shot"><img loading="lazy" src="site/work/modri-zob.webp" alt="Modri Zob"></span>
+      <span class="wk-foot">
+        <span class="wk-name">Modri Zob</span>
+        <span class="wk-open" data-sl="Odpri">Open
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M9 7h8v8"/></svg>
+        </span>
+      </span>
+    </a>
+    <div class="wk-cta">
+      <h3 data-sl="Naslednja stran je lahko vaša.">Yours could be the next one.</h3>
+      <p data-sl="Povejte, kaj vaše podjetje dela, in v enem delovnem dnevu dobite ceno in rok — v pisni obliki.">Tell me what your business does and you get a price and a timeline within one working day, in writing.</p>
+      <a class="btn btn-neutral" href="#quote" data-sl="Izračunajte ceno">Price yours</a>
+    </div>
+  </div>
+</section>
+
+<!-- KINDS OF JOB -->
+<section class="wrap section" id="kinds">
+  <div class="head">
+    <h2 class="h" data-sl="Tri vrste dela">Three kinds of job</h2>
+    <p class="lead" data-sl="Stran se prilagodi temu, po kaj je obiskovalec prišel.">The site changes shape depending on what a visitor came to do.</p>
+  </div>
+  <div class="kinds">
+    <div class="kind">
+      <h3 data-sl="Želijo urnik, ponudbo in mizo.">They want the hours, the menu, and a table.</h3>
+      <p data-sl="Vse drugo je okras. Stran se odpre z današnjim delovnim časom, en klik do rezervacije in ponudba en drsljaj nižje — brez PDF-ja, ki ga na telefonu nihče ne prebere.">Everything else is decoration. The page opens with today's hours, one tap to book, and the menu one scroll down — no PDF that nobody can read on a phone.</p>
+      <ul><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Delovni čas spremenite s telefona">Hours you can change from your phone</span></li><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Ponudba kot pravo besedilo, da jo Google prebere">Menu as real text, so Google can read it</span></li><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Gumb za rezervacijo, povezan z vašim sistemom">Booking button wired to your existing system</span></li></ul>
+    </div>
+    <div class="kind">
+      <h3 data-sl="Stojijo v poplavljeni kuhinji.">They're standing in a flooded kitchen.</h3>
+      <p data-sl="Vodovodarja nihče ne prebira. Telefonska številka je pripeta na dno zaslona, območje storitev je zapisano z besedami, ki jih ljudje res iščejo, mnenja pa so takoj pod prvim zaslonom.">Nobody browses a plumber. The phone number is fixed to the bottom of the screen, the service area is spelled out in words people actually search, and the reviews sit just under the fold.</p>
+      <ul><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Vrstica za klic, ki vedno ostane vidna">Tap-to-call bar that never scrolls away</span></li><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Stran za vsak kraj, ki ga pokrivate">A page per town you cover</span></li><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Google mnenja se prikažejo samodejno">Google reviews pulled in automatically</span></li></ul>
+    </div>
+    <div class="kind">
+      <h3 data-sl="Odločajo se, ali vam zaupati.">They're deciding whether to trust you.</h3>
+      <p data-sl="Prvi termin je velik korak. Naloga strani je urnik, oseba, ki jo bodo srečali, in kaj se zgodi, ko vstopijo — nato pa rezervacija, ki ne zahteva prijave.">A first appointment is a leap. The site's job is the timetable, the person they'll actually meet, and what happens when they walk in — then a way to book that doesn't ask for a login.</p>
+      <ul><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Urnik, ki ostane ažuren sam">Timetable that stays current on its own</span></li><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Predstavitve, ki jih je vredno prebrati">Profiles worth reading</span></li><li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Preda naprej vašemu sistemu za rezervacije">Hands off to your booking platform</span></li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="wrap section-tight">
+  <div class="statwrap">
+    <div class="stats">
+      <div class="stat"><b>€399</b><span data-sl="fiksna cena izdelave, dogovorjena vnaprej">fixed build price, agreed up front</span></div>
+      <div class="stat"><b>1.2s</b><span data-sl="običajen čas nalaganja na mobilnem">typical load time on mobile</span></div>
+      <div class="stat"><b>0</b><span data-sl="nepričakovanih računov, nikoli">surprise invoices, ever</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="wrap section" id="services">
+  <div class="head">
+    <h2 class="h">What you get</h2>
+    <p class="lead" data-sl="Vse spodaj je vključeno v izdelavo. Ni cenejšega paketa, kjer je stran namenoma počasna.">Everything below is part of the build. There is no bronze tier where the site is slow on purpose.</p>
+  </div>
+  <div class="svc-grid">
+    <div class="card svc">
+      <span class="svc-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span>
+      <h3 data-sl="Najprej za telefon">Designed for the phone first</h3>
+      <p data-sl="Dve tretjini obiskovalcev je na telefonu in v naglici. Oblikovanje se začne na tem zaslonu, ne konča stisnjeno nanj.">Two thirds of your visitors are on a phone in a hurry. That's the screen the design starts on, not the one it gets squeezed onto.</p>
+    </div>
+    <div class="card svc">
+      <span class="svc-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
+      <h3 data-sl="Naloži se v sekundi">Loads in about a second</h3>
+      <p data-sl="Lahke strani, stisnjene slike, brez kopice vtičnikov. Hitre strani zadržijo ljudi, opazi pa tudi Google.">Light pages, compressed images, no plugin pile-up. Fast sites keep people around, and Google notices too.</p>
+    </div>
+    <div class="card svc">
+      <span class="svc-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s7-5.2 7-10a7 7 0 1 0-14 0c0 4.8 7 10 7 10z"/><circle cx="12" cy="11" r="2.4"/></svg></span>
+      <h3 data-sl="Nastavljeno za lokalno iskanje">Set up to be found locally</h3>
+      <p data-sl="Google Poslovni profil, zemljevid, območje storitev in oznake, ki vaš delovni čas prikažejo kar v rezultatih iskanja.">Google Business Profile, map, service area, and the markup that puts your hours straight into search results.</p>
+    </div>
+    <div class="card svc">
+      <span class="svc-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg></span>
+      <h3 data-sl="Povpraševanja, ki pridejo do vas">Enquiries that reach you</h3>
+      <p data-sl="Obrazci, klic z enim dotikom, WhatsApp ali povezave za rezervacije — povezani z vašo pošto in preizkušeni na pravi napravi pred objavo.">Forms, click-to-call, WhatsApp or booking links — wired to your inbox and tested on a real device before launch.</p>
+    </div>
+    <div class="card svc">
+      <span class="svc-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m14 4 6 6-9 9H5v-6z"/></svg></span>
+      <h3 data-sl="Urejate jo lahko sami">You can edit it yourself</h3>
+      <p data-sl="Delovni čas, cene, fotografije in besedilo so za preprostim urejevalnikom, tako da za spremembo številke ni treba nikomur pisati.">Hours, prices, photos and text sit behind a simple editor, so you are not emailing anyone to change a number.</p>
+    </div>
+    <div class="card svc">
+      <span class="svc-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 3v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6z"/></svg></span>
+      <h3 data-sl="Gostovanje in vzdrževanje urejeno">Hosting and upkeep handled</h3>
+      <p data-sl="Domena, SSL, varnostne kopije in posodobitve na majhni mesečni naročnini — ali pa vzamete datoteke in gostujete sami. Vaša izbira.">Domain, SSL, backups and updates on a small monthly plan — or take the files and host them yourself. Your call.</p>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE BUILDER -->
+<section class="wrap section" id="quote">
+  <div class="head">
+    <h2 class="h" data-sl="Sestavite ponudbo">Build your quote</h2>
+    <p class="lead" data-sl="Izberite, kar vam ustreza. Znesek se sproti spreminja, vse skupaj pa mi pošljete z enim klikom.">Pick what fits. The number moves as you go, and you can send the whole thing to me in one click.</p>
+  </div>
+
+  <div class="seg" role="group" aria-label="Scope" id="segScope">
+    <button class="seg-btn" type="button" data-val="build" aria-pressed="true" data-sl="Nova spletna stran">A new website</button>
+    <button class="seg-btn" type="button" data-val="refresh" aria-pressed="false" data-sl="Prenova obstoječe">Refresh the one I have</button>
+  </div>
+
+  <div class="plans" id="plans">
+    <button class="plan" type="button" data-val="none" aria-pressed="false">
+      <span class="plan-mark" aria-hidden="true"><i></i></span>
+      <span class="plan-name" data-sl="Brez naročnine">One-off</span>
+      <span class="plan-price"><b data-base>€399</b><span data-sl="enkratno">one-off</span></span>
+      <span class="plan-note" data-sl="Stran je vaša. Gostovanje uredite sami.">Yours outright. You handle the hosting.</span>
+      <ul>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Datoteke in domena so vaše">Files and domain are yours</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Brez mesečnih stroškov">No monthly cost</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Neomejene spremembe pred objavo">Unlimited changes before it goes live</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Do 10 podstrani, vse vključeno">Up to 10 pages, all included</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Obrazec, zemljevid in mobilna postavitev">Enquiry form, map and mobile layout</span></li>
+      </ul>
+    </button>
+
+    <button class="plan" type="button" data-val="care" aria-pressed="true">
+      <span class="plan-mark" aria-hidden="true"><i></i></span>
+      <span class="plan-name" data-sl="Skrb">Care</span>
+      <span class="plan-price"><b>€49</b><span data-sl="/ mesec">/ month</span></span>
+      <span class="plan-note" data-sl="Gostovanje, varnostne kopije in sprotne manjše spremembe.">Hosting, backups and the small changes as they come up.</span>
+      <ul>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Gostovanje, SSL, varnostne kopije">Hosting, SSL, backups</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Prekličete lahko kadar koli">Cancel any time</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Vse iz enkratne izdelave">Everything in the one-off build</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Varnostne posodobitve in nadzor delovanja">Security updates and uptime monitoring</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Sprotne manjše spremembe">Small changes whenever you need them</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Domena na vaše ime, zaračunana po nabavni ceni">Domain in your name, billed at cost</span></li>
+      </ul>
+    </button>
+
+    <button class="plan" type="button" data-val="growth" aria-pressed="false">
+      <span class="plan-mark" aria-hidden="true"><i></i></span>
+      <span class="plan-name" data-sl="Rast">Growth</span>
+      <span class="plan-price"><b>€199</b><span data-sl="/ mesec">/ month</span></span>
+      <span class="plan-note" data-sl="Vse iz Skrbi, dodatno mesečno delo na SEO in vsebini.">Everything in Care, plus monthly SEO and content work.</span>
+      <ul>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Vse iz Skrbi">Everything in Care</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Mesečno delo na SEO in vsebini">Monthly SEO and content</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Urejen Google profil podjetja">Google Business Profile kept current</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Nova vsebina in podstrani vsak mesec">New pages and content each month</span></li>
+        <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg><span data-sl="Mesečno poročilo o rezultatih">Monthly report on how the site is doing</span></li>
+      </ul>
+    </button>
+  </div>
+
+  <div class="total">
+    <div class="total-l">
+      <b id="qPrice">€399</b>
+      <span id="qCare">+ €49 / month</span>
+    </div>
+    <button class="btn btn-lg" type="button" id="qSend" data-sl="Pošljite ta povzetek">Send this brief</button>
+  </div>
+  <p class="caption" style="margin-top:10px" data-sl="Fiksna cena, dogovorjena pred začetkom. Ocena je izhodišče, ne pogodba.">Fixed price, agreed before work starts. The estimate is a starting point, not a contract.</p>
+</section>
+
+<!-- PROCESS -->
+<section class="wrap section" id="process">
+  <div class="head">
+    <h2 class="h" data-sl="Kako poteka izdelava">How a build runs</h2>
+    <p class="lead" data-sl="Štiri faze, približno dva tedna, in potrebni ste le pri dveh.">Four stages, roughly two weeks, and you're only needed for two of them.</p>
+  </div>
+
+  <div class="proc">
+    <div class="proc-list" role="tablist" aria-label="Build stages" id="procList">
+      <button class="proc-btn" role="tab" aria-selected="true" data-i="0">
+        <h3>Call</h3><small>Day one</small>
+      </button>
+      <button class="proc-btn" role="tab" aria-selected="false" tabindex="-1" data-i="1">
+        <h3>Draft</h3><small>Within a week</small>
+      </button>
+      <button class="proc-btn" role="tab" aria-selected="false" tabindex="-1" data-i="2">
+        <h3>Build</h3><small>Week two</small>
+      </button>
+      <button class="proc-btn" role="tab" aria-selected="false" tabindex="-1" data-i="3">
+        <h3>Launch</h3><small>Day fourteen</small>
+      </button>
+    </div>
+
+    <div class="proc-panel" role="tabpanel">
+      <div class="stage" id="stage-0">
+        <div class="sg-call">
+          <div class="sg-call-top">
+            <span class="sg-av">A</span>
+            <span class="sg-call-t"><b>Avenyo</b><span>00:14</span></span>
+          </div>
+          <div class="sg-wave"><i style="animation-delay:0s"></i><i style="animation-delay:.1s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.15s"></i><i style="animation-delay:.25s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.35s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.1s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:0s"></i></div>
+          <div class="sg-call-btns">
+            <span class="sg-pill ok" data-sl="15 minut">15 minutes</span>
+            <span class="sg-pill no" data-sl="brez predstavitev">no slides</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage" id="stage-1" hidden>
+        <div class="sg-wire">
+          <div class="bar" style="width:52%; animation-delay:.05s"></div>
+          <div class="block" style="animation-delay:.15s"></div>
+          <div class="bar" style="width:84%; animation-delay:.25s"></div>
+          <div class="bar" style="width:66%; animation-delay:.32s"></div>
+          <div class="row"><div style="animation-delay:.42s"></div><div style="animation-delay:.5s"></div><div style="animation-delay:.58s"></div></div>
+        </div>
+      </div>
+
+      <div class="stage" id="stage-2" hidden>
+        <div class="sg-build">
+          <div class="sg-field" style="animation-delay:.05s"><span data-sl="Besedilo in fotografije">Copy and photos</span><b>✓</b></div>
+          <div class="sg-field" style="animation-delay:.18s"><span data-sl="Obrazec za povpraševanje">Enquiry form</span><b>✓</b></div>
+          <div class="sg-field" style="animation-delay:.31s"><span data-sl="Klic z enim dotikom">Tap-to-call</span><b>✓</b></div>
+          <div class="sg-field" style="animation-delay:.44s"><span data-sl="Preizkus na telefonu">Tested on a phone</span><b>✓</b></div>
+        </div>
+      </div>
+
+      <div class="stage" id="stage-3" hidden>
+        <div class="sg-live">
+          <div class="sg-browser">
+            <div class="top"><i></i><i></i><i></i><span class="url">frizerski-studio-tamara.si</span></div>
+            <img loading="lazy" src="site/work/frizerski-studio-tamara.webp" alt="">
+          </div>
+          <span class="sg-badge"><i></i><span data-sl="V živo — domena preusmerjena">Live — domain pointed</span></span>
+        </div>
+      </div>
+
+      <div class="proc-copy">
+        <h4 id="procTitle">Fifteen minutes, no slides</h4>
+        <p id="procBody">We talk about what the business does and what a visitor should do next. You get a fixed price the same day, in writing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="wrap section" id="faq">
+  <div class="head"><h2 class="h" data-sl="Pogosta vprašanja">Questions I get asked</h2></div>
+  <div class="faq">
+    <details class="qa" open>
+      <summary>I already have a site. Can you fix it instead?</summary>
+      <p>Often, yes. Send me the link and I'll tell you honestly whether it's worth repairing or cheaper to rebuild. If a tune-up will do, that's a smaller job and a smaller invoice.</p>
+    </details>
+    <details class="qa">
+      <summary>Who owns the site when it's done?</summary>
+      <p>You do — the domain, the content and the files. If you ever stop working with me, I hand everything over. Nothing is locked to a platform only I can get into.</p>
+    </details>
+    <details class="qa">
+      <summary>What do you need from me?</summary>
+      <p>Photos if you have them, your hours and services, and about an hour of your time in total.</p>
+    </details>
+    <details class="qa">
+      <summary>Will it show up on Google?</summary>
+      <p>Your business will be set up properly for local search — profile, map listing, hours, reviews and page structure. Ranking above every competitor isn't something anyone can promise, and I won't.</p>
+    </details>
+    <details class="qa">
+      <summary>I got an email with a website already built. Is that real?</summary>
+      <p>Yes. Before I write to anyone I build a working draft of their site from their photos, reviews and publicly available details, and put it on a link of mine — nothing touches the site you already have. It is free and there is no obligation. Most people never reply and that is completely fine. If you like it, we rework it however you want and then it goes live on your domain.</p>
+    </details>
+    <details class="qa">
+      <summary>What does it cost, and when do I pay?</summary>
+      <p>€399 once for a new site, €99 for a refresh of the one you have, and an optional €49 a month if you want me to host it and look after it. You get an invoice for everything. The build is paid when the site is finished and ready to go live on your domain — nothing before that.</p>
+    </details>
+    <details class="qa">
+      <summary>What do changes and extra pages cost?</summary>
+      <p>Nothing, before launch. Pages and sections, galleries, forms, maps, price lists, menus, reviews, text and photo changes are all in the price. I quote separately only for things that are a different product rather than a bigger website: a booking system with payments, an online shop, a customer portal, or an integration with your back-office software.</p>
+    </details>
+    <details class="qa">
+      <summary>What is in the €49 a month?</summary>
+      <p>Hosting, the SSL certificate, backups, security updates, uptime monitoring, and the small changes as they come up — new prices, different opening hours, a new photo, an added service. Building the site is a separate one-off cost and is not part of the monthly fee.</p>
+    </details>
+    <details class="qa">
+      <summary>Am I tied into anything?</summary>
+      <p>No. Scope, price and timing are agreed in writing before anything starts, so you know what you are getting. There is no minimum term: cancel the monthly plan whenever you like, with no notice period and no explanation, and the site stays yours.</p>
+    </details>
+</div>
+</section>
+
+<!-- CTA -->
+<section class="wrap section" id="contact">
+  <div class="cta">
+    <div class="cta-grid">
+      <div>
+        <h2 data-sl="Povejte mi o svojem podjetju.">Tell me about the business.</h2>
+        <p class="body" data-sl="Nekaj vrstic je dovolj. Odgovorim v enem delovnem dnevu z jasnim odgovorom o obsegu, ceni in rokih — če spletna stran ni tisto, kar zdaj potrebujete, bom povedal tudi to.">A few lines is enough. I reply within one working day with a straight answer on scope, price and timing — and if a website isn't what you need right now, I'll say that too.</p>
+        <ul class="cta-list">
+          <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg>No retainer, no lock-in</li>
+          <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg>Fixed price before work starts</li>
+          <li><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L19 7"/></svg>You keep everything at the end</li>
+        </ul>
+      </div>
+
+      <form class="cta-form" data-form="contact" novalidate>
+        <div class="row">
+          <input class="input" type="text" name="name" placeholder="Your name" data-ph-sl="Vaše ime" autocomplete="name" aria-label="Your name">
+          <input class="input" type="text" name="business" placeholder="Business name" data-ph-sl="Ime podjetja" autocomplete="organization" aria-label="Business name">
+        </div>
+        <input class="input" type="email" name="email" placeholder="Email" data-ph-sl="E-pošta" autocomplete="email" aria-label="Email">
+        <textarea class="input" id="brief" name="message" placeholder="What does the business do, and what should the site help with?" aria-label="About the business"></textarea>
+        <button class="btn btn-lg" type="submit" data-sl="Pošljite povpraševanje">Send enquiry</button>
+        <p class="cta-fine" data-sl="Ali pa pišite na tim@avenyo.app oziroma pokličite +386 64 194 936 — brez obrazcev.">Or email tim@avenyo.app or call +386 64 194 936 — no forms required.</p>
+        <p class="cta-fine" data-sl="Vaše podatke uporabim samo za odgovor na to povpraševanje in jih ne posredujem nikomur. Za izbris pišite na tim@avenyo.app.">I use your details only to answer this enquiry and pass them to nobody. Write to tim@avenyo.app to have them deleted.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="logo" href="#top"><span class="logo-mark">A</span> Avenyo</a>
+        <p class="meta" style="margin-top:12px; max-width:34ch" data-sl="Spletne strani za lokalna podjetja. Izdelane od začetka do konca s strani ene osebe.">Websites for local businesses. Built by one person, start to finish.</p>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="#work" data-sl="Delo">Work</a><a href="#services" data-sl="Kaj dobite">What you get</a><a href="#quote" data-sl="Cenik">Pricing</a>
+        <a href="#process" data-sl="Postopek">Process</a><a href="#faq" data-sl="Pogosta vprašanja">FAQ</a><a href="#contact" data-sl="Kontakt">Contact</a>
+        <a href="/examples" data-sl="Primeri">Examples</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span class="caption">© 2026 Avenyo</span>
+      <span class="caption">tim@avenyo.app · +386 64 194 936</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- rotating hero word ---- */
+  var rotor = document.getElementById('rotor');
+  if (rotor && !reduced) {
+    var words = rotor.querySelectorAll('span'), ri = 0;
+    setInterval(function () {
+      words[ri].classList.remove('on');
+      ri = (ri + 1) % words.length;
+      words[ri].classList.add('on');
+    }, 2400);
+  }
+
+  /* ---- marquee: duplicate content so the loop is seamless ---- */
+  var track = document.getElementById('track');
+  if (track) track.innerHTML += track.innerHTML;
+
+  /* ---- generic tab wiring ---- */
+  function wireTabs(listSel, onSelect) {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(listSel));
+    if (!tabs.length) return;
+    function select(i) {
+      tabs.forEach(function (t, n) {
+        var on = n === i;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+      });
+      onSelect(i, tabs[i]);
+    }
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { select(i); });
+      t.addEventListener('keydown', function (e) {
+        var d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
+              : e.key === 'ArrowLeft'  || e.key === 'ArrowUp'   ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        var n = (i + d + tabs.length) % tabs.length;
+        select(n); tabs[n].focus();
+      });
+    });
+  }
+
+  wireTabs('.tabs .tab', function (i, tab) {
+    document.querySelectorAll('.panel').forEach(function (p) { p.hidden = true; });
+    var panel = document.getElementById(tab.getAttribute('aria-controls'));
+    if (panel) panel.hidden = false;
+  });
+
+  /* ---- before / after slider ---- */
+  var ba = document.getElementById('ba'),
+      range = document.getElementById('baRange');
+  if (ba && range) {
+    var setSplit = function (v) {
+      ba.style.setProperty('--split', v + '%');
+      ba.querySelector('.ba-new').style.clipPath = 'inset(0 0 0 ' + v + '%)';
+      ba.querySelector('.ba-handle').style.left = v + '%';
+    };
+    range.addEventListener('input', function () { setSplit(this.value); });
+    ba.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'mouse' && e.buttons !== 1) return;
+      var r = ba.getBoundingClientRect();
+      var v = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+      range.value = v; setSplit(v);
+    });
+    setSplit(50);
+  }
+
+  /* ---- pricing ----
+     Real Stripe prices (scripts/setup-stripe-prices.mjs): build €399 once,
+     refresh €99 once, care €49/mo, growth €199/mo. What the page shows has to
+     match what checkout will actually charge. */
+  var SCOPE = { build:  { price: 399, en: 'New website', sl: 'Nova spletna stran' },
+                refresh:{ price: 99,  en: 'Refresh existing site', sl: 'Prenova obstoječe strani' } };
+  var PLAN  = { none:  { price: 0,   en: 'One-off',     sl: 'Brez naročnine' },
+                care:  { price: 49,  en: 'Care plan',   sl: 'Skrb' },
+                growth:{ price: 199, en: 'Growth plan', sl: 'Rast' } };
+  var qState = { scope: 'build', plan: 'care' };
+  var currentLang = 'sl';
+
+  function renderPrice() {
+    var base = SCOPE[qState.scope], plan = PLAN[qState.plan];
+    document.querySelectorAll('#plans [data-base]').forEach(function (el) {
+      el.textContent = '\u20ac' + base.price;
+    });
+    document.getElementById('qPrice').textContent = '\u20ac' + base.price;
+    document.getElementById('qCare').textContent = plan.price
+      ? '+ \u20ac' + plan.price + (currentLang === 'sl' ? ' / mesec' : ' / month')
+      : (currentLang === 'sl' ? 'enkratno' : 'one-off');
+  }
+
+  document.querySelectorAll('#segScope .seg-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#segScope .seg-btn').forEach(function (x) { x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true');
+      qState.scope = b.dataset.val; renderPrice();
+    });
+  });
+  document.querySelectorAll('#plans .plan').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#plans .plan').forEach(function (x) { x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true');
+      qState.plan = b.dataset.val; renderPrice();
+    });
+  });
+
+  /* send the built brief into the contact form */
+  var send = document.getElementById('qSend');
+  if (send) {
+    send.addEventListener('click', function () {
+      var base = SCOPE[qState.scope], plan = PLAN[qState.plan], sl = currentLang === 'sl';
+      var lines = [
+        (sl ? 'Obseg: ' : 'Scope: ') + (sl ? base.sl : base.en),
+        (sl ? 'Narocnina: ' : 'Ongoing: ') + (sl ? plan.sl : plan.en),
+        (sl ? 'Prikazana ocena: ' : 'Estimate shown: ') + '\u20ac' + base.price +
+          (plan.price ? ' + \u20ac' + plan.price + (sl ? '/mesec' : '/month') : ''),
+        '',
+        sl ? 'Nekaj o nas: ' : 'A bit about us: '
+      ];
+      var brief = document.getElementById('brief');
+      brief.value = lines.join('\n');
+      document.getElementById('contact').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+      setTimeout(function () {
+        brief.focus();
+        brief.setSelectionRange(brief.value.length, brief.value.length);
+      }, reduced ? 0 : 500);
+    });
+  }
+
+  /* ---- language ----
+     Translatable nodes carry data-sl; the markup ships English, so the English
+     original is captured once on load and swapped in and out. Default is Slovene
+     because the prospects are Slovenian businesses. */
+  var i18nNodes = Array.prototype.slice.call(document.querySelectorAll('[data-sl]'));
+  i18nNodes.forEach(function (el) { el.dataset.en = el.textContent.trim(); });
+  var PH = [
+    ['hero-email', 'you@yourbusiness.com', 'vi@vasepodjetje.si'],
+    ['brief', 'What does the business do, and what should the site help with?',
+              'S čim se podjetje ukvarja in pri čem naj stran pomaga?']
+  ];
+  /* Text-node dictionary. data-sl covers elements whose whole content is a
+     string; this covers everything else — list items that sit next to an inline
+     SVG, summary text, marquee chips — without restructuring the markup. */
+  var DICT = {
+    "Six seconds to load on a phone":"Šest sekund nalaganja na telefonu",
+    "Changing one photo means emailing a developer":"Za eno fotografijo je treba pisati razvijalcu",
+    "Opening hours from two winters ago":"Delovni čas izpred dveh zim",
+    "What you get":"Kaj dobite",
+    "No retainer, no lock-in":"Brez pogodbene vezave",
+    "Fixed price before work starts":"Fiksna cena pred začetkom dela",
+    "You keep everything at the end":"Na koncu vse ostane vaše",
+    "Get a quote":"Povprašajte",
+    "Call":"Klic","Draft":"Osnutek","Build":"Izdelava","Launch":"Objava",
+    "Day one":"Prvi dan","Within a week":"V enem tednu","Week two":"Drugi teden","Day fourteen":"Štirinajsti dan",
+    "I already have a site. Can you fix it instead?":"Že imam spletno stran. Jo lahko raje popravite?",
+    "Who owns the site when it's done?":"Kdo je lastnik strani, ko je končana?",
+    "What do you need from me?":"Kaj potrebujete od mene?",
+    "Will it show up on Google?":"Ali se bo pokazala na Googlu?",
+    "I got an email with a website already built. Is that real?":"Prejel sem e-pošto z že izdelano spletno stranjo. Je to res?",
+    "What does it cost, and when do I pay?":"Koliko stane in kdaj plačam?",
+    "What do changes and extra pages cost?":"Koliko stanejo spremembe in dodatne podstrani?",
+    "What is in the €49 a month?":"Kaj je vključeno v 49 € na mesec?",
+    "Am I tied into anything?":"Kaj me veže za naprej?",
+    "Cafés":"Kavarne","Barbers":"Frizerji","Plumbers":"Vodovodarji","Dental clinics":"Zobozdravstvo",
+    "Yoga studios":"Joga studii","Bakeries":"Pekarne","Electricians":"Elektrikarji","Florists":"Cvetličarne",
+    "Physios":"Fizioterapija","Restaurants":"Restavracije","Garages":"Avtoservisi","Photographers":"Fotografi",
+    "Salons":"Saloni","Landscapers":"Urejanje okolice","Butchers":"Mesnice","Tattoo studios":"Tattoo studii",
+    "Driving schools":"Avtošole","Vets":"Veterinarji"
+  };
+  var LONG = [
+    ["Often, yes. Send me the link and I'll tell you honestly whether it's worth repairing or cheaper to rebuild. If a tune-up will do, that's a smaller job and a smaller invoice.",
+     "Pogosto ja. Pošljite mi povezavo in iskreno vam bom povedal, ali se stran splača popraviti ali je ceneje narediti novo. Če zadostuje manjša prenova, je to manjši posel in manjši račun."],
+    ["You do — the domain, the content and the files. If you ever stop working with me, I hand everything over. Nothing is locked to a platform only I can get into.",
+     "Vi — domena, vsebina in datoteke. Če kdaj prenehate sodelovati z mano, vam vse predam. Nič ni zaklenjeno v platformo, do katere imam dostop samo jaz."],
+    ["Photos if you have them, your hours and services, and about an hour of your time in total.",
+     "Fotografije, če jih imate, vaš delovni čas in storitve ter skupno približno eno uro vašega časa."],
+    ["Your business will be set up properly for local search — profile, map listing, hours, reviews and page structure. Ranking above every competitor isn't something anyone can promise, and I won't.",
+     "Vaše podjetje bo pravilno nastavljeno za lokalno iskanje — profil, zemljevid, delovni čas, mnenja in struktura strani. Uvrstitve nad vso konkurenco nihče ne more obljubiti in tega ne bom počel."],
+    ["Yes. Before I write to anyone I build a working draft of their site from their photos, reviews and publicly available details, and put it on a link of mine — nothing touches the site you already have. It is free and there is no obligation. Most people never reply and that is completely fine. If you like it, we rework it however you want and then it goes live on your domain.",
+     "Da. Preden komu pišem, iz njegovih fotografij, mnenj in javno dostopnih podatkov izdelam delujoč osnutek strani in ga objavim na svoji povezavi — vaše obstoječe strani se ne dotaknem. Predlog je brezplačen in brez obveznosti. Večina ljudi ne odgovori in to je povsem v redu. Če vam je všeč, ga predelamo po vaše, nato gre v živo na vaši domeni."],
+    ["€399 once for a new site, €99 for a refresh of the one you have, and an optional €49 a month if you want me to host it and look after it. You get an invoice for everything. The build is paid when the site is finished and ready to go live on your domain — nothing before that.",
+     "399 € enkratno za novo stran, 99 € za prenovo obstoječe in neobvezno 49 € na mesec, če želite, da jo gostujem in zanjo skrbim. Za vse izdam račun. Izdelavo poravnate takrat, ko je stran končana in pripravljena za objavo na vaši domeni — pred tem ne plačate ničesar."],
+    ["Nothing, before launch. Pages and sections, galleries, forms, maps, price lists, menus, reviews, text and photo changes are all in the price. I quote separately only for things that are a different product rather than a bigger website: a booking system with payments, an online shop, a customer portal, or an integration with your back-office software.",
+     "Nič. Do objave popravljam, dokler ni takšna, kot si jo želite. Podstrani in razdelki, galerije, obrazci, zemljevidi, ceniki, meniji, mnenja ter spremembe besedil in fotografij so vključeni v ceno. Ločeno ponudbo pripravim le za stvari, ki niso več spletna stran, ampak svoj projekt: rezervacijski sistem s plačili, spletno trgovino, portal za stranke ali povezavo z vašo poslovno programsko opremo."],
+    ["Hosting, the SSL certificate, backups, security updates, uptime monitoring, and the small changes as they come up — new prices, different opening hours, a new photo, an added service. Building the site is a separate one-off cost and is not part of the monthly fee.",
+     "Gostovanje, SSL certifikat, varnostne kopije, varnostne posodobitve, nadzor delovanja in sprotne manjše spremembe — nove cene, drugačen delovni čas, nova fotografija, dodana storitev. Izdelava strani je ločen enkratni strošek in ni všteta v mesečno ceno."],
+    ["No. Scope, price and timing are agreed in writing before anything starts, so you know what you are getting. There is no minimum term: cancel the monthly plan whenever you like, with no notice period and no explanation, and the site stays yours.",
+     "Nič. Obseg, cena in rok so dogovorjeni pisno, preden se karkoli začne, da veste, pri čem ste. Vezave ni: mesečno skrb odpoveste kadar koli, brez odpovednega roka in brez pojasnil, stran pa ostane vaša."]
+  ];
+  LONG.forEach(function (r) { DICT[r[0]] = r[1]; });
+
+  var textNodes = [];
+  (function collect(root) {
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    var n; while ((n = w.nextNode())) {
+      var t = n.textContent.trim();
+      if (!t || n.parentElement.closest('script,style')) continue;
+      if (n.parentElement.hasAttribute('data-sl')) continue;
+      if (DICT[t]) textNodes.push({ node: n, en: n.textContent, sl: n.textContent.replace(t, DICT[t]) });
+    }
+  })(document.body);
+
+  function setLang(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    i18nNodes.forEach(function (el) {
+      el.textContent = lang === 'sl' ? el.dataset.sl : el.dataset.en;
+    });
+    document.querySelectorAll('[data-ph-sl]').forEach(function (el) {
+      if (!el.dataset.phEn) el.dataset.phEn = el.placeholder;
+      el.placeholder = lang === 'sl' ? el.dataset.phSl : el.dataset.phEn;
+    });
+    PH.forEach(function (row) {
+      var el = document.getElementById(row[0]);
+      if (el) el.placeholder = lang === 'sl' ? row[2] : row[1];
+    });
+    textNodes.forEach(function (r) { r.node.textContent = lang === 'sl' ? r.sl : r.en; });
+    document.querySelectorAll('.lang-btn').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.lang === lang);
+    });
+    renderPrice();
+    renderStage();
+  }
+  document.querySelectorAll('.lang-btn').forEach(function (b) {
+    b.addEventListener('click', function () { setLang(b.dataset.lang); });
+  });
+
+  /* ---- process stepper ---- */
+  var STAGES_SL = [
+    ['Petnajst minut, brez predstavitev', 'Pogovoriva se, s čim se podjetje ukvarja in kaj naj obiskovalec naredi naprej. Fiksno ceno dobite še isti dan, v pisni obliki.'],
+    ['Prava stran, ne slika strani', 'V tednu dni dobite delujoč osnutek v brskalniku na svojem telefonu. Pripombe pišete kar nanj — brez PDF-jev in brez računa za Figmo.'],
+    ['Vsebina noter, obrazci povezani, telefoni preizkušeni', 'Besedilo in fotografije gredo noter, poti povpraševanj se preizkusijo na pravih napravah, tu se zgodita tudi dva kroga sprememb. Že vključena v ceno.'],
+    ['Objavljeno, vpisano in predano', 'Domena preusmerjena, vpisi v iskalnike posodobljeni, stran predana vam — domena, datoteke in vsebina.']
+  ];
+  var STAGES = [
+    ['Fifteen minutes, no slides', 'We talk about what the business does and what a visitor should do next. You get a fixed price the same day, in writing.'],
+    ['A real page, not a picture of one', 'Within a week you get a working draft in your browser on your own phone. You comment straight onto it — no PDF markup, no Figma account.'],
+    ['Content in, forms wired, phones tested', 'Copy and photos go in, the enquiry routes get tested on actual devices, and the two rounds of changes happen here. They are already in the price.'],
+    ['Live, listed, and handed over', 'Domain pointed, search listings updated, and the site handed over to you — domain, files and content.']
+  ];
+  /* Each stage shows a different page, so clicking through the stepper actually
+     changes something on the right. Previously all four showed one image. */
+  var stageIdx = 0;
+  function renderStage() {
+    var t = (currentLang === 'sl' ? STAGES_SL : STAGES)[stageIdx || 0];
+    if (!t) return;
+    document.getElementById('procTitle').textContent = t[0];
+    document.getElementById('procBody').textContent = t[1];
+    // Show this stage's graphic and re-trigger its entry animation by cloning.
+    for (var k = 0; k < 4; k++) {
+      var el = document.getElementById('stage-' + k);
+      if (!el) continue;
+      var on = k === (stageIdx || 0);
+      if (on && el.hidden) {
+        el.hidden = false;
+        var fresh = el.cloneNode(true);
+        el.parentNode.replaceChild(fresh, el);
+      } else if (!on) { el.hidden = true; }
+    }
+  }
+  wireTabs('#procList .proc-btn', function (i) { stageIdx = i; renderStage(); });
+
+  /* ---- enquiry forms ----
+     These POST to /api/contact, which mails the enquiry to the operator with
+     Reply-To set to the sender. They used to be stubs: the button said "Thanks —
+     I will be in touch" and the message was thrown away. On the page that IS the
+     business, silently dropping the one thing a visitor came to do is the worst
+     bug on the site, so the failure path here is loud and gives out the address
+     to write to instead. */
+  var COPY = {
+    sending: { en: 'Sending\u2026', sl: 'Po\u0161iljam\u2026' },
+    sent:    { en: 'Thanks \u2014 I\u2019ll be in touch within one working day.',
+               sl: 'Hvala \u2014 oglasim se v enem delovnem dnevu.' },
+    email:   { en: 'Please enter your email address so I can reply.',
+               sl: 'Vnesite svoj e-naslov, da vam lahko odgovorim.' },
+    failed:  { en: 'That didn\u2019t send. Please email tim@avenyo.app or call +386 64 194 936.',
+               sl: 'Po\u0161iljanje ni uspelo. Pi\u0161ite na tim@avenyo.app ali pokli\u010dite +386 64 194 936.' }
+  };
+
+  function noteFor(form) {
+    var note = form.querySelector('.form-note');
+    if (!note) {
+      note = document.createElement('p');
+      note.className = 'form-note';
+      /* role=status so a screen reader announces the outcome; the visual change
+         alone is no answer to "did that go through?". */
+      note.setAttribute('role', 'status');
+      form.appendChild(note);
+    }
+    return note;
+  }
+
+  document.querySelectorAll('form[data-form]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn && btn.dataset.busy) return;
+
+      var field = function (n) { return form.querySelector('[name="' + n + '"]'); };
+      var val = function (n) { var el = field(n); return el ? el.value.trim() : ''; };
+      var note = noteFor(form);
+      var email = val('email');
+
+      note.classList.remove('is-bad');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        note.textContent = COPY.email[currentLang];
+        note.classList.add('is-bad');
+        if (field('email')) field('email').focus();
+        return;
+      }
+
+      var label = btn ? btn.textContent : '';
+      if (btn) { btn.dataset.busy = '1'; btn.textContent = COPY.sending[currentLang]; }
+      note.textContent = '';
+
+      fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: val('name'), business: val('business'), email: email,
+          message: val('message'), source: form.dataset.form
+        })
+      }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        form.reset();
+        note.textContent = COPY.sent[currentLang];
+      }).catch(function (err) {
+        console.error('[contact]', err);
+        note.textContent = COPY.failed[currentLang];
+        note.classList.add('is-bad');
+      }).then(function () {
+        if (btn) { btn.textContent = label; delete btn.dataset.busy; }
+      });
+    });
+  });
+
+  /* Last: every section has wired itself up, so the first translation pass can
+     safely touch all of them. Running this earlier threw on the process stepper
+     and silently killed every listener defined below it. */
+  setLang('sl');
+})();
+</script>
+</body>
+</html>

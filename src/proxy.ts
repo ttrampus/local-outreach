@@ -36,6 +36,10 @@ const PUBLIC_PATHS = new Set([
   // session, and POSTed by mail clients (RFC 8058 one-click) that send no cookie.
   // The route verifies its own HMAC, which is the real authentication here.
   "/api/unsubscribe",
+  // The enquiry form on the marketing site at "/". Submitted by strangers, who by
+  // definition have no session. The route rate-limits itself and only ever sends
+  // mail to the operator, so there is nothing here to read back.
+  "/api/contact",
 ]);
 
 /** Public including everything beneath them. */
@@ -46,6 +50,10 @@ const PUBLIC_PREFIXES = [
   "/pay/", // Stripe Checkout return pages
   "/previews/", // preview screenshots under public/
   "/brand/", // logo files under public/, used by the marketing pages
+  // The marketing site's own work gallery under public/site/ — the showcase
+  // pages and every screenshot on the homepage. Without this the front page
+  // bounces a logged-out visitor to /login for each of its own images.
+  "/site/",
   "/api/auth/", // login and logout themselves
   "/_next/", // build assets
 ];
