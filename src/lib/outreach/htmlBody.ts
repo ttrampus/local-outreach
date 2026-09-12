@@ -30,8 +30,23 @@ function escAttr(s: string): string {
   return esc(s).replace(/'/g, "&#39;");
 }
 
-// Trailing punctuation is not part of a URL that ends a sentence.
-const URL_RE = /https?:\/\/[^\s<>"']+[^\s<>"'.,;:!?)]/g;
+// Trailing punctuation is not part of a URL that ends a sentence, and neither is
+// the bold marker below — "**https://…**" must link the address, not the markers.
+const URL_RE = /https?:\/\/[^\s<>"'*]+[^\s<>"'*.,;:!?)]/g;
+
+// The one piece of markup the drafters may use: **bold**, for the price. Kept to
+// one construct on purpose — a body with headings and bullet lists is a brochure,
+// and the plain-text alternative has to remain a readable message on its own.
+const BOLD_RE = /\*\*(.+?)\*\*/g;
+
+/**
+ * The plain-text half of the same message: the body with the bold markers taken
+ * out. Both parts must say the same thing (see the header), and a reader whose
+ * client shows text sees prose, not asterisks.
+ */
+export function toPlainTextEmail(text: string): string {
+  return text.replace(BOLD_RE, "$1");
+}
 
 const FONT =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
@@ -43,6 +58,11 @@ export interface HtmlEmailOptions {
   /** The opt-out, rendered as a quiet last line. */
   optOutUrl?: string | null;
   optOutLabel?: string;
+}
+
+/** Turn the drafter's **bold** into <strong>, after escaping and linking. */
+function bold(html: string): string {
+  return html.replace(BOLD_RE, (_m, inner: string) => `<strong>${inner}</strong>`);
 }
 
 /**
@@ -65,13 +85,17 @@ export function toHtmlEmail(text: string, opts: HtmlEmailOptions = {}): string {
         // the disguise this file's header warns about. Dropping the scheme and a
         // trailing slash is not a disguise — the domain, which is the part a
         // reader checks, is still exactly what it says.
-        const label =
-          linkUrl && url === linkUrl && linkLabel
-            ? linkLabel
-            : url.replace(/^https?:\/\//, "").replace(/\/$/, "");
-        return `<a href="${escAttr(url)}" style="color:#1a56db">${esc(label)}</a>`;
+        const isPreview = Boolean(linkUrl && url === linkUrl && linkLabel);
+        const label = isPreview
+          ? (linkLabel as string)
+          : url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+        // The preview link is the one thing the email is asking for, so it is
+        // weighted — bold text, still a link and not a rendered button, because
+        // a button-shaped call to action is what a campaign looks like.
+        const weight = isPreview ? ";font-weight:600" : "";
+        return `<a href="${escAttr(url)}" style="color:#1a56db${weight}">${esc(label)}</a>`;
       });
-      return `<p style="margin:0 0 14px">${html.replace(/\n/g, "<br>")}</p>`;
+      return `<p style="margin:0 0 14px">${bold(html).replace(/\n/g, "<br>")}</p>`;
     })
     .join("");
 

@@ -1,0 +1,701 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Preview gallery (81)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin:0; padding:24px; font:14px/1.5 system-ui,sans-serif; background:#0e0e10; color:#e8e8ea; }
+  h1 { font-size:16px; margin:0 0 4px; }
+  p.sub { margin:0 0 20px; color:#8a8a92; }
+  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); }
+  .card { display:block; text-decoration:none; color:inherit; background:#17171a; border:1px solid #26262b;
+          border-radius:10px; overflow:hidden; transition:border-color .15s; }
+  .card:hover { border-color:#5b8cff; }
+  .card img { display:block; width:100%; aspect-ratio:4/3; object-fit:cover; object-position:top; background:#000; }
+  .noshot { aspect-ratio:4/3; display:grid; place-items:center; color:#55555c; }
+  .meta { display:flex; justify-content:space-between; align-items:center; padding:8px 10px 2px; }
+  .engine { font-size:11px; font-weight:600; padding:1px 7px; border-radius:99px; }
+  .engine-ai { background:#3a2a5e; color:#c9b4ff; }
+  .engine-spec { background:#12402f; color:#7ee2b8; }
+  .engine-template { background:#2b2b31; color:#a5a5ad; }
+  .engine-manual { background:#3d3320; color:#e6c88a; }
+  /* full-page designs */
+  .engine-atelier { background:#1d3550; color:#9cc8ff; }
+  .engine-kiosk { background:#4a1f1f; color:#ff9d9d; }
+  .engine-vitrine { background:#123f45; color:#7fe0ee; }
+  .engine-noir { background:#111; color:#f0f0f0; box-shadow:inset 0 0 0 1px #444; }
+  .engine-maison { background:#4a3a22; color:#f2cd97; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 20px; }
+  .chip { font:inherit; font-size:12px; padding:6px 13px; border-radius:99px; cursor:pointer;
+          background:#17171a; color:#c8c8d0; border:1px solid #2a2a31; }
+  .chip:hover { border-color:#5b8cff; }
+  .chip.on { background:#5b8cff; color:#0e0e10; border-color:#5b8cff; font-weight:600; }
+  .card.hide { display:none; }
+  time { font-size:11px; color:#6e6e76; }
+  .file { padding:0 10px 10px; font-size:10px; color:#55555c; overflow-wrap:anywhere; }
+</style>
+<h1>Preview gallery</h1>
+<p class="sub">81 pages · newest first · click any card to open the real HTML</p>
+<div class="bar">
+  <button class="chip on" data-f="all">All (81)</button>
+  <button class="chip" data-f="atelier">atelier (6)</button><button class="chip" data-f="kiosk">kiosk (12)</button><button class="chip" data-f="vitrine">vitrine (5)</button><button class="chip" data-f="noir">noir (3)</button><button class="chip" data-f="maison">maison (2)</button><button class="chip" data-f="ai">ai (30)</button><button class="chip" data-f="manual">manual (2)</button><button class="chip" data-f="spec">spec (11)</button><button class="chip" data-f="template">template (10)</button>
+</div>
+<div class="grid">
+  <a class="card" data-engine="vitrine" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908215100-9d34.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908215100-9d34.png" alt="">
+    <div class="meta">
+      <span class="engine engine-vitrine">vitrine</span>
+      <time>2026-09-08 21:51</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908215100-9d34.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908215053-2bbf.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908215053-2bbf.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:50</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908215053-2bbf.html</div>
+  </a>
+  <a class="card" data-engine="atelier" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908215045-43d0.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908215045-43d0.png" alt="">
+    <div class="meta">
+      <span class="engine engine-atelier">atelier</span>
+      <time>2026-09-08 21:50</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908215045-43d0.html</div>
+  </a>
+  <a class="card" data-engine="noir" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908215039-a964.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908215039-a964.png" alt="">
+    <div class="meta">
+      <span class="engine engine-noir">noir</span>
+      <time>2026-09-08 21:50</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908215039-a964.html</div>
+  </a>
+  <a class="card" data-engine="maison" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--maison-v0-20260908215033-988f.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--maison-v0-20260908215033-988f.png" alt="">
+    <div class="meta">
+      <span class="engine engine-maison">maison</span>
+      <time>2026-09-08 21:50</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--maison-v0-20260908215033-988f.html</div>
+  </a>
+  <a class="card" data-engine="noir" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908214952-cd38.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908214952-cd38.png" alt="">
+    <div class="meta">
+      <span class="engine engine-noir">noir</span>
+      <time>2026-09-08 21:49</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908214952-cd38.html</div>
+  </a>
+  <a class="card" data-engine="maison" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--maison-v0-20260908214946-5437.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--maison-v0-20260908214946-5437.png" alt="">
+    <div class="meta">
+      <span class="engine engine-maison">maison</span>
+      <time>2026-09-08 21:49</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--maison-v0-20260908214946-5437.html</div>
+  </a>
+  <a class="card" data-engine="noir" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908214735-2026.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908214735-2026.png" alt="">
+    <div class="meta">
+      <span class="engine engine-noir">noir</span>
+      <time>2026-09-08 21:47</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--noir-v0-20260908214735-2026.html</div>
+  </a>
+  <a class="card" data-engine="atelier" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908211954-c295.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908211954-c295.png" alt="">
+    <div class="meta">
+      <span class="engine engine-atelier">atelier</span>
+      <time>2026-09-08 21:19</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908211954-c295.html</div>
+  </a>
+  <a class="card" data-engine="vitrine" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908211948-7a63.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908211948-7a63.png" alt="">
+    <div class="meta">
+      <span class="engine engine-vitrine">vitrine</span>
+      <time>2026-09-08 21:19</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908211948-7a63.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908211941-3057.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908211941-3057.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:19</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908211941-3057.html</div>
+  </a>
+  <a class="card" data-engine="atelier" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--atelier-v0-20260908211810-2d2c.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--atelier-v0-20260908211810-2d2c.png" alt="">
+    <div class="meta">
+      <span class="engine engine-atelier">atelier</span>
+      <time>2026-09-08 21:18</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--atelier-v0-20260908211810-2d2c.html</div>
+  </a>
+  <a class="card" data-engine="vitrine" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--vitrine-v0-20260908211805-750c.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--vitrine-v0-20260908211805-750c.png" alt="">
+    <div class="meta">
+      <span class="engine engine-vitrine">vitrine</span>
+      <time>2026-09-08 21:18</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--vitrine-v0-20260908211805-750c.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908211759-cc2e.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908211759-cc2e.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:17</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908211759-cc2e.html</div>
+  </a>
+  <a class="card" data-engine="vitrine" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908211556-1531.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908211556-1531.png" alt="">
+    <div class="meta">
+      <span class="engine engine-vitrine">vitrine</span>
+      <time>2026-09-08 21:15</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908211556-1531.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908211550-5687.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908211550-5687.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:15</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908211550-5687.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908211543-6e46.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908211543-6e46.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:15</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908211543-6e46.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--kiosk-v0-20260908210652-6469.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--kiosk-v0-20260908210652-6469.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:06</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--kiosk-v0-20260908210652-6469.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908210648-de09.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908210648-de09.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:06</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908210648-de09.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210642-9c50.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210642-9c50.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:06</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210642-9c50.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908210558-6d32.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908210558-6d32.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:05</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--kiosk-v0-20260908210558-6d32.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210552-9565.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210552-9565.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:05</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210552-9565.html</div>
+  </a>
+  <a class="card" data-engine="vitrine" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908210418-5a1e.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908210418-5a1e.png" alt="">
+    <div class="meta">
+      <span class="engine engine-vitrine">vitrine</span>
+      <time>2026-09-08 21:04</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--vitrine-v0-20260908210418-5a1e.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210412-f62a.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210412-f62a.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:04</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210412-f62a.html</div>
+  </a>
+  <a class="card" data-engine="kiosk" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210205-7956.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210205-7956.png" alt="">
+    <div class="meta">
+      <span class="engine engine-kiosk">kiosk</span>
+      <time>2026-09-08 21:02</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--kiosk-v0-20260908210205-7956.html</div>
+  </a>
+  <a class="card" data-engine="atelier" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908205429-2b1a.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908205429-2b1a.png" alt="">
+    <div class="meta">
+      <span class="engine engine-atelier">atelier</span>
+      <time>2026-09-08 20:54</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908205429-2b1a.html</div>
+  </a>
+  <a class="card" data-engine="atelier" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908205308-6c65.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908205308-6c65.png" alt="">
+    <div class="meta">
+      <span class="engine engine-atelier">atelier</span>
+      <time>2026-09-08 20:53</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908205308-6c65.html</div>
+  </a>
+  <a class="card" data-engine="atelier" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908204754-57c4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908204754-57c4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-atelier">atelier</span>
+      <time>2026-09-08 20:47</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--atelier-v0-20260908204754-57c4.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-09-08 20:35</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908202510-f62c.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908202510-f62c.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:25</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908202510-f62c.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908202432-bf01.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908202432-bf01.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:24</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908202432-bf01.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908202220-9cfa.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908202220-9cfa.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:22</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908202220-9cfa.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908202208-9043.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908202208-9043.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:22</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908202208-9043.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908202157-af8e.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908202157-af8e.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:21</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908202157-af8e.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908201055-9755.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908201055-9755.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:10</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908201055-9755.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908201041-a444.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908201041-a444.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:10</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908201041-a444.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908201030-0654.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908201030-0654.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:10</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908201030-0654.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908200753-b2d7.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908200753-b2d7.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:07</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--spec-v0-20260908200753-b2d7.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908200740-3a25.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908200740-3a25.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:07</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--spec-v0-20260908200740-3a25.html</div>
+  </a>
+  <a class="card" data-engine="spec" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908200728-f06d.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908200728-f06d.png" alt="">
+    <div class="meta">
+      <span class="engine engine-spec">spec</span>
+      <time>2026-09-08 20:07</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--spec-v0-20260908200728-f06d.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--ai-v0-20260812135857-cfe1.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH7hnolUtZUcRU80cAr4K1zk--ai-v0-20260812135857-cfe1.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-12 13:58</time>
+    </div>
+    <div class="file">ChIJH7hnolUtZUcRU80cAr4K1zk--ai-v0-20260812135857-cfe1.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812112816-ee70.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812112816-ee70.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-12 11:28</time>
+    </div>
+    <div class="file">ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812112816-ee70.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812111925-6e8e.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812111925-6e8e.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-12 11:19</time>
+    </div>
+    <div class="file">ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812111925-6e8e.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812105938-12b5.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812105938-12b5.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-12 10:59</time>
+    </div>
+    <div class="file">ChIJa5fpwGUtZUcRtpFB6Hg7XKk--ai-v0-20260812105938-12b5.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJDXqU0GEtZUcROgyuk27kx-o--ai-v0-20260812100253-7e19.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJDXqU0GEtZUcROgyuk27kx-o--ai-v0-20260812100253-7e19.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-12 10:02</time>
+    </div>
+    <div class="file">ChIJDXqU0GEtZUcROgyuk27kx-o--ai-v0-20260812100253-7e19.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJDXqU0GEtZUcROgyuk27kx-o--ai-v0-20260812095828-d46c.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJDXqU0GEtZUcROgyuk27kx-o--ai-v0-20260812095828-d46c.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-12 09:58</time>
+    </div>
+    <div class="file">ChIJDXqU0GEtZUcROgyuk27kx-o--ai-v0-20260812095828-d46c.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191938-a380.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191938-a380.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 19:19</time>
+    </div>
+    <div class="file">ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191938-a380.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191357-98a7.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191357-98a7.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 19:13</time>
+    </div>
+    <div class="file">ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191357-98a7.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191342-99ae.html" target="_blank">
+    <div class="noshot">no screenshot</div>
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 19:13</time>
+    </div>
+    <div class="file">ChIJmRE2cTszZUcRmZCTAlE94Gg--ai-v0-20260811191342-99ae.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--ai-v0-20260811134637-3c55.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--ai-v0-20260811134637-3c55.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 13:46</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--ai-v0-20260811134637-3c55.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJh10ozknFtK0R8FRZugeYatQ--ai-v0-20260811134002-eed2.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJh10ozknFtK0R8FRZugeYatQ--ai-v0-20260811134002-eed2.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 13:40</time>
+    </div>
+    <div class="file">ChIJh10ozknFtK0R8FRZugeYatQ--ai-v0-20260811134002-eed2.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJH6133GUzZUcRhlT92Bpdgdk--ai-v0-20260811132840-2d6a.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH6133GUzZUcRhlT92Bpdgdk--ai-v0-20260811132840-2d6a.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 13:28</time>
+    </div>
+    <div class="file">ChIJH6133GUzZUcRhlT92Bpdgdk--ai-v0-20260811132840-2d6a.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJH6133GUzZUcRhlT92Bpdgdk--ai-v0-20260811132230-33e4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH6133GUzZUcRhlT92Bpdgdk--ai-v0-20260811132230-33e4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 13:22</time>
+    </div>
+    <div class="file">ChIJH6133GUzZUcRhlT92Bpdgdk--ai-v0-20260811132230-33e4.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260811130357-bfa9.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260811130357-bfa9.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 13:03</time>
+    </div>
+    <div class="file">ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260811130357-bfa9.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260811125747-fea4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260811125747-fea4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-11 12:57</time>
+    </div>
+    <div class="file">ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260811125747-fea4.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJt3Md5OcyZUcRowBqdHO31TA--ai-v0-20260808133742-2d22.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJt3Md5OcyZUcRowBqdHO31TA--ai-v0-20260808133742-2d22.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-08-08 13:37</time>
+    </div>
+    <div class="file">ChIJt3Md5OcyZUcRowBqdHO31TA--ai-v0-20260808133742-2d22.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJ-RkY7wUyZUcRf_Z0mMGRo7c--ai-v0-20260731191952-9831.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJ-RkY7wUyZUcRf_Z0mMGRo7c--ai-v0-20260731191952-9831.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 19:19</time>
+    </div>
+    <div class="file">ChIJ-RkY7wUyZUcRf_Z0mMGRo7c--ai-v0-20260731191952-9831.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJx-IBOaUyZUcROwWtPr71WbU.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJx-IBOaUyZUcROwWtPr71WbU.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-31 19:09</time>
+    </div>
+    <div class="file">ChIJx-IBOaUyZUcROwWtPr71WbU.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJMYo9TOkzZUcR_EwE42vIOMQ.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJMYo9TOkzZUcR_EwE42vIOMQ.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-31 19:09</time>
+    </div>
+    <div class="file">ChIJMYo9TOkzZUcR_EwE42vIOMQ.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJZUXRLpEyZUcRbrsDy66WTPE.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJZUXRLpEyZUcRbrsDy66WTPE.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-31 19:09</time>
+    </div>
+    <div class="file">ChIJZUXRLpEyZUcRbrsDy66WTPE.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJbdi0KSUzZUcR9p0j0br6gS4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJbdi0KSUzZUcR9p0j0br6gS4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-31 19:09</time>
+    </div>
+    <div class="file">ChIJbdi0KSUzZUcR9p0j0br6gS4.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJYxM-7YotZUcRFQhC2Ks1610--ai-v0-20260731153357-99a6.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJYxM-7YotZUcRFQhC2Ks1610--ai-v0-20260731153357-99a6.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 15:33</time>
+    </div>
+    <div class="file">ChIJYxM-7YotZUcRFQhC2Ks1610--ai-v0-20260731153357-99a6.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731152501-dd21.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731152501-dd21.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 15:25</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731152501-dd21.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731152237-4c9f.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731152237-4c9f.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 15:22</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731152237-4c9f.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731151952-76d4.html" target="_blank">
+    <div class="noshot">no screenshot</div>
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 15:19</time>
+    </div>
+    <div class="file">ChIJH4rqF54yZUcRmuxfvGxTnr0--ai-v0-20260731151952-76d4.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJnxHEUX0tZUcRZfo7vX_rYcw--ai-v0-20260731145415-751a.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJnxHEUX0tZUcRZfo7vX_rYcw--ai-v0-20260731145415-751a.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 14:54</time>
+    </div>
+    <div class="file">ChIJnxHEUX0tZUcRZfo7vX_rYcw--ai-v0-20260731145415-751a.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJ-RkY7wUyZUcRf_Z0mMGRo7c--ai-v0-20260731144824-11a9.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJ-RkY7wUyZUcRf_Z0mMGRo7c--ai-v0-20260731144824-11a9.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 14:48</time>
+    </div>
+    <div class="file">ChIJ-RkY7wUyZUcRf_Z0mMGRo7c--ai-v0-20260731144824-11a9.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731133706-3123.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731133706-3123.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 13:37</time>
+    </div>
+    <div class="file">ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731133706-3123.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJT7rvJAAtZUcRsJfKTjSV4AI--ai-v0-20260731132608-80c4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJT7rvJAAtZUcRsJfKTjSV4AI--ai-v0-20260731132608-80c4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 13:26</time>
+    </div>
+    <div class="file">ChIJT7rvJAAtZUcRsJfKTjSV4AI--ai-v0-20260731132608-80c4.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJT7rvJAAtZUcRsJfKTjSV4AI.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJT7rvJAAtZUcRsJfKTjSV4AI.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-31 13:23</time>
+    </div>
+    <div class="file">ChIJT7rvJAAtZUcRsJfKTjSV4AI.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJaUHSV7stZUcRXZuX1gI77zs--ai-v1-20260731113055-9ad4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJaUHSV7stZUcRXZuX1gI77zs--ai-v1-20260731113055-9ad4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 11:30</time>
+    </div>
+    <div class="file">ChIJaUHSV7stZUcRXZuX1gI77zs--ai-v1-20260731113055-9ad4.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260731112550-48fc.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260731112550-48fc.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 11:25</time>
+    </div>
+    <div class="file">ChIJY3ogh4UyZUcRMyVSb1MGOw4--ai-v0-20260731112550-48fc.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731111527-680a.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731111527-680a.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 11:15</time>
+    </div>
+    <div class="file">ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731111527-680a.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731105524-ea66.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731105524-ea66.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 10:55</time>
+    </div>
+    <div class="file">ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731105524-ea66.html</div>
+  </a>
+  <a class="card" data-engine="ai" href="/data/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731103339-f3e0.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731103339-f3e0.png" alt="">
+    <div class="meta">
+      <span class="engine engine-ai">ai</span>
+      <time>2026-07-31 10:33</time>
+    </div>
+    <div class="file">ChIJXQF5-QAzZUcRSED8orn5QnM--ai-v0-20260731103339-f3e0.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJ-RkY7wUyZUcRf_Z0mMGRo7c.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJ-RkY7wUyZUcRf_Z0mMGRo7c.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-29 14:50</time>
+    </div>
+    <div class="file">ChIJ-RkY7wUyZUcRf_Z0mMGRo7c.html</div>
+  </a>
+  <a class="card" data-engine="manual" href="/data/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--manual-v0-20260728204535-a1b3.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJXQF5-QAzZUcRSED8orn5QnM--manual-v0-20260728204535-a1b3.png" alt="">
+    <div class="meta">
+      <span class="engine engine-manual">manual</span>
+      <time>2026-07-28 20:45</time>
+    </div>
+    <div class="file">ChIJXQF5-QAzZUcRSED8orn5QnM--manual-v0-20260728204535-a1b3.html</div>
+  </a>
+  <a class="card" data-engine="manual" href="/data/previews/ChIJaUHSV7stZUcRXZuX1gI77zs--manual-v1-20260728162146-3eb1.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJaUHSV7stZUcRXZuX1gI77zs--manual-v1-20260728162146-3eb1.png" alt="">
+    <div class="meta">
+      <span class="engine engine-manual">manual</span>
+      <time>2026-07-28 16:21</time>
+    </div>
+    <div class="file">ChIJaUHSV7stZUcRXZuX1gI77zs--manual-v1-20260728162146-3eb1.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJaUHSV7stZUcRXZuX1gI77zs.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJaUHSV7stZUcRXZuX1gI77zs.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-28 16:10</time>
+    </div>
+    <div class="file">ChIJaUHSV7stZUcRXZuX1gI77zs.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJXQF5-QAzZUcRSED8orn5QnM.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJXQF5-QAzZUcRSED8orn5QnM.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-25 07:02</time>
+    </div>
+    <div class="file">ChIJXQF5-QAzZUcRSED8orn5QnM.html</div>
+  </a>
+  <a class="card" data-engine="template" href="/data/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4.html" target="_blank">
+    <img loading="lazy" src="/public/previews/ChIJY3ogh4UyZUcRMyVSb1MGOw4.png" alt="">
+    <div class="meta">
+      <span class="engine engine-template">template</span>
+      <time>2026-07-25 07:02</time>
+    </div>
+    <div class="file">ChIJY3ogh4UyZUcRMyVSb1MGOw4.html</div>
+  </a></div>
+<script>
+  const chips = document.querySelectorAll(".chip");
+  const cards = document.querySelectorAll(".card");
+  chips.forEach((chip) => chip.addEventListener("click", () => {
+    chips.forEach((c) => c.classList.toggle("on", c === chip));
+    const f = chip.dataset.f;
+    cards.forEach((card) => {
+      card.classList.toggle("hide", f !== "all" && card.dataset.engine !== f);
+    });
+  }));
+</script>

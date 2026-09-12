@@ -54,3 +54,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# responsive stress harness scratch output
+/.stress/
+/.stress-designs/

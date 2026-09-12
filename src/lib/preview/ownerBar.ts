@@ -159,7 +159,10 @@ export function injectOwnerBar(
     #__lo .__lo-yes{background:#fff;color:#0d0f14;font-weight:600;font-size:14px;padding:11px 20px;}
     #__lo .__lo-no{background:transparent;color:rgba(255,255,255,.6);font-size:13px;padding:11px 8px;}
     #__lo .__lo-contact{display:none;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;}
-    #__lo .__lo-contact a{color:#8ab4ff;text-decoration:none;}
+    /* The owner's own email and phone go in here, and an address like
+       rezervacije@lepota-in-dobro-pocutje.si has nothing to break on — on a
+       320px bar that is a horizontal scroll inside a fixed overlay. */
+    #__lo .__lo-contact a{color:#8ab4ff;text-decoration:none;overflow-wrap:anywhere;}
     #__lo.__lo-done .__lo-actions{display:none;}
     #__lo.__lo-done .__lo-sub{display:none;}
     #__lo.__lo-done .__lo-contact{display:flex;}

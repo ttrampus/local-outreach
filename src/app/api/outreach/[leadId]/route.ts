@@ -2,27 +2,27 @@
 //   POST  /api/outreach/:leadId  — (re)generate a draft (replaces any prior draft)
 //   PATCH /api/outreach/:leadId  — edit fields, or transition via { action }
 //
-// Sending is an explicit, separate action (PATCH { action: "send" }) — never
-// automatic and never bulk. The UI gates it behind a confirm step.
+// On THIS route sending is an explicit, per-lead action (PATCH { action: "send" })
+// and stays that way: approval is required, and approval requires the pre-send
+// checklist. The UI gates it behind a confirm step.
+//
+// Bulk sending lives at POST /api/leads/bulk/send, which deliberately does not
+// come through here. It approves on the operator's behalf, so it carries its own
+// guards in exchange — a typed confirmation, a per-run cap and a rolling daily
+// cap — and it is the only caller allowed to skip the checklist. Keep it that
+// way: the checklist gate below is what protects a single mis-click.
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCachedDetails } from "@/lib/places";
-import { buildDraft } from "@/lib/outreach/draft";
-import { generateOutreachWithClaude } from "@/lib/outreach/claude";
 import { deliverOutreach, markSentByHand } from "@/lib/outreach/send";
-import { isSmsConfigured } from "@/lib/outreach/sms";
-import { env } from "@/lib/env";
-import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
+import { loadLeadForOutreach, prepareOutreach } from "@/lib/outreach/prepare";
 
 import { requireSession } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function loadLead(leadId: string) {
-  return prisma.lead.findUnique({ where: { id: leadId }, include: { searchRun: true } });
-}
+const loadLead = loadLeadForOutreach;
 
 // POST — generate (or regenerate) the lead's draft.
 export async function POST(
@@ -36,62 +36,9 @@ export async function POST(
   const lead = await loadLead(leadId);
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  const details: NormalizedPlaceDetails =
-    (await getCachedDetails(lead.placeId)) ?? {
-      placeId: lead.placeId,
-      name: lead.name,
-      address: lead.address ?? undefined,
-      phone: lead.phone ?? undefined,
-      website: lead.website ?? undefined,
-      rating: lead.rating ?? undefined,
-      reviewCount: lead.reviewCount,
-      photoCount: lead.photoCount,
-      reviewSnippets: [],
-      categories: [],
-    };
+  const { primary, sequence } = await prepareOutreach(lead);
 
-  // Prefer a Claude-drafted message (native language, references the live preview
-  // link); fall back to the deterministic template when no key / refusal / error.
-  const previewUrl = `${env.appBaseUrl}/p/${lead.id}`;
-  const draft =
-    (await generateOutreachWithClaude(lead, details, previewUrl)) ??
-    buildDraft(lead, details, lead.searchRun?.query ?? "", {
-      // SMS is only worth picking when it can actually be delivered; without
-      // Twilio a phone number is better spent on a DM or a call.
-      smsEnabled: isSmsConfigured(),
-      previewUrl,
-    });
-
-  // Replace any existing *unsent* messages (the editable initial draft plus queued
-  // follow-ups); sent history is kept intact. Step 0 is the editable/sendable draft;
-  // steps 1+ are queued follow-ups, stored as reference for when there's no reply.
-  await prisma.outreach.deleteMany({
-    where: { leadId: lead.id, status: { in: ["draft", "approved", "queued"] } },
-  });
-  const created = [];
-  for (const m of draft.messages) {
-    created.push(
-      await prisma.outreach.create({
-        data: {
-          leadId: lead.id,
-          channel: draft.channel,
-          contact: draft.contact,
-          subject: m.subject,
-          body: m.body,
-          step: m.step,
-          status: m.step === 0 ? "draft" : "queued",
-        },
-      }),
-    );
-  }
-  const primary = created.find((c) => c.step === 0) ?? created[0];
-
-  // Advance funnel to "drafted" unless already further along.
-  if (["discovered", "preview_ready"].includes(lead.status)) {
-    await prisma.lead.update({ where: { id: lead.id }, data: { status: "drafted" } });
-  }
-
-  return NextResponse.json({ outreach: primary, sequence: created });
+  return NextResponse.json({ outreach: primary, sequence });
 }
 
 const PatchSchema = z.object({

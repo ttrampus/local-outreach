@@ -57,13 +57,14 @@ export const PRICING = {
  * Leads with the outcome and the fact that the work is already done — the price
  * is the last clause, not the first.
  */
+// The care plan is deliberately absent. A cold email gets one decision out of a
+// reader, and a second number turns "€399 and it's done" into "what is this going
+// to cost me every month?" — the monthly is a conversation for after they say yes.
 export const OUTREACH_PRICE_SENTENCE =
-  `€${PRICING.buildEur} to make it yours — once that's settled I change whatever ` +
-  `you want changed (text, photos, colours, layout) until it's right, at no extra ` +
-  `charge, and then it goes live on your domain — plus €${PRICING.careMonthlyEur}/month ` +
-  `if you'd like me to host it and look after it afterwards (optional, cancel anytime)`;
+  `€${PRICING.buildEur} to finish it and put it live on your domain, and that price ` +
+  `covers everything the finished site needs, adjustments included — anything you want ` +
+  `added, changed or fixed, at no extra charge`;
 
 /** The same thing compressed, for a follow-up that has to stay short. */
 export const OUTREACH_PRICE_SHORT =
-  `€${PRICING.buildEur} to make it yours, changed however you want, ` +
-  `€${PRICING.careMonthlyEur}/month to look after it`;
+  `€${PRICING.buildEur}, adjustments included`;

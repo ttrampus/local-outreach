@@ -11,6 +11,7 @@ export type AiPurpose =
   | "preview_vision" // Haiku photo captioning + hero pick
   | "preview_reviews" // Haiku review-insight mining
   | "preview_design" // the big Opus site-design call
+  | "preview_spec" // Sonnet copy spec rendered through the template
   | "preview_critique" // Haiku visual review of the rendered page
   | "preview_repair" // RETIRED: Opus correction pass. Nothing writes this any
   //                    more (it cost more per call than the generation it fixed);
@@ -23,7 +24,8 @@ export type AiPurpose =
 const PRICES: { prefix: string; inPerM: number; outPerM: number }[] = [
   { prefix: "claude-fable-5", inPerM: 10, outPerM: 50 },
   { prefix: "claude-opus", inPerM: 5, outPerM: 25 },
-  { prefix: "claude-sonnet", inPerM: 3, outPerM: 15 },
+  { prefix: "claude-sonnet-4", inPerM: 3, outPerM: 15 },
+  { prefix: "claude-sonnet", inPerM: 2, outPerM: 10 },
   { prefix: "claude-haiku", inPerM: 1, outPerM: 5 },
 ];
 

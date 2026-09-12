@@ -6,8 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
-import { isSmtpConfigured, sendMail } from "@/lib/outreach/mailer";
+import { notifyEnquiry } from "@/lib/outreach/notify";
 import { clientKey } from "@/lib/auth/loginThrottle";
 import { rateLimit } from "@/lib/http/rateLimit";
 
@@ -89,30 +88,18 @@ export async function POST(
   const { name, email, phone, message } = parsed.data;
 
   // Best-effort owner notification — never let a mail hiccup drop the enquiry.
-  let notified = false;
-  if (env.ownerEmail && isSmtpConfigured()) {
-    try {
-      await sendMail({
-        to: env.ownerEmail,
-        subject: `New enquiry from ${lead.name}'s website`,
-        text: [
-          `New message via the contact form on ${lead.name}'s site:`,
-          "",
-          name ? `Name:  ${name}` : "",
-          email ? `Email: ${email}` : "",
-          phone ? `Phone: ${phone}` : "",
-          "",
-          message,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        replyTo: email || undefined,
-      });
-      notified = true;
-    } catch {
-      /* stored anyway; owner can read it in the app */
-    }
-  }
+  // Email AND ntfy push, same as the "I'm interested" button: this is a warm
+  // prospect writing in, and it has to reach a phone rather than wait for someone
+  // to open the console. Failures are logged inside the helper.
+  const { emailed } = await notifyEnquiry({
+    leadId: lead.id,
+    leadName: lead.name,
+    name,
+    email,
+    phone,
+    message,
+  });
+  const notified = emailed;
 
   await prisma.siteMessage.create({
     data: { leadId: lead.id, name, email, phone, message, notified },

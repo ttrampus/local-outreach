@@ -573,6 +573,53 @@ export async function auditMobilePage(page: Page): Promise<Finding[]> {
   return findings;
 }
 
+/**
+ * Horizontal-overflow check at ONE extra width. The caller sets the viewport.
+ *
+ * `auditMobilePage` above runs the full narrow-viewport battery, but only at the
+ * width the mobile screenshot is taken at. The two widths that break next are
+ * 320px — where a two-up grid leaves ~140px tracks and a display-type floor
+ * chosen for desktop no longer fits — and 768px, where a page that only knows
+ * "phone" and "desktop" shows a desktop grid squeezed into a tablet. Overflow is
+ * the one failure worth blocking on at those widths; type and tap targets are
+ * already covered at 390.
+ */
+export async function auditOverflowAtWidth(page: Page, label: string): Promise<Finding[]> {
+  const m = await page.evaluate(() => {
+    const vw = window.innerWidth;
+    const worst: { el: string; right: number }[] = [];
+    for (const el of Array.from(document.body.querySelectorAll("*"))) {
+      const st = getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden") continue;
+      if (st.position === "fixed" || st.position === "sticky") continue;
+      if (st.pointerEvents === "none") continue; // decorative bleeds are deliberate
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.right > vw + 1) worst.push({ el: el.tagName.toLowerCase(), right: Math.round(r.right) });
+    }
+    return { vw, scrollWidth: document.documentElement.scrollWidth, count: worst.length, worst: worst[0] };
+  });
+
+  if (m.scrollWidth > m.vw + 1) {
+    return [
+      blocking(
+        `overflow-${label}`,
+        `page scrolls horizontally at ${m.vw}px (${label}) — document is ${m.scrollWidth}px wide` +
+          (m.worst ? `, e.g. <${m.worst.el}> ends at ${m.worst.right}px` : ""),
+      ),
+    ];
+  }
+  if (m.count > 0 && m.worst) {
+    return [
+      cosmetic(
+        `overflow-${label}`,
+        `${m.count} element(s) reach past the ${m.vw}px viewport (${label}) — e.g. <${m.worst.el}> ends at ${m.worst.right}px`,
+      ),
+    ];
+  }
+  return [];
+}
+
 /** One-line summary for logs. */
 export function summarize(findings: Finding[]): string {
   if (!findings.length) return "clean";

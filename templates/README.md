@@ -87,6 +87,49 @@ The map uses Google Maps embedding with no API key, in Google's own colours, and
 - **Search engines.** LocalBusiness structured data (schema.org) with address and opening hours, and a page title and meta description built from the data.
 - **Accessibility.** A "skip to content" link, respect for reduced-motion settings, and keyboard focus styles.
 - **Photo viewer.** Clicking a gallery photo opens it enlarged.
+- **Mobile navigation.** When a template's own nav links are hidden by its
+  breakpoint, a burger appears and opens a full-screen sheet holding those links
+  and the phone number. It is injected at runtime and detects the collapse by
+  asking whether the links are visible, so each template keeps its own
+  breakpoint and none of them needs its own menu markup. (t04 is the exception:
+  it ships a drawer of its own, and the shared one stays out of its way.)
+
+## Responsive
+
+Every template is built to hold its layout from 320px to 1920px, with real lead
+data in it — that is the whole point, since what ships is a template filled from
+a Google Place and nobody sees it before the owner does.
+
+Three blocks are shared byte-for-byte across all ten files: the core styles, the
+responsive foundation, and the mobile-nav runtime. **`scripts/sync-template-core.mjs`
+owns them** — edit that file and re-run it, never the ten copies:
+
+```
+node scripts/sync-template-core.mjs          # write
+node scripts/sync-template-core.mjs --check  # verify, non-zero if stale
+```
+
+The foundation is what keeps a lead's data from breaking the page: the root
+clips horizontally, media is capped at its container, structural elements get
+`min-width:0` so a long word cannot widen its grid track, and the data-bound
+fields (`data-bind`, `data-t`, `data-f`, `data-fit`) break rather than overflow.
+Display type is set in `clamp()` so it scales continuously instead of snapping,
+and the hero fitter shrinks a name until it genuinely fits — including the case
+where the name wraps and its longest single word still would not.
+
+Two scripts check it, both of which have to come back clean:
+
+```
+node scripts/responsive-audit.mjs templates/t01-….html   # one page, 8 viewports
+node scripts/responsive-stress.mjs                        # all ten × 5 hostile fixtures
+```
+
+`responsive-stress.mjs` is the one that matters. It fills every template with a
+60-character business name, an unbreakable compound word, twelve services and
+none, fourteen photos of mixed aspect ratios and zero, then audits all 50 pages
+at eight widths for horizontal overflow, clipped text, tap targets under 44px
+and text under 11px. A template that only looks right with its placeholder
+content fails there.
 
 ## Fonts
 

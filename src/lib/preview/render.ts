@@ -4,7 +4,13 @@
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { auditRenderedPage, auditMobilePage, type RenderedAudit, type Finding } from "./audit";
+import {
+  auditRenderedPage,
+  auditMobilePage,
+  auditOverflowAtWidth,
+  type RenderedAudit,
+  type Finding,
+} from "./audit";
 
 const PREVIEW_IMG_DIR = path.join(process.cwd(), "public", "previews");
 const PREVIEW_HTML_DIR = path.join(process.cwd(), "data", "previews");
@@ -25,6 +31,13 @@ export interface RenderResult {
 // phone, so the desktop shot alone was never evidence the page actually holds up.
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
+// Checked for overflow after the mobile shot. Not screenshotted — these exist to
+// catch a layout that holds at 390 and comes apart one step either side of it.
+const EXTRA_WIDTHS: [string, { width: number; height: number }][] = [
+  ["small-phone", { width: 320, height: 568 }],
+  ["tablet", { width: 768, height: 1024 }],
+];
+
 /**
  * Where this render's artifacts go.
  *
@@ -41,6 +54,10 @@ const MOBILE_VIEWPORT = { width: 390, height: 844 };
  * missing or out of credit.
  */
 function artifactBase(safeId: string, engine: string, variant: number): string {
+  // The kit ("kit:t08") is reproducible for the same reason the template is: one
+  // JSON substitution into a file that is checked in. It keeps the stable name,
+  // but tagged with the template it used so the previews directory stays legible.
+  if (engine.startsWith("kit:")) return `${safeId}--${engine.replace(":", "-")}`;
   if (engine === "template") return safeId;
   const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
   // The timestamp is second-resolution and a design takes minutes, so a clash is
@@ -108,6 +125,15 @@ export async function renderPreview(
       // without this a page can be perfect on the shot the operator reviews and
       // broken on the phone the prospect actually opens the link on.
       mobileFindings = await auditMobilePage(page);
+
+      // The full battery runs at the width the shot is taken at. Overflow is
+      // then re-checked at the two widths that break next and that nothing else
+      // here looks at: the smallest phone still in use, and tablet portrait.
+      for (const [label, size] of EXTRA_WIDTHS) {
+        await page.setViewportSize(size);
+        await page.waitForTimeout(250);
+        mobileFindings = mobileFindings.concat(await auditOverflowAtWidth(page, label));
+      }
     } catch {
       // leave null — the panel simply won't offer a Mobile toggle for this render
     }

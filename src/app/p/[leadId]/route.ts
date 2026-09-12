@@ -3,11 +3,31 @@
 // serves the stored HTML as-is, animations and all. No Google SKU is touched.
 import { readFile } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import { injectOwnerBar } from "@/lib/preview/ownerBar";
+import { retargetContactForm } from "@/lib/preview/contactForm";
 import { issueInterestToken } from "@/lib/auth/interestToken";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * The origin a browser actually reached us on, for re-stamping the contact form.
+ *
+ * Behind the VPS reverse proxy `req.url` is the internal http://127.0.0.1:3000
+ * address, so the forwarded headers are the only truthful source; APP_BASE_URL is
+ * the fallback for direct hits. Whatever we return here is where the prospect's
+ * enquiry gets POSTed, and we know it reached us, so it is strictly better than
+ * the value frozen into the file at generation time.
+ */
+function requestOrigin(req: Request): string {
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!host) return env.appBaseUrl;
+  const proto =
+    req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+    (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+  return `${proto}://${host}`;
+}
 
 /**
  * This document is written by a model, from inputs including Google review text
@@ -85,6 +105,9 @@ export async function GET(
   // Showcase traffic gets no token, matching the bar it gets: the portfolio is
   // strangers browsing, and none of them is the business being pitched.
   const interestToken = fromShowcase ? null : issueInterestToken(lead.id);
+
+  // Before the bar, so the two injections never fight over the same markup.
+  html = retargetContactForm(html, requestOrigin(req));
 
   return new Response(
     injectOwnerBar(html, lead, { showcase: fromShowcase, interestToken }),

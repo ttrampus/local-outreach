@@ -78,6 +78,16 @@ export function renderContactForm(leadId: string, locale: Locale): string {
       font-size:1em;cursor:pointer;}
     .__lo-cf button span{color:inherit;}
     .__lo-cf .__lo-cf-msg{margin-top:14px;font-size:.95em;}
+    /* Touch. The em-relative sizes above inherit the page's body size, which on
+       several designs is 15px — under the 16px threshold at which iOS Safari
+       zooms the viewport on focus, so tapping a field visibly shoves the page
+       sideways. Pinned in px on small screens for that reason alone. */
+    @media (max-width:900px){
+      .__lo-cf{margin:24px auto;padding:20px;}
+      .__lo-cf input,.__lo-cf textarea{font-size:16px;min-height:46px;}
+      .__lo-cf button{min-height:48px;}
+      .__lo-cf label{font-size:12px;}
+    }
     .__lo-cf[data-done="1"] form{display:none;}
     .__lo-cf[data-done="1"] .__lo-cf-msg{display:block;}
   </style>
@@ -133,6 +143,28 @@ export function renderContactForm(leadId: string, locale: Locale): string {
   });
 })();
 </script>`;
+}
+
+/**
+ * Point an already-generated form back at `origin`.
+ *
+ * The action above is frozen into the stored HTML at generation time, so a preview
+ * built while APP_BASE_URL was unset carries `http://localhost:3000` forever —
+ * which in a prospect's browser means THEIR machine, so the enquiry never leaves
+ * it and no server ever sees the failure. Serving through /p/ re-stamps the real
+ * origin on the way out, which fixes every previously generated file without
+ * regenerating it and keeps a later APP_BASE_URL change from stranding more.
+ *
+ * Only the origin is rewritten; the leadId path stays whatever was generated, so
+ * this cannot retarget a form at the wrong lead.
+ */
+export function retargetContactForm(html: string, origin: string): string {
+  if (!origin) return html;
+  const base = origin.replace(/\/+$/, "");
+  return html.replace(
+    /(<div class="__lo-cf" data-action=")[^"]*?(\/api\/site\/[^"/]+\/contact")/g,
+    `$1${base}$2`,
+  );
 }
 
 /**

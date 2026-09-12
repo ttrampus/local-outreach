@@ -25,7 +25,7 @@ import { isSmsConfigured, sendSms, smsComposeUrl, toE164 } from "./sms";
 import { scheduleNextFollowup } from "./followups";
 import { unsubscribeUrl } from "./unsubscribeToken";
 import { getEmailStrings } from "./emailStrings";
-import { toHtmlEmail } from "./htmlBody";
+import { toHtmlEmail, toPlainTextEmail } from "./htmlBody";
 import { detectLocale } from "@/lib/preview/i18n";
 
 export interface DeliverResult {
@@ -49,28 +49,19 @@ export interface DeliverResult {
 // follow-up never drags an already-advanced lead backwards.
 const PRE_SENT = new Set(["discovered", "preview_ready", "drafted", "approved"]);
 
-/** Fill the literal "[Your name]" placeholder with the configured owner name. */
 /**
- * Replace the drafter's literal "[Your name]" sign-off.
+ * Replace the drafter's literal "[Your name]" with the configured owner name.
  *
- * On EMAIL this becomes a real signature — name, site, phone. The site is there
- * for legitimacy, not as a second call to action, which is why it sits under the
- * sign-off rather than in the body: a cold email has exactly one thing it wants
- * the reader to do, and that is open the preview of their own site. A prospect
- * who instead goes off to read about us has been sent away from the strongest
- * argument we have. But someone deciding whether an unsolicited stranger is real
- * does look for a website, and finding one costs nothing.
- *
- * Other channels get the bare name. An SMS is billed per 160 characters and a DM
- * with a signature block reads like a mailshot.
+ * Nothing else is appended. This used to bolt a signature block — name, site,
+ * phone — onto the end of every email, which mail clients treat as exactly what
+ * it looks like: a trailer to fold away into the "…" that hides quoted text. Who
+ * sent this and what company they are is the part a stranger checks before they
+ * click anything, so it belongs in the body the drafter wrote (see the sign-off
+ * in draft.ts), where it is visible on first read.
  */
-function personalize(body: string, channel: string): string {
+function personalize(body: string): string {
   if (!env.ownerName) return body;
-  if (channel !== "email") return body.split("[Your name]").join(env.ownerName);
-
-  const contact = [env.appBaseUrl, env.ownerPhone].filter(Boolean).join(" · ");
-  const signature = contact ? `${env.ownerName}\n${contact}` : env.ownerName;
-  return body.split("[Your name]").join(signature);
+  return body.split("[Your name]").join(env.ownerName);
 }
 
 type OutreachWithLead = {
@@ -175,7 +166,11 @@ export async function deliverOutreach(outreachId: string): Promise<DeliverResult
 
   const contact = resolveContact(o);
   const subject = o.subject ?? "";
-  const body = personalize(o.body, o.channel);
+  // The drafters mark the price with **bold**, which only the HTML half can show.
+  // Everywhere else — the text part, an SMS, a DM the operator pastes — the
+  // markers come out, or the prospect reads a message with asterisks in it.
+  const richBody = personalize(o.body);
+  const body = toPlainTextEmail(richBody);
 
   let result: DeliverResult;
 
@@ -199,7 +194,7 @@ export async function deliverOutreach(outreachId: string): Promise<DeliverResult
             to: contact,
             subject,
             text: withOptOut(body, optOut, strings.optOut),
-            html: toHtmlEmail(body, {
+            html: toHtmlEmail(richBody, {
               linkUrl: previewLink,
               linkLabel: strings.previewLink,
               optOutUrl: optOut,

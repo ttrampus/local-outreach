@@ -69,6 +69,17 @@ export const env = {
   autoSendFollowups: (process.env.AUTO_SEND_FOLLOWUPS ?? "off").toLowerCase() === "on",
   autoSendIntervalMin: num(process.env.AUTO_SEND_INTERVAL_MIN, 60),
 
+  // Ceilings on the bulk sender, which is the only thing here that can mail
+  // hundreds of strangers from one click. These are not cost limits — SMTP is
+  // free — they are reputation limits. Outbound goes through the operator's own
+  // Google Workspace mailbox, which throttles or suspends an account that behaves
+  // like a bulk sender, and that mailbox IS the outreach channel: losing it
+  // stops everything, with no second channel to fall back on while SMS is
+  // waiting on Twilio verification. The per-run cap bounds a mis-click; the
+  // rolling 24h cap bounds a bad afternoon.
+  bulkSendMaxPerRun: num(process.env.BULK_SEND_MAX_PER_RUN, 50),
+  bulkSendMaxPerDay: num(process.env.BULK_SEND_MAX_PER_DAY, 200),
+
   // SMTP — optional outbound email so a draft can be SENT from the app (with the
   // preview image attached) instead of copy-pasting into Gmail. When SMTP_HOST is
   // empty the send path degrades to "mark sent" + a Gmail compose deep-link. For

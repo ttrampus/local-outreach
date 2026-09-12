@@ -53,6 +53,46 @@ localized from the business's country (these are Slovene).
 The AI engine (`PREVIEW_ENGINE=ai`, described above) designs each page from
 scratch with Claude instead, at roughly $0.45 per site.
 
+### The kit engine — ten hand-built templates (the default)
+
+`PREVIEW_ENGINE=kit`, which is what an unset `PREVIEW_ENGINE` now means, picks
+one of the ten standalone templates in `templates/`
+(hair salon, barbershop, spa, photographer, driving school, restaurant, joinery,
+café, garage, dental clinic) and fills its single `business-data` block with the
+lead's real name, address, hours, rating, reviews and Google photos. Free,
+deterministic, and the pages are designed rather than generated — see
+`templates/README.md` for the data contract.
+
+The template is chosen from Google's own place type. When no template's copy is
+true for a business, it still gets one of the two layouts that can host any
+category, with the service list dropped and the category prose replaced by
+claim-free copy — the rule in `src/lib/preview/copyPolicy.ts`. The console tags
+each preview with the template it used (`template t08`).
+
+### Responsive
+
+These pages are opened from a link in an email, and that email is read on a
+phone — so every engine's output has to hold its layout from 320px to 1920px
+with a real lead's data in it, not just with the placeholder content a human
+reviewed once. Three things enforce that:
+
+- **A shared foundation.** `scripts/sync-template-core.mjs` owns the responsive
+  base and the mobile-nav runtime for all ten templates (they are standalone
+  files, so the block is written into each); `buildCss()` in
+  `src/lib/preview/template.ts` carries the same base for the generated engines.
+  Both stop a long business name, an unbreakable address or an oversized photo
+  from widening the document.
+- **Stress harnesses.** `scripts/responsive-stress.mjs` (templates) and
+  `scripts/responsive-stress-designs.mjs` (generated engines) fill every layout
+  with deliberately hostile data — a 60-character name, an unbreakable compound
+  word, twelve services and none, fourteen mixed-ratio photos and zero — and
+  audit every page at eight viewports. `scripts/responsive-audit.mjs` runs the
+  same checks against any single page or URL.
+- **In-pipeline checks.** `render.ts` already audited each generated preview at
+  390px; it now re-checks horizontal overflow at 320px and 768px too, so a
+  design that holds at one phone size and comes apart either side of it is
+  caught before the page is ever sent.
+
 ### A third path: design by hand, for free
 
 ![Design by hand](docs/screenshots/manual-design.png)
@@ -244,7 +284,7 @@ key with its default; the main groups are:
 | Cost ceilings | `MAX_SEARCH_*`, `MAX_DETAILS_*`, `MAX_PHOTOS_*`, `MAX_STATIC_MAPS_*` (per day / per month) |
 | Free-tier display | `FREE_TIER_*_PER_MONTH` (estimates, display-only) |
 | Claude | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` |
-| Preview | `PREVIEW_ENGINE` (`ai` \| `template`), `PREVIEW_PHOTO_COUNT`, `PREVIEW_MAP`, `OWNER_BAR` |
+| Preview | `PREVIEW_ENGINE` (`ai` \| `kit` \| `spec` \| `template`), `PREVIEW_PHOTO_COUNT`, `PREVIEW_MAP`, `OWNER_BAR` |
 | Outreach | `OUTREACH_OWNER_*`, `FOLLOWUP_INTERVAL_DAYS`, `AUTO_SEND_FOLLOWUPS`, `AUTO_SEND_INTERVAL_MIN` |
 | Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
 | Billing | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_BUYOUT_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `MONTHLY_PRICE_EUR` |

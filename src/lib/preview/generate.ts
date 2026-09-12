@@ -9,6 +9,8 @@ import { getCachedDetails, isCachedLanguageStale } from "@/lib/places";
 import { refreshLeadDetails } from "@/lib/discovery";
 import { generateSiteHtml } from "@/lib/preview/template";
 import { generateAiSiteHtml } from "@/lib/preview/aiSite";
+import { generateSiteSpec } from "@/lib/preview/spec";
+import { generateKitSiteHtml } from "@/lib/preview/kit";
 import { renderPreview, type RenderResult } from "@/lib/preview/render";
 import { auditHtml, summarize, type Finding } from "@/lib/preview/audit";
 import { critiqueRender } from "@/lib/preview/critique";
@@ -107,9 +109,32 @@ async function buildAndStore(lead: LeadWithRun) {
   const searchHint = lead.searchRun?.query ?? "";
 
   // Engine: "ai" → Claude designs a bespoke site (falls back to the template on any
-  // failure); "template" → the free deterministic generator. Default to AI when an
-  // Anthropic key is configured, since bespoke sites are what make outreach land.
-  const requested = env.previewEngine || (env.anthropicApiKey ? "ai" : "template");
+  // failure); "spec" → Claude writes the copy, the template renders it (~50x cheaper
+  // than "ai"); "kit" → one of the ten hand-built templates/, filled with this
+  // lead's data (free, deterministic, and only for the categories they cover);
+  // "template" → the free deterministic generator.
+  //
+  // The kit is the default: the ten templates are hand-designed and hand-checked,
+  // which is a different thing from a page a model drew this morning, and they
+  // cost nothing to build or rebuild. The AI engine stays one env var away for
+  // the businesses no template suits.
+  const requested = env.previewEngine || "kit";
+
+  // The kit templates are written in Slovene throughout, so a business outside
+  // that language would get a page it cannot read. Everything else falls through
+  // to the generic engines below, which localize.
+  const locale = detectLocale(details);
+  const kit =
+    requested === "kit" && locale === "sl" ? await generateKitSiteHtml(details, photos) : null;
+  if (requested === "kit" && !kit) {
+    console.warn(
+      `[preview] lead ${lead.id} (${lead.name}) is not Slovene (${locale}) and the kit templates are — served the deterministic template instead`,
+    );
+  } else if (kit) {
+    console.log(
+      `[preview] lead ${lead.id} (${lead.name}) [${details.primaryType ?? "?"}] → kit ${kit.template.id} ${kit.template.label}${kit.generic ? " (generic host)" : ""}`,
+    );
+  }
 
   // Record which engine actually produced the HTML rather than collapsing the two
   // with `??`. The AI path returns null on any failure, so without this a silently
@@ -132,16 +157,31 @@ async function buildAndStore(lead: LeadWithRun) {
     // exactly how the first AI batch was lost: a regenerate-all sweep ran with no
     // API key, every design silently degraded to a template, and the originals were
     // overwritten. Keep what we have and let the caller see it as a no-op.
-    if (lead.previewEngine && lead.previewEngine !== "template" && lead.previewHtmlPath) {
+    // A kit page counts as reproducible here alongside the template: it is a
+    // substitution into a checked-in file, so nothing is lost by rebuilding it.
+    const reproducible =
+      !lead.previewEngine ||
+      lead.previewEngine === "template" ||
+      lead.previewEngine.startsWith("kit:");
+    if (!reproducible && lead.previewHtmlPath) {
       console.warn(
         `[preview] keeping the existing ${lead.previewEngine} preview for lead ${lead.id} (${lead.name}) rather than downgrading it to a template`,
       );
       return lead;
     }
   }
-  const engine = ai ? "ai" : "template";
-  const siteHtml = ai?.html ?? generateSiteHtml(details, searchHint, photos, mapUri, variant);
-  const locale = detectLocale(details);
+  // The spec engine only runs when explicitly asked for — it is the cheap tier,
+  // never a silent substitute for a requested "ai" build. A null spec (no key, a
+  // bad response) just renders the plain template.
+  const spec = requested === "spec" ? await generateSiteSpec(details, searchHint) : null;
+
+  // The kit records WHICH template it used, so the console and the previews
+  // directory say "kit:t08" rather than leaving you to open the file and guess.
+  const engine = ai ? "ai" : kit ? `kit:${kit.template.id}` : spec ? "spec" : "template";
+  const siteHtml =
+    ai?.html ??
+    kit?.html ??
+    generateSiteHtml(details, searchHint, photos, mapUri, variant, spec ?? undefined);
 
   // Swap in a real, working contact form (posts enquiries back to this app). It
   // lives below the hero, so the outreach screenshot stays clean; on the live /p/

@@ -11,7 +11,7 @@
 // (better-sqlite3 and friends, resolved through CJS require) must be left alone.
 import { registerHooks } from "node:module";
 import { pathToFileURL } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 
 /** Project root — this file lives at <root>/scripts/lib/. */
@@ -25,6 +25,15 @@ function withExtension(url) {
   if (!url.startsWith("file:")) return url;
   const filePath = new URL(url).pathname;
   if (filePath.endsWith("/")) return url;
+  // A bare directory ("./designs") resolves to its index under Next/tsc, but node
+  // rejects directory imports outright — so try the index candidates before the
+  // existsSync check below, which would otherwise accept the directory itself.
+  if (existsSync(filePath) && statSync(filePath).isDirectory()) {
+    for (const ext of ["/index.ts", "/index.tsx", "/index.js", "/index.mjs"]) {
+      if (existsSync(filePath + ext)) return url + ext;
+    }
+    return url;
+  }
   if (existsSync(filePath)) return url;
   for (const ext of CANDIDATES) if (existsSync(filePath + ext)) return url + ext;
   return url; // let node report the real "not found"

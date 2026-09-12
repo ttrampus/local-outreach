@@ -1,13 +1,21 @@
-// Build a short, personalized, value-first outreach draft. Leads with the preview,
-// then the one-time build price with the monthly care plan as the optional
-// follow-on — the same three-plan story the landing page tells, so a prospect who
-// clicks through from the email doesn't meet different numbers. Personalized with
-// the business name and one concrete detail (a real review quote > neighborhood >
-// specialty). Saved as a draft, never sent.
+// Build the outreach sequence without an LLM — the fallback for when Claude is
+// unavailable (see ./claude.ts, which writes the same shape with one personalized
+// clause added).
+//
+// The message leads with the preview, because the preview IS the pitch: an owner
+// who opens it has already seen what they'd be buying. Then one price, once, with
+// the point that adjustments are included — not a menu of plans. The monthly care
+// plan is deliberately absent from outreach; it turns a single yes/no into a
+// recurring-cost question, and it is a conversation for after they say yes.
+//
+// Written in the prospect's language, and it calls them by the kind of business
+// they actually are. Saved as a draft, never sent.
 import type { Lead } from "@/generated/prisma/client";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
-import { OUTREACH_PRICE_SENTENCE, OUTREACH_PRICE_SHORT } from "@/lib/pricing";
-import { pickTheme } from "@/lib/preview/theme";
+import { PRICING } from "@/lib/pricing";
+import { BRAND } from "@/lib/brand";
+import { detectLocale, type Locale } from "@/lib/preview/i18n";
+import { businessPhrase } from "./emailStrings";
 import { classifyWebPresence } from "@/lib/qualify";
 
 /** One message in an outreach sequence. step 0 = initial; 1.. = follow-ups. */
@@ -54,6 +62,9 @@ function socialDmLink(website: string): { channel: string; contact: string } | n
   return null;
 }
 
+/** Where the sign-off points when the caller doesn't say. */
+const SITE_URL = "https://avenyo.app";
+
 /** Knobs that change which channels are even available to pick from. */
 export interface ChannelOptions {
   /** True when Twilio is configured, so an SMS can actually be delivered. */
@@ -64,6 +75,8 @@ export interface ChannelOptions {
 export interface DraftOptions extends ChannelOptions {
   /** Public preview link (…/p/<leadId>). An SMS has no attachment — it needs this. */
   previewUrl?: string;
+  /** Our own site, for the sign-off. Falls back to the public domain. */
+  siteUrl?: string;
 }
 
 /**
@@ -98,122 +111,187 @@ export function pickChannel(
 }
 
 
-function firstAddressSegment(address?: string | null): string | null {
-  if (!address) return null;
-  const part = address.split(",")[0]?.trim();
-  return part && part.length <= 40 ? part : null;
-}
-
-function clip(text: string, max = 130): string {
-  const t = text.trim().replace(/\s+/g, " ");
-  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
-}
-
-/** Pick the single most concrete personalization hook available. */
-function personalDetail(
-  details: NormalizedPlaceDetails,
-  searchHint: string,
-): string {
-  const quote = details.reviewSnippets.find((s) => s.trim().length > 15);
-  if (quote) {
-    return ` — one of your reviews stood out: “${clip(quote)}”. That kind of reputation deserves a site to match.`;
-  }
-  const area = firstAddressSegment(details.address);
-  if (area) {
-    return `, a familiar name in ${area}.`;
-  }
-  const label = pickTheme(details.categories, searchHint).label;
-  return ` and the work you do as a local ${label}.`;
-}
-
 /**
  * How the message points at the work. Always a link, never an attachment: mail
  * from this domain is plain text, so an attached PNG was never shown inline, and
  * attachments from an unknown sender are both ignored by people and penalised by
  * spam filters. The live page is the better artefact regardless — it is the real
  * site, and opening it is a signal we can see.
+ *
+ * The link sits alone on its line because that is what the HTML half turns into a
+ * single clickable line of prose (see htmlBody.ts) — a bare URL in the middle of
+ * a sentence wraps across three lines and looks broken.
  */
-function previewLine(lead: Lead, previewUrl?: string): string {
-  const link = lead.deployedUrl || previewUrl || null;
-  if (link) {
-    return `You can see the full preview here:\n${link}`;
+function previewLink(lead: Lead, previewUrl?: string): string | null {
+  return lead.deployedUrl || previewUrl || null;
+}
+
+/** The fixed-shape sequence, per locale. Mirrors the spec Claude writes to. */
+interface Sequence {
+  subject: string;
+  initial: string;
+  followup1: string;
+  followup2: string;
+  smsInitial: string;
+  smsFollowup1: string;
+  smsFollowup2: string;
+}
+
+/**
+ * The deterministic sequence, in the prospect's language.
+ *
+ * This is the fallback for when Claude is unavailable, so it says exactly what
+ * the Claude prompt asks for — a greeting, the idea, the preview, the price with
+ * adjustments included, and how to answer — minus the one personalized clause,
+ * which is the only thing a template genuinely cannot do. A message that changes
+ * shape depending on whether an API key was set is a message nobody can iterate
+ * on.
+ */
+function sequence(
+  locale: Locale,
+  business: string,
+  link: string | null,
+  price: string,
+  priceShort: string,
+  signOff: string,
+): Sequence {
+  // No link yet means there is nothing to look at, so the whole pitch collapses
+  // to an offer to send one — the preview is the argument.
+  const linkBlock = link ? `\n\n${link}` : "";
+
+  if (locale === "sl") {
+    return {
+      subject: "Naredil sem vam predogled nove spletne strani",
+      initial: `Pozdravljeni,
+
+naletel sem na ${business} in sem imel idejo, kako bi lahko vaša spletna stran izgledala precej bolj moderno.
+
+${link ? "Zato sem vam kar pripravil predogled:" : "Z veseljem vam pripravim predogled, da vidite, kako bi izgledala."}${linkBlock}
+
+Če vam je všeč, jo lahko za ${price} dokončam in objavim na vaši domeni. V ceno je vključeno vse, kar potrebujete za dokončno stran, tudi prilagoditve — če želite kaj dodati, spremeniti ali popraviti, uredimo brez doplačila.
+
+Ni torej treba posebej plačevati za vsako manjšo spremembo.
+
+Če vam je predogled zanimiv, lahko samo kliknete gumb na predogledu ali mi odgovorite na ta mail in se dogovorimo.
+
+${signOff}`,
+      followup1: `Pozdravljeni,
+
+samo na kratko glede predogleda spletne strani, ki sem vam ga poslal — ste ga uspeli pogledati?${linkBlock}
+
+Če vam kaj ni všeč, mi povejte in popravim. Za dogovor zadostuje en klik na gumb na strani.
+
+${signOff}`,
+      followup2: `Pozdravljeni,
+
+predogled bom kmalu umaknil, da sprostim prostor. Če želite, da stran objavim na vaši domeni (${priceShort}), mi samo odgovorite na to sporočilo.
+
+Kakor koli se odločite, hvala za vaš čas.
+
+${signOff}`,
+      smsInitial: `Pozdravljeni, pripravil sem vam predogled nove spletne strani.${link ? ` ${link}` : ""}
+
+Če vam je všeč, jo za ${priceShort} dokončam in objavim na vaši domeni.
+
+[Your name]`,
+      smsFollowup1: `Pozdravljeni, ste uspeli pogledati predogled spletne strani?${link ? ` ${link}` : ""} Karkoli vam ni všeč, popravim.
+
+[Your name]`,
+      smsFollowup2: `Pozdravljeni, predogled bom kmalu umaknil. Če želite, da stran objavim (${priceShort}), mi samo odgovorite. Hvala!
+
+[Your name]`,
+    };
   }
-  return `I'd be glad to send over a quick preview so you can see it for yourself.`;
+
+  return {
+    subject: "I made you a preview of a new website",
+    initial: `Hello,
+
+I came across ${business} and had an idea for how your website could look a lot more modern.
+
+${link ? "So I went ahead and made you a preview:" : "I'd be glad to put a preview together so you can see it."}${linkBlock}
+
+If you like it, I can finish it and publish it on your domain for ${price}. That price covers everything the finished site needs, adjustments included — anything you'd like added, changed or fixed, at no extra charge.
+
+So there's nothing extra to pay for every small change.
+
+If the preview looks interesting, just press the button on it or reply to this email and we'll sort out the details.
+
+${signOff}`,
+    followup1: `Hello,
+
+Just a quick note about the website preview I sent — did you get a chance to look at it?${linkBlock}
+
+If anything feels off, tell me and I'll change it. The button on the page is one press.
+
+${signOff}`,
+    followup2: `Hello,
+
+I'll be taking the preview down soon to free it up. If you'd like it live on your domain (${priceShort}), just reply to this message.
+
+Either way, thanks for your time.
+
+${signOff}`,
+    smsInitial: `Hello — I made you a preview of a new website.${link ? ` ${link}` : ""}
+
+If you like it, I'll finish it and put it live on your domain for ${priceShort}.
+
+[Your name]`,
+    smsFollowup1: `Hello — did you get a chance to look at the website preview?${link ? ` ${link}` : ""} Anything you don't like, I'll change.
+
+[Your name]`,
+    smsFollowup2: `Hello — I'll take the preview down soon. If you'd like it live (${priceShort}), just reply. Thanks!
+
+[Your name]`,
+  };
 }
 
 export function buildDraft(
   lead: Lead,
   details: NormalizedPlaceDetails,
-  searchHint = "",
   opts: DraftOptions = {},
 ): OutreachDraft {
-  const name = lead.name;
-  const detail = personalDetail(details, searchHint);
   const { channel, contact } = pickChannel(lead, opts);
+  const locale = detectLocale(details);
+  // The ONE thing that varies between one prospect's email and another's: a café
+  // is not a salon, and being called the wrong kind of business is the fastest way
+  // to be read as a mailshot.
+  const business = businessPhrase(locale, details.categories);
+  const link = previewLink(lead, opts.previewUrl);
 
-  const subject = `A quick website idea for ${name}`;
+  // Bold survives into the HTML half and is stripped out of the plain-text one.
+  // Written per locale rather than taken from pricing.ts, whose sentence is the
+  // English one Claude translates — dropping it into a Slovene body unchanged is
+  // exactly the English tail that gives a template away.
+  const priceShort = locale === "sl" ? `${PRICING.buildEur} €` : `€${PRICING.buildEur}`;
 
-  const initial = `Hi ${name} team,
+  // The sign-off lives IN the body — who this is, the company, the site — rather
+  // than being appended as a signature block. Mail clients fold a trailing block
+  // that looks like a signature into the "…" quoted-text collapse, and a sender a
+  // stranger cannot see is a sender they don't trust. The site carries the scheme
+  // so the HTML half can link it; it is displayed as the bare domain.
+  const signOff = [
+    locale === "sl" ? "Lep pozdrav," : "Best,",
+    "[Your name]",
+    BRAND.name,
+    `**${opts.siteUrl ?? SITE_URL}**`,
+  ].join("\n");
 
-I came across ${name}${detail}
-
-I put together a free, modern website preview to show what a refreshed site could look like — no obligation. ${previewLine(lead, opts.previewUrl)}
-
-If you like it, I can have it live this week. I keep pricing simple: ${OUTREACH_PRICE_SENTENCE}. The preview isn't a mock-up — it becomes your actual site, so nothing is built twice.
-
-Nothing on it is fixed either: the text, the photos, the colours, the layout, whole sections — all of it can be changed to whatever you want.
-
-If you'd like it, press the "I'm interested" button on the preview, or just reply to this email — whichever is easier.
-
-Best,
-[Your name]`;
-
-  // Most replies to cold outreach come from a follow-up, not the first message.
-  const followup1 = `Hi ${name} team,
-
-Just following up on the website preview I sent — did you get a chance to take a look? ${previewLine(lead, opts.previewUrl)}
-
-No pressure at all. If a detail feels off, tell me and I'll adjust it.
-
-Best,
-[Your name]`;
-
-  const followup2 = `Hi ${name} team,
-
-I'll keep this short — I'll be taking the demo site down at the end of the week to free it up. If you'd like me to keep it and put it live (${OUTREACH_PRICE_SHORT}), just say the word and it's done.
-
-Either way, thanks for your time.
-
-Best,
-[Your name]`;
+  const seq = sequence(locale, business, link, `**${priceShort}**`, priceShort, signOff);
+  const { subject } = seq;
+  const re = locale === "sl" ? "Odg:" : "Re:";
 
   // An SMS is billed per 160-character segment and read on a lock screen, so the
   // long-form body above is the wrong shape entirely — send the short variant.
   // (Claude writes its own short variant when a key is set; this is the fallback.)
   if (channel === "sms") {
-    // No attachments on SMS, so the link carries the whole pitch. Falls back to
-    // "I can send it over" when there's nothing linkable yet.
-    const link = lead.deployedUrl || opts.previewUrl || null;
-    const look = link ? `Have a look: ${link}` : `Happy to send it over.`;
     return {
       channel,
       contact,
       messages: [
-        {
-          step: 0,
-          subject,
-          body: `Hi ${name} — I built a free website preview for you, no obligation. ${look}\n\nIf you like it I can put it live this week (${OUTREACH_PRICE_SHORT}).\n\n[Your name]`,
-        },
-        {
-          step: 1,
-          subject: `Re: ${subject}`,
-          body: `Hi ${name} — did you get a chance to look at the website preview?${link ? ` ${link}` : ""}\n\nHappy to change anything that feels off.\n\n[Your name]`,
-        },
-        {
-          step: 2,
-          subject: `Re: ${subject}`,
-          body: `Hi ${name} — I'll take the demo site down at the end of the week. Say the word and I'll put it live instead (${OUTREACH_PRICE_SHORT}). Either way, thanks!\n\n[Your name]`,
-        },
+        { step: 0, subject, body: seq.smsInitial },
+        { step: 1, subject: `${re} ${subject}`, body: seq.smsFollowup1 },
+        { step: 2, subject: `${re} ${subject}`, body: seq.smsFollowup2 },
       ],
     };
   }
@@ -222,9 +300,9 @@ Best,
     channel,
     contact,
     messages: [
-      { step: 0, subject, body: initial },
-      { step: 1, subject: `Re: ${subject}`, body: followup1 },
-      { step: 2, subject: `Re: ${subject}`, body: followup2 },
+      { step: 0, subject, body: seq.initial },
+      { step: 1, subject: `${re} ${subject}`, body: seq.followup1 },
+      { step: 2, subject: `${re} ${subject}`, body: seq.followup2 },
     ],
   };
 }

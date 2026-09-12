@@ -6,6 +6,7 @@
 // alignment / mesh / accent so a whole sweep of one category never looks cloned.
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme, GOOGLE_FONTS_HREF, type Theme } from "./theme";
+import { DESIGNS, type DesignId } from "./designs";
 import { detectLocale, getStrings, type Locale, type LocaleStrings } from "./i18n";
 import { cleanDisplayName } from "./brand";
 import { paletteFor, pickAxis, readableOn, type Palette } from "./designTokens";
@@ -32,10 +33,28 @@ function pick<T>(arr: T[], seed: number, salt = 0): T {
   return arr[(seed + salt) % arr.length];
 }
 
-function neighborhood(address?: string): string | null {
+/**
+ * The town or city from a Google formatted address, for copy like "in Ljubljana".
+ *
+ * This used to take the FIRST comma-part, which is the street line — so every
+ * page read "we proudly serve Rimska cesta 14 and the surrounding area" and
+ * printed a street address in the eyebrow where a place name belongs. Google
+ * formats as "street, POSTCODE City, Country", so the locality is the part
+ * before the country, minus its postcode.
+ */
+/** Capitalise the first letter, leaving the rest of the string alone. */
+function sentenceCase(s: string): string {
+  return s ? s.charAt(0).toLocaleUpperCase() + s.slice(1) : s;
+}
+
+function locality(address?: string): string | null {
   if (!address) return null;
-  const part = address.split(",")[0]?.trim();
-  return part && part.length <= 40 ? part : null;
+  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const city = (parts.length >= 3 ? parts[parts.length - 2] : parts[1])
+    .replace(/^\d[\d\s-]*/, "") // drop a leading postcode
+    .trim();
+  return city && city.length <= 40 ? city : null;
 }
 
 /**
@@ -64,7 +83,7 @@ const ARCHETYPES: Archetype[] = [
   "horizon",
 ];
 
-interface Ctx {
+export interface Ctx {
   theme: Theme;
   palette: Palette;
   archetype: Archetype;
@@ -97,6 +116,16 @@ export function generateSiteHtml(
   photos: string[] = [],
   mapUri: string | null = null,
   variant = 0,
+  // Optional per-business copy/layout overrides from the "spec" engine. Every
+  // field is independently optional: whatever is absent keeps the deterministic
+  // default, so a partial spec degrades instead of breaking the page.
+  spec?: {
+    eyebrow?: string;
+    tagline?: string;
+    services?: { title: string; blurb: string }[];
+  },
+  // Opt into a full-page design by id. Omitted → the legacy hero archetypes.
+  designId?: DesignId,
 ): string {
   const theme = pickTheme(place.categories, searchHint);
   const locale: Locale = detectLocale(place);
@@ -108,7 +137,7 @@ export function generateSiteHtml(
   const palette = paletteFor(theme.palettes, seedKey);
   const archetype = pickAxis(ARCHETYPES, seedKey, "archetype");
   const accent = palette.accent;
-  const area = neighborhood(place.address);
+  const area = locality(place.address);
   const rawName = cleanDisplayName(place.name);
   const name = esc(rawName);
   // Localized human label for this theme (e.g. "salon" → "kavarna"); used in copy.
@@ -134,13 +163,17 @@ export function generateSiteHtml(
     rawName,
     label,
     area: area ? esc(area) : null,
-    tagline: esc(pick(t.taglines, seed, 1)(label, area)),
-    eyebrow: esc(area ?? pick(t.eyebrows, seed, 2)),
+    // The canned taglines interpolate `label`, which is lowercase ("salon") so it
+    // reads correctly mid-sentence — at the start of one it needs a capital.
+    tagline: esc(sentenceCase(spec?.tagline ?? pick(t.taglines, seed, 1)(label, area))),
+    eyebrow: esc(spec?.eyebrow ?? area ?? pick(t.eyebrows, seed, 2)),
     ratingLine: ratingLine ? esc(ratingLine) : null,
     rating: place.rating ? place.rating.toFixed(1) : null,
     reviewCount: place.reviewCount,
     monogram: esc((rawName.trim()[0] ?? "•").toUpperCase()),
-    services,
+    services: spec?.services?.length
+      ? spec.services.map((s) => ({ title: esc(s.title), blurb: esc(s.blurb) }))
+      : services,
     testimonials: place.reviewSnippets.slice(0, 3).map((t) => esc(t)),
     address: place.address ? esc(place.address) : undefined,
     phone: place.phone ? esc(place.phone) : undefined,
@@ -152,9 +185,16 @@ export function generateSiteHtml(
 
   const seedClass = `seed-${["a", "b", "c"][seed % 3]}`;
   const photoClass = heroImg ? " has-photo" : "";
-  // Every archetype handles the photo itself, so the composition varies whether
-  // or not the business has photography.
-  const hero = HERO_BUILDERS[archetype](ctx);
+
+  // A full-page Design owns the whole body and brings its own CSS; the legacy
+  // archetypes only vary the hero and share one body. Both still run through the
+  // same token/reset base, so palettes and fonts behave identically either way.
+  const design = designId ? DESIGNS[designId] : undefined;
+  const body = design
+    ? design.body(ctx)
+    : `${nav(ctx)}
+  ${HERO_BUILDERS[archetype](ctx)}
+  ${sections(ctx)}`;
 
   return `<!doctype html>
 <html lang="${locale}">
@@ -165,12 +205,10 @@ export function generateSiteHtml(
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="${GOOGLE_FONTS_HREF}" />
-<style>${buildCss(theme, palette, seedKey)}</style>
+<style>${buildCss(theme, palette, seedKey)}${design ? design.css() : ""}</style>
 </head>
-<body class="layout-${archetype} ${seedClass} pal-${palette.mode}${photoClass}">
-  ${nav(ctx)}
-  ${hero}
-  ${sections(ctx)}
+<body class="${design ? `design-${design.id}` : `layout-${archetype}`} ${seedClass} pal-${palette.mode}${photoClass}">
+  ${body}
   ${revealScript()}
 </body>
 </html>`;
@@ -268,7 +306,7 @@ const heroWarm: HeroBuilder = (c) => `
       <h1>${c.name}</h1>
       <p class="lede">${c.tagline}</p>
       <div class="divider"><span></span>✦<span></span></div>
-      <a class="btn" href="#contact">${c.t.reserveTable}</a>
+      <a class="btn" href="#contact">${c.theme.key === "cafe" ? c.t.reserveTable : c.t.bookNow}</a>
     </div>
   </header>`;
 
@@ -484,6 +522,105 @@ function revealScript(): string {
   }, { passive: true });
   drift();
 })();
+
+// ── Mobile navigation ──────────────────────────────────────────────────────
+// Every archetype and every Design hides its nav links below its own collapse
+// point, which left phone visitors with no navigation at all. This gives the
+// links back as a sheet.
+//
+// It is deliberately breakpoint-free: it asks the DOM whether the page's own nav
+// links are currently visible. The designs collapse at 820–900px and each of
+// those points was chosen for that layout, so a constant here would either show
+// a burger beside visible links or hide the nav on a width that still fits it.
+(function () {
+  var nav = document.querySelector('nav');
+  if (!nav) return;
+  /* Section links only. The wordmark ("#top") is the logo: it stays visible at
+     every width, so counting it as navigation would make the visibility probe
+     below conclude the nav had not collapsed. */
+  var links = [].slice.call(nav.querySelectorAll('a[href^="#"]')).filter(function (a) {
+    var h = a.getAttribute('href');
+    return h !== '#' && h !== '#top' && h !== '#main';
+  });
+  if (links.length < 2) return;
+
+  var sheet = document.createElement('div');
+  sheet.className = 'lo-navsheet';
+  sheet.id = 'lo-navsheet';
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  links.forEach(function (a) {
+    var c = a.cloneNode(true);
+    c.removeAttribute('class');
+    sheet.appendChild(c);
+  });
+  var tel = document.querySelector('a[href^="tel:"]');
+  if (tel) {
+    var t = tel.cloneNode(true);
+    t.removeAttribute('class');
+    t.className = 'lo-navsheet-tel';
+    sheet.appendChild(t);
+  }
+
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'lo-navtoggle';
+  btn.setAttribute('aria-expanded', 'false');
+  btn.setAttribute('aria-controls', 'lo-navsheet');
+  btn.setAttribute('aria-label', 'Menu');
+  btn.appendChild(document.createElement('span'));
+
+  /* Several designs wrap their nav row in an inner element that carries the
+     max-width and the flex layout (.at-nav-in, .no-nav-in). Appending to <nav>
+     itself would drop the button outside that row, so land it on the wrapper
+     when there is exactly one. */
+  var host = nav;
+  while (host.children.length === 1 && host.firstElementChild.tagName === 'DIV') {
+    host = host.firstElementChild;
+  }
+  host.appendChild(btn);
+  document.body.appendChild(sheet);
+
+  function open() {
+    sheet.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
+    document.documentElement.classList.add('lo-navopen');
+  }
+  function close() {
+    sheet.classList.remove('is-open');
+    btn.setAttribute('aria-expanded', 'false');
+    document.documentElement.classList.remove('lo-navopen');
+  }
+  /* The toggle sits inside the nav, below the sheet in paint order, and several
+     designs give that nav a backdrop-filter — which makes it the containing
+     block for anything fixed inside it, so raising the toggle's z-index would
+     not reliably lift it above the sheet. The sheet carries its own close
+     button instead. */
+  var closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'lo-navsheet-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.innerHTML = '&times;';
+  closeBtn.addEventListener('click', close);
+  sheet.insertBefore(closeBtn, sheet.firstChild);
+
+  btn.addEventListener('click', function () {
+    sheet.classList.contains('is-open') ? close() : open();
+  });
+  sheet.addEventListener('click', function (e) { if (e.target.closest('a')) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  function sync() {
+    var visible = links.filter(function (a) {
+      return a.offsetParent !== null && a.getBoundingClientRect().width > 0;
+    }).length;
+    btn.classList.toggle('is-on', visible < 2);
+    if (visible >= 2) close();
+  }
+  sync();
+  var nt;
+  window.addEventListener('resize', function () { clearTimeout(nt); nt = setTimeout(sync, 120); });
+})();
 </script>`;
 }
 
@@ -526,15 +663,18 @@ function surfaceCss(seedKey: string): string {
     mask-image:linear-gradient(180deg,#000 65%,transparent);}`,
     "film-grain": `
   body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.09;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}`,
+    // "aurora-mesh" (three soft radial colour blobs) was removed deliberately.
+    // It is the single most recognisable "AI-generated site" tell — the same
+    // purple/pink smudge behind the headline that every generated landing page
+    // has — and it made real businesses' pages look templated. Texture here
+    // should come from structure (grids, rules, grain), never from coloured haze.
+    "editorial-rule": `
   body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-    background:radial-gradient(60% 45% at 50% 0%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 70%);}`,
-    "aurora-mesh": `
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-    background:
-      radial-gradient(70% 55% at 15% 8%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 65%),
-      radial-gradient(65% 50% at 88% 28%,color-mix(in srgb,var(--accent2) 16%,transparent),transparent 62%),
-      radial-gradient(80% 60% at 50% 96%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%);}`,
+    background-image:linear-gradient(90deg,${ink(7)} 1px,transparent 1px);
+    background-size:calc(100% / 3) 100%;
+    -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);
+    mask-image:linear-gradient(180deg,#000 55%,transparent);}`,
     "hairline-rules": `
   body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
     background-image:repeating-linear-gradient(180deg,${ink(8)} 0 1px,transparent 1px 96px);
@@ -568,8 +708,110 @@ function buildCss(t: Theme, p: Palette, seedKey: string): string {
   body{font-family:var(--body);background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;}
 ${surfaceCss(seedKey)}
   h1,h2,h3{font-family:var(--heading);line-height:1.04;font-weight:700;letter-spacing:-0.01em;}
-  .wrap{max-width:1140px;margin:0 auto;padding:0 32px;}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 clamp(18px,4vw,32px);}
   a{color:inherit;text-decoration:none;}
+
+  /* ── Responsive foundation ───────────────────────────────────────────────
+     Every string on these pages is a real business's data, so the layout has to
+     hold for a 60-character name, an address with nothing to break on, twelve
+     services or one. These are the guards that make that true for every
+     archetype and every Design at once; :where() keeps them at zero specificity
+     so any design still overrides them by stating the rule normally. */
+  /* clip, not hidden — hidden would make these elements scroll containers and
+     kill the sticky/fixed navs every design relies on. */
+  html{overflow-x:clip;}
+  body{overflow-x:clip;max-width:100%;}
+  :where(img,svg,video,canvas,iframe){max-width:100%;}
+  :where(img,video){height:auto;}
+  /* Grid and flex children default to min-width:auto, which is what lets one
+     long word widen its track past the 1fr it was given. */
+  :where(div,section,article,aside,header,footer,nav,main,ul,ol,li,figure,
+  figcaption,p,h1,h2,h3,h4,h5,h6,blockquote,form,label,a){min-width:0;}
+  :where(h1,h2,h3,h4,p,li,dt,dd,blockquote,figcaption,td,th,address){overflow-wrap:break-word;}
+  /* Nav labels are fixed template words, never lead data — holding them on one
+     line is what keeps "break anywhere" below from stacking a nav link into one
+     character per row. The wordmark is excluded: that one IS the business name. */
+  :where(nav) :where(a):not(:where(.brand,.at-mark,.ki-nav-mark,.no-mark,.ma-mark)){white-space:nowrap;}
+  /* white-space inherits, so the nowrap above must not reach anything holding
+     the business's own text — it would defeat the overflow-wrap rules below. */
+  :where(nav) :where(h1,h2,h3,address,.contact-info,.contact-info *){white-space:normal;}
+  /* Headings hold the business name, and contact lines hold addresses, emails
+     and URLs — the strings with no break opportunities in them. "anywhere" also
+     lowers min-content width, which is what stops them forcing a track open.
+     The per-design wordmark classes are here because that is where it bites:
+     header and footer both print the name at display size in a cell drawn for a
+     short one. */
+  :where(h1,h2,h3,.brand,.at-mark,.ki-nav-mark,.no-mark,.ma-mark,
+  .contact-info,.contact-info *,address,dt,dd,
+  a[href^="mailto:"],a[href^="http"]){overflow-wrap:anywhere;}
+  :where(h1,h2){hyphens:auto;}
+  /* Footers carry the legal business name, the address and the year in one
+     inline run, which is the longest unbreakable string on the page and the last
+     place anyone looks. */
+  :where(footer),:where(footer) *{overflow-wrap:anywhere;}
+  /* A call link comes in two shapes here. Most are a prose label built from the
+     business name (t.call(name) — "Call Frizerski studio Tamara"), and those
+     must be able to break an over-long word. It has to be "anywhere" and not
+     "break-word": break-word does not lower the element's min-content width, so
+     the button would still push its column open and overflow, which is exactly
+     what it did. */
+  :where(a[href^="tel:"]),:where(a[href^="tel:"]) *{overflow-wrap:anywhere;}
+  /* The rest print the number and nothing else. Stated last so it wins: a bare
+     number wraps at the spaces between its groups, never inside one. */
+  :where(.at-link,.no-btn-ghost,.ma-bar-cta,.vi-tel,.ki-table a[href^="tel:"]){
+    overflow-wrap:normal;word-break:normal;}
+  /* Long headlines must not collide with the line below them once they wrap;
+     the 1.04 display leading above is drawn for one or two words. */
+  :where(h1){line-height:1.06;}
+
+  /* Touch: at the width where every design has collapsed its nav, controls
+     clear 44px and form fields clear the 16px iOS zoom threshold. */
+  @media(max-width:900px){
+    :where(.btn,.btn-ghost,.navcta,button,[role="button"]){min-height:44px;
+      display:inline-flex;align-items:center;justify-content:center;}
+    :where(.at-mark,.at-link,.at-nav-cta,.at-links a,.ki-nav-mark,.ki-nav-cta,
+    .ki-nav-right a,.no-mark,.no-links a,.no-nav-cta,.ma-mark,.ma-links a,
+    .ma-nav-cta,.vi-nav a,.vi-nav-cta){min-height:44px;display:inline-flex;
+      align-items:center;}
+    :where(input,select,textarea){font-size:16px;min-height:44px;}
+  }
+
+  /* ── Mobile nav sheet ────────────────────────────────────────────────────
+     Shown by the runtime only once the page's own nav links have been hidden,
+     so each design keeps its own collapse point. Painted from the palette
+     tokens, so it belongs to whichever design it lands in. */
+  .lo-navtoggle{display:none;position:relative;z-index:2;flex:none;align-items:center;
+    justify-content:center;width:44px;height:44px;margin-left:auto;padding:0;border:0;
+    background:none;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .lo-navtoggle.is-on{display:inline-flex;}
+  .lo-navtoggle span{position:relative;display:block;width:20px;height:1.5px;
+    background:currentColor;transition:background .2s;}
+  .lo-navtoggle span::before,.lo-navtoggle span::after{content:"";position:absolute;left:0;
+    width:20px;height:1.5px;background:currentColor;transition:transform .2s,top .2s;}
+  .lo-navtoggle span::before{top:-6px;}
+  .lo-navtoggle span::after{top:6px;}
+  .lo-navtoggle[aria-expanded="true"] span{background:transparent;}
+  .lo-navtoggle[aria-expanded="true"] span::before{top:0;transform:rotate(45deg);}
+  .lo-navtoggle[aria-expanded="true"] span::after{top:0;transform:rotate(-45deg);}
+
+  .lo-navsheet{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;
+    justify-content:center;gap:4px;padding:88px clamp(22px,7vw,44px) calc(32px + env(safe-area-inset-bottom));
+    background:var(--bg);color:var(--text);overflow-y:auto;overscroll-behavior:contain;
+    opacity:0;visibility:hidden;transform:translateY(-8px);
+    transition:opacity .22s ease,transform .22s ease,visibility .22s;}
+  .lo-navsheet.is-open{opacity:1;visibility:visible;transform:none;}
+  .lo-navsheet a{display:block;padding:16px 0;font-family:var(--heading);
+    font-size:clamp(22px,7vw,32px);line-height:1.15;letter-spacing:-0.02em;
+    border-bottom:1px solid var(--border);}
+  .lo-navsheet .lo-navsheet-close{position:absolute;top:16px;right:clamp(18px,5vw,40px);
+    width:44px;height:44px;display:flex;align-items:center;justify-content:center;padding:0;
+    border:0;background:none;color:inherit;font:300 30px/1 system-ui,sans-serif;cursor:pointer;
+    opacity:.65;}
+  .lo-navsheet .lo-navsheet-close:hover{opacity:1;}
+  .lo-navsheet .lo-navsheet-tel{font-family:var(--body);font-size:clamp(15px,4vw,18px);
+    border-bottom:0;color:var(--muted);padding-top:24px;}
+  html.lo-navopen{overflow:hidden;}
+  @media(min-width:901px){.lo-navsheet{display:none;}}
 
   /* buttons */
   .btn{display:inline-block;background:var(--accent);color:var(--accent-text);padding:15px 30px;border-radius:999px;font-family:var(--body);font-weight:600;font-size:15px;box-shadow:0 10px 30px -10px color-mix(in srgb,var(--accent) 70%,transparent);transition:transform .2s;}
@@ -578,7 +820,10 @@ ${surfaceCss(seedKey)}
   .navcta{padding:9px 20px;border:1px solid color-mix(in srgb,var(--text) 22%,transparent);border-radius:999px;}
 
   /* nav */
-  nav{position:sticky;top:0;z-index:20;height:var(--nav-h);display:flex;align-items:center;background:color-mix(in srgb,var(--hero-bg) 86%,transparent);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid color-mix(in srgb,var(--hero-text) 9%,transparent);}
+  /* Scoped to the legacy archetypes. A full-page Design ships its own nav, and
+     this bare element selector was leaking into it — a grey sticky bar with a
+     backdrop-filter appearing behind every design's own navigation. */
+  body[class*="layout-"] nav{position:sticky;top:0;z-index:20;height:var(--nav-h);display:flex;align-items:center;background:color-mix(in srgb,var(--hero-bg) 86%,transparent);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid color-mix(in srgb,var(--hero-text) 9%,transparent);}
   nav .wrap{display:flex;align-items:center;justify-content:space-between;width:100%;}
   .brand{font-family:var(--heading);font-weight:700;font-size:21px;color:var(--hero-text);letter-spacing:-0.02em;}
   .navlinks{display:flex;align-items:center;gap:26px;}
@@ -595,14 +840,18 @@ ${surfaceCss(seedKey)}
   .hero-inner{position:relative;z-index:2;width:100%;}
 
   /* mesh / glow / dots backgrounds */
-  .mesh{position:absolute;inset:-20%;z-index:0;background:
-    radial-gradient(40% 50% at 22% 28%,color-mix(in srgb,var(--accent) 55%,transparent),transparent 70%),
-    radial-gradient(45% 55% at 82% 18%,color-mix(in srgb,var(--mesh2) 75%,transparent),transparent 72%),
-    radial-gradient(60% 60% at 70% 92%,color-mix(in srgb,var(--accent) 26%,transparent),transparent 75%);
-    filter:blur(8px);}
-  .glow{position:absolute;inset:0;z-index:0;background:
-    radial-gradient(46% 52% at 50% 40%,color-mix(in srgb,var(--accent) 32%,transparent),transparent 70%),
-    radial-gradient(40% 40% at 78% 80%,color-mix(in srgb,var(--mesh2) 60%,transparent),transparent 72%);}
+  /* These were blurred multi-stop radial blobs — the "AI gradient smudge" behind
+     the headline. Structure reads as design; coloured haze reads as a generated
+     page, so both are now hard-edged geometry in the palette's own colours. */
+  .mesh{position:absolute;inset:0;z-index:0;overflow:hidden;
+    background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 14%,var(--bg)) 0%,var(--bg) 58%);}
+  .mesh::after{content:"";position:absolute;right:-8%;top:-18%;width:46%;aspect-ratio:1;
+    border-radius:50%;border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);}
+  .glow{position:absolute;inset:0;z-index:0;overflow:hidden;
+    background:linear-gradient(180deg,var(--bg) 0%,color-mix(in srgb,var(--accent) 10%,var(--bg)) 100%);}
+  .glow::after{content:"";position:absolute;left:50%;top:50%;translate:-50% -50%;
+    width:min(64vw,720px);aspect-ratio:1;border-radius:50%;
+    border:1px solid color-mix(in srgb,var(--accent) 24%,transparent);}
   .dots{position:absolute;inset:0;z-index:0;opacity:.5;background-image:radial-gradient(color-mix(in srgb,var(--text) 12%,transparent) 1.3px,transparent 1.3px);background-size:26px 26px;-webkit-mask-image:linear-gradient(120deg,#000,transparent 72%);mask-image:linear-gradient(120deg,#000,transparent 72%);}
 
   /* seed-driven mesh repositioning so same-category previews differ */
@@ -766,7 +1015,7 @@ ${surfaceCss(seedKey)}
      white-text photo-hero nav (or a hero-tinted nav) sits invisibly over the
      light lower sections. Toggled by the inline script (body.nav-solid); these
      rules outrank the .has-photo nav rules above on specificity. */
-  nav{transition:background .25s ease,border-color .25s ease,backdrop-filter .25s ease;}
+  body[class*="layout-"] nav{transition:background .25s ease,border-color .25s ease,backdrop-filter .25s ease;}
   .brand,.navlinks a{transition:color .25s ease;}
   body.nav-solid nav{background:color-mix(in srgb,var(--bg) 90%,transparent);border-bottom:1px solid var(--border);}
   body.nav-solid .brand{color:var(--text);}
@@ -837,6 +1086,12 @@ ${surfaceCss(seedKey)}
     .gal-item,.contact-map img{will-change:transform;}
   }
 
+  /* Tablet portrait: the four-up gallery is too fine-grained to read here, but
+     the page is still wide enough for two of everything else. */
+  @media(max-width:1024px){
+    .gal-grid{grid-template-columns:repeat(3,1fr);grid-auto-rows:170px;}
+  }
+
   @media(max-width:880px){
     .gal-grid{grid-template-columns:repeat(2,1fr);}
     .gal-item:first-child{grid-column:span 2;}
@@ -850,5 +1105,20 @@ ${surfaceCss(seedKey)}
     .grid{grid-template-columns:1fr;}.navlinks{display:none;}
     .contact-grid:has(.contact-map){grid-template-columns:1fr;text-align:center;}
     .contact-grid:has(.contact-map) .contact-info{align-items:center;}
+    /* The hero is drawn as a full viewport on desktop. On a phone that is a lot
+       of empty ground above the first real content, so it sizes to its content
+       with a floor instead. */
+    .hero{min-height:auto;padding-block:clamp(56px,12vh,96px);}
+    .ghost{font-size:34vh;}
+  }
+
+  /* Small phones. A two-up gallery of 200px rows leaves tiles under 140px wide;
+     one column reads as a deliberate stack rather than a broken grid. */
+  @media(max-width:430px){
+    .gal-grid{grid-template-columns:1fr;grid-auto-rows:200px;}
+    .gal-item:first-child{grid-column:span 1;grid-row:span 1;}
+    .btn{padding:15px 22px;font-size:14px;}
+    .statbar{flex-wrap:wrap;gap:14px;}
+    .ghost{display:none;}
   }`;
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TierBadge } from "./TierBadge";
 import { FunnelStatus } from "./FunnelStatus";
 import { PRICING } from "@/lib/pricing";
+import { BulkBar } from "./BulkBar";
 
 // Operator-facing names for the plans on the public pricing page.
 type Plan = "build" | "care" | "growth";
@@ -84,6 +85,12 @@ export function LeadsTable() {
   const [sort, setSort] = useState("score");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [matching, setMatching] = useState(0);
+  // Ticked rows. `allMatching` is a separate flag rather than "every id is in the
+  // set", because it means something the set cannot: every lead the filter
+  // matches, including the ones past the table's 500-row ceiling.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allMatching, setAllMatching] = useState(false);
   const [regen, setRegen] = useState<{ busy: boolean; msg: string | null }>({
     busy: false,
     msg: null,
@@ -106,10 +113,36 @@ export function LeadsTable() {
       setLeads(data.leads ?? []);
       setCounts(data.counts ?? {});
       setReachCounts(data.reachCounts ?? {});
+      setMatching(data.matching ?? 0);
     } finally {
       setLoading(false);
     }
   }, [tier, reach, q, sort]);
+
+  const clearSelection = useCallback(() => {
+    setSelected(new Set());
+    setAllMatching(false);
+  }, []);
+
+  // Changing a filter drops the selection, and does it in the event handler
+  // rather than in an effect watching the filter — the effect version fires a
+  // second render pass on every keystroke in the search box. Keeping the
+  // selection would be worse than dropping it: the bar would say "12 selected"
+  // over a different 12 rows, and "everything matching" would quietly come to
+  // mean a different set than the one that was ticked.
+  const changeTier = useCallback((v: string) => { setTier(v); clearSelection(); }, [clearSelection]);
+  const changeReach = useCallback((v: string) => { setReach(v); clearSelection(); }, [clearSelection]);
+  const changeQ = useCallback((v: string) => { setQ(v); clearSelection(); }, [clearSelection]);
+
+  const toggleOne = useCallback((id: string) => {
+    setAllMatching(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(load, q ? 250 : 0); // debounce text search
@@ -141,11 +174,11 @@ export function LeadsTable() {
     <div>
       {/* Filter chips + controls */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <Chip active={tier === ""} onClick={() => setTier("")}>
+        <Chip active={tier === ""} onClick={() => changeTier("")}>
           All <span className="opacity-60">{total}</span>
         </Chip>
         {TIERS.map((t) => (
-          <Chip key={t} active={tier === t} onClick={() => setTier(tier === t ? "" : t)}>
+          <Chip key={t} active={tier === t} onClick={() => changeTier(tier === t ? "" : t)}>
             <TierBadge tier={t} /> <span className="opacity-60">{counts[t] ?? 0}</span>
           </Chip>
         ))}
@@ -153,7 +186,7 @@ export function LeadsTable() {
         <div className="ml-auto flex items-center gap-2">
           <input
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => changeQ(e.target.value)}
             placeholder="Search name, address, site…"
             className="bg-[var(--panel)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:border-[var(--accent)]"
           />
@@ -184,14 +217,14 @@ export function LeadsTable() {
         <span className="text-[11px] uppercase tracking-wide text-[var(--muted)] mr-1">
           Reachable by
         </span>
-        <Chip active={reach === ""} onClick={() => setReach("")}>
+        <Chip active={reach === ""} onClick={() => changeReach("")}>
           Any <span className="opacity-60">{reachCounts.all ?? 0}</span>
         </Chip>
         {REACH.map((r) => (
           <Chip
             key={r.value}
             active={reach === r.value}
-            onClick={() => setReach(reach === r.value ? "" : r.value)}
+            onClick={() => changeReach(reach === r.value ? "" : r.value)}
           >
             {r.label} <span className="opacity-60">{reachCounts[r.value] ?? 0}</span>
           </Chip>
@@ -202,11 +235,43 @@ export function LeadsTable() {
         <div className="-mt-2 mb-4 text-xs text-[var(--muted)]">{regen.msg}</div>
       )}
 
+      <BulkBar
+        selectedIds={[...selected]}
+        allMatching={allMatching}
+        matchingCount={matching}
+        filter={{ tier, reach, q }}
+        onClear={clearSelection}
+        // A bulk run rewrites previews and funnel statuses, so refetch rather
+        // than patching rows one by one and hoping the two agree.
+        onDone={load}
+      />
+
       {/* Table */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wide text-[var(--muted)] border-b border-[var(--border)]">
+              <th className="pl-4 pr-1 py-3 font-medium w-8">
+                <input
+                  type="checkbox"
+                  aria-label={`Select all ${matching} leads matching this filter`}
+                  title={`Select all ${matching} matching this filter`}
+                  // Checked only for the "everything matching" state. Ticking
+                  // individual rows deliberately does not light this up, because
+                  // it would claim the unloaded rows are selected too.
+                  checked={allMatching}
+                  ref={(el) => {
+                    // Some rows but not all: the indeterminate dash, which is the
+                    // only honest third state here.
+                    if (el) el.indeterminate = !allMatching && selected.size > 0;
+                  }}
+                  onChange={(e) => {
+                    setSelected(new Set());
+                    setAllMatching(e.target.checked);
+                  }}
+                  className="accent-[var(--accent)] cursor-pointer"
+                />
+              </th>
               <th className="px-4 py-3 font-medium">Business</th>
               <th className="px-4 py-3 font-medium">Tier</th>
               <th className="px-4 py-3 font-medium">Score</th>
@@ -218,7 +283,7 @@ export function LeadsTable() {
           <tbody>
             {leads.length === 0 && !loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-[var(--muted)]">
+                <td colSpan={7} className="px-4 py-12 text-center text-[var(--muted)]">
                   No leads yet. Head to{" "}
                   <a href="/app/search" className="text-[var(--accent)] underline">
                     Discovery
@@ -234,6 +299,8 @@ export function LeadsTable() {
                 expanded={expanded === lead.id}
                 onToggle={() => setExpanded(expanded === lead.id ? null : lead.id)}
                 onUpdate={updateLead}
+                selected={allMatching || selected.has(lead.id)}
+                onSelect={() => toggleOne(lead.id)}
               />
             ))}
           </tbody>
@@ -276,11 +343,15 @@ function LeadRow({
   expanded,
   onToggle,
   onUpdate,
+  selected,
+  onSelect,
 }: {
   lead: Lead;
   expanded: boolean;
   onToggle: () => void;
   onUpdate: (u: Partial<Lead> & { id: string }) => void;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   const host = lead.website ? safeHost(lead.website) : null;
   return (
@@ -289,6 +360,17 @@ function LeadRow({
         onClick={onToggle}
         className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--panel-2)] cursor-pointer"
       >
+        {/* The whole row expands the lead, so the checkbox has to stop the click
+            from bubbling — otherwise ticking a box also opens the detail panel. */}
+        <td className="pl-4 pr-1 py-3" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onSelect}
+            aria-label={`Select ${lead.name}`}
+            className="accent-[var(--accent)] cursor-pointer"
+          />
+        </td>
         <td className="px-4 py-3">
           <div className="font-medium">{lead.name}</div>
           {lead.address && (
@@ -342,7 +424,7 @@ function LeadRow({
       </tr>
       {expanded && (
         <tr className="bg-[var(--panel-2)]">
-          <td colSpan={6} className="px-4 py-4">
+          <td colSpan={7} className="px-4 py-4">
             <LeadDetail lead={lead} onUpdate={onUpdate} />
           </td>
         </tr>
@@ -782,6 +864,18 @@ function LeadDetail({
                   className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-500 border border-amber-500/30"
                 >
                   template fallback
+                </span>
+              )}
+              {/* "kit:t08" — one of the ten hand-built templates, filled with
+                  this lead's data. Naming the template is the point: it is how
+                  you tell at a glance whether a category is drawing a sensible
+                  one before you open the page. */}
+              {lead.previewEngine?.startsWith("kit:") && (
+                <span
+                  title="Built from one of the ten hand-made templates in templates/, filled with this lead's Google data. Free and reproducible."
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                >
+                  {lead.previewEngine.replace("kit:", "template ")}
                 </span>
               )}
               {lead.previewEngine === "manual" && (

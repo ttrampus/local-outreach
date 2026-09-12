@@ -147,6 +147,46 @@ model SearchRun {
   updatedAt   DateTime @updatedAt
 }
 
+/// One bulk action over many leads — "generate a preview for all 47 HOT leads
+/// with an email", "send to these 12". The work runs fire-and-forget after a 202,
+/// exactly like a sweep, so this row is how the UI knows what is happening: it
+/// polls until `status` leaves "running". Without it a bulk run is invisible,
+/// which is the standing complaint about the old regenerate-all button.
+///
+/// `cancelRequested` is a request, not a kill: the worker checks it between
+/// leads. A send already in flight completes — the point is to stop the NEXT
+/// email, since the ones already delivered cannot be recalled anyway.
+model BulkJob {
+  id     String @id @default(cuid())
+  kind   String // preview | send
+  status String @default("running") // running | done | error | cancelled
+  error  String?
+
+  /// Human-readable note of what was aimed at ("HOT · email", "12 selected"), so
+  /// a finished row still explains itself after the filter has moved on.
+  target String @default("")
+
+  total     Int @default(0) // leads this run will attempt
+  done      Int @default(0) // attempted so far (ok + failed)
+  ok        Int @default(0)
+  failed    Int @default(0)
+  /// Dropped before the run started: no email, unsubscribed, over the cap.
+  skipped   Int @default(0)
+
+  cancelRequested Boolean @default(false)
+
+  /// Name of the lead currently being worked, purely so the progress line can
+  /// say something more useful than a number.
+  current String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([status])
+  @@index([createdAt])
+}
+
 /// Marks a (sweep, query, location) region as already covered, so re-launching a
 /// sweep skips regions it already searched instead of re-spending Text Search
 /// calls on them. Cleared explicitly to force a full re-sweep.

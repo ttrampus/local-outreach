@@ -15,6 +15,7 @@ import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 import { pickTheme } from "./theme";
 import { detectLocale } from "./i18n";
 import { artDirectionFor, type ArtDirection } from "./designTokens";
+import { COPY_POLICY } from "./copyPolicy";
 
 const LANGUAGE_NAME: Record<string, string> = { sl: "Slovenian", en: "English" };
 
@@ -64,9 +65,12 @@ DESIGN BAR:
 - EVERY animation stays behind \`@media (prefers-reduced-motion: no-preference)\` per the constraint above, and any element you reveal on scroll MUST be fully visible in the base CSS. An element left at opacity:0 outside that media query is invisible to anyone whose observer never fires.
 - CRITICAL MOTION CONSTRAINT: the hero is screenshotted with \`prefers-reduced-motion: reduce\`. Gate EVERY entrance and scroll animation behind \`@media (prefers-reduced-motion: no-preference)\` and author the base (un-animated) CSS as the finished, settled state described in the signature. A reduced-motion render must show a complete, fully-visible hero — never blank, never mid-fade, never at opacity 0.
 - MOBILE IS THE PRIMARY VIEWPORT, NOT AN AFTERTHOUGHT. This page is reached from a link in an email, and that email is read on a phone — so more of these are opened at 390px than at 1280px, and a page that is beautiful on desktop but awkward on a handset has failed with most of the people who will ever see it. Design the phone layout deliberately; do not merely let the desktop one reflow and hope.
-- NOTHING MAY EXCEED THE VIEWPORT WIDTH AT 390px. A page that scrolls sideways is the single most damning mobile failure — it reads as broken, not as unfinished. The usual causes, all of which are yours to prevent: fixed pixel widths on containers, display type set in fixed px so a long business name overflows, multi-column grids that never collapse, images and iframes without \`max-width:100%\`, \`white-space:nowrap\` on real sentences, tables that do not scroll inside their own container, and decorative elements pushed right with negative margins. Anything deliberately bled off-screen must be \`position:fixed\` or clipped by a parent with \`overflow:hidden\` so it cannot widen the document.
+- HOLD THE LAYOUT FROM 320px TO 1920px, NOT AT ONE PHONE SIZE. Check your own CSS at 320 (small phone), 390 (modern phone), 430 (large phone), 768 (tablet portrait), 1024 (tablet landscape), 1280 (laptop) and 1920 (large desktop). The two that get skipped and then break are 320 — where a two-up grid leaves 140px tracks and a 64px headline floor overflows — and 768/1024, where a layout that only knows "phone" and "desktop" shows a desktop grid squeezed into a tablet. Give the page at least three real breakpoints, and make the space between them fluid with \`clamp()\` rather than a jump.
+- ASSUME THE CONTENT WILL BE WORSE THAN YOUR PLACEHOLDER. Every string on this page comes from a real Google listing you are not seeing: a business name that runs to sixty characters, an address and an email with nothing to break on, one service or twelve, no photos or fourteen of mixed aspect ratios, a review that is a single 300-character sentence. The layout must hold for all of that without a manual fix. Concretely: \`min-width:0\` on grid and flex children so one long word cannot widen its track, \`overflow-wrap:anywhere\` on headings and on any address, email or URL, \`max-width:100%\` with \`object-fit:cover\` in a fixed-ratio frame for every photo, and sections that hide themselves when their data is absent rather than leaving an empty box.
+- NOTHING MAY EXCEED THE VIEWPORT WIDTH AT ANY OF THOSE WIDTHS, 320px INCLUDED. A page that scrolls sideways is the single most damning mobile failure — it reads as broken, not as unfinished. The usual causes, all of which are yours to prevent: fixed pixel widths on containers, display type set in fixed px so a long business name overflows, multi-column grids that never collapse, images and iframes without \`max-width:100%\`, \`white-space:nowrap\` on real sentences, tables that do not scroll inside their own container, and decorative elements pushed right with negative margins. Anything deliberately bled off-screen must be \`position:fixed\` or clipped by a parent with \`overflow:hidden\` so it cannot widen the document.
 - SCALE THE TYPE, DON'T JUST SHRINK IT. Every display size uses \`clamp()\` (or an explicit mobile override) so the largest headline is comfortable at 390px — a 96px hero headline that stays 96px on a phone wraps into two or three unreadable words per line. Body copy never drops below 16px on any viewport, and line length on mobile should land around 30-45 characters, not 20.
-- COLLAPSE THE LAYOUT, AND CUT THE PADDING WITH IT. Multi-column sections become one column below ~700px. Section padding that reads as generous at 1280px (100-160px vertical) becomes a screenful of empty background on a phone — roughly halve it. The density rules above apply at 390px too: no bare band taller than about half the viewport.
+- THE NAVIGATION MUST SURVIVE THE COLLAPSE. \`display:none\` on the nav links below 900px, with nothing put in their place, leaves every phone visitor with no way to reach the rest of the page — this is the most common thing to get wrong here. Either the links stay visible in a form that works at 320px, or a toggle opens a sheet holding them. Never just delete them.
+- COLLAPSE THE LAYOUT, AND CUT THE PADDING WITH IT. Multi-column sections become one column below ~700px, and a three-up grid goes to two at tablet width before it goes to one. Section padding that reads as generous at 1280px (100-160px vertical) becomes a screenful of empty background on a phone — roughly halve it. The density rules above apply at 390px too: no bare band taller than about half the viewport.
 - TAP TARGETS ARE AT LEAST 44px TALL and spaced far enough apart to hit with a thumb. Buttons, nav items, service rows, phone and email links — all of them. A 24px text link in a list is a miss-tap.
 - THE HERO PHOTO MUST STILL BE VISIBLE within the first screen at 390x844, per the photo rule below. Not pushed under a full-height headline block.
 - Then check your own work at 390px before you finish: is anything wider than the screen, is any text under 16px, does the hero still work, is any section mostly empty?
@@ -364,19 +368,27 @@ function buildUserPrompt(
     .slice(0, 3)
     .map((s) => `- "${clip(s)}"`);
 
-  // Structured insight (preferred) or raw snippets (fallback) for the copy.
+  // Review material is TONE INPUT, not copy source. It used to be introduced as
+  // "weave these real specifics into the copy", which is precisely how review
+  // fragments became invented claims about the business (see copyPolicy.ts).
+  // Quotes may still appear — verbatim, labelled as customer reviews.
   const insightBlock = insight
     ? [
-        `WHAT CUSTOMERS ACTUALLY PRAISE (weave these real specifics into the copy; invent nothing beyond them):`,
+        `WHAT CUSTOMERS PRAISE — this tells you what KIND of place this is, so you can pitch the`,
+        `tone and choose the mood. Do NOT restate any of it as a claim the business makes:`,
         ...insight.highlights.map((h) => `- ${h}`),
-        insight.staff.length ? `Named staff you may mention naturally: ${insight.staff.join(", ")}` : "",
+        insight.staff.length
+          ? `Staff first names — usable ONLY as a plain list (e.g. a "team" line). Never attach a claim about what they do or promise: ${insight.staff.join(", ")}`
+          : "",
         insight.tone ? `Overall tone to match: ${insight.tone}` : "",
-        insight.pullQuote ? `A strong quote you may feature: "${insight.pullQuote}"` : "",
+        insight.pullQuote
+          ? `You may feature this review VERBATIM, clearly presented as a customer review: "${insight.pullQuote}"`
+          : "",
       ]
         .filter(Boolean)
         .join("\n")
     : reviews.length
-      ? `Real customer reviews you may quote/adapt:\n${reviews.join("\n")}`
+      ? `Real customer reviews. You may quote them VERBATIM as customer reviews; do not paraphrase them into claims by the business:\n${reviews.join("\n")}`
       : "No review text available.";
 
   const hoursBlock = details.openingHours?.length
@@ -427,6 +439,8 @@ function buildUserPrompt(
     artDirectionBrief(direction),
     ``,
     `LANGUAGE (write everything in this): ${languageName}`,
+    ``,
+    COPY_POLICY,
     ``,
     `Business name (raw, from Google): ${details.name}`,
     `Business type: ${theme.label}${details.primaryTypeDisplayName ? ` (${details.primaryTypeDisplayName})` : ""}`,

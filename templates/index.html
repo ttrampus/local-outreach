@@ -1,12 +1,13 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local business templates</title>
 <style>
-*{box-sizing:border-box;margin:0}body{font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f4f2;color:#1a1a1a;padding:48px 24px}
-header{max-width:1180px;margin:0 auto 40px}h1{font-size:32px;letter-spacing:-.02em}header p{color:#555;max-width:70ch;margin-top:8px}
-main{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px}
+*{box-sizing:border-box;margin:0}html{overflow-x:clip}img{max-width:100%}body{font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f4f4f2;color:#1a1a1a;padding:clamp(28px,6vw,48px) clamp(16px,4vw,24px)}
+header{max-width:1180px;margin:0 auto 40px}h1{font-size:clamp(24px,1.2rem+1.6vw,32px);letter-spacing:-.02em}header p{color:#555;max-width:70ch;margin-top:8px}
+main{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:24px}
 article{background:#fff;border:1px solid #e3e3e0;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
 .shot img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-bottom:1px solid #eee}
 .meta{padding:18px 20px 20px;display:flex;flex-direction:column;gap:6px;flex:1}.n{font-size:12px;color:#888}h2{font-size:19px}.meta p{color:#555}
 .links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:auto;padding-top:10px;font-size:14px}.links a{color:#1a1a1a;text-decoration:underline;text-underline-offset:3px}
+@media (max-width:900px){.links{gap:4px 14px}.links a{display:inline-flex;align-items:center;min-height:40px}}
 </style></head><body><header><h1>Local business templates</h1><p>10 templates, each matched to a Refero Styles reference. Every file is standalone: open it directly in a browser. Business data is filled in from the JSON block at the bottom of each file; see README.md. Preview images use placeholder photos.</p></header><main><article>
 <a href="t01-frizerski-salon-oakame.html" class="shot"><img src="previews/t01.jpg" alt="Predogled: Hair salon" loading="lazy"></a>
 <div class="meta"><span class="n">01</span><h2>Hair salon</h2><p>Your real Tamara data, no photos: a hero built from type alone.</p>
