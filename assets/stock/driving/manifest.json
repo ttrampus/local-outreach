@@ -1,0 +1,72 @@
+[
+  {
+    "file": "01.webp",
+    "width": 1600,
+    "height": 900,
+    "source": "https://www.pexels.com/photo/gray-empty-road-between-green-coniferous-trees-11969044/",
+    "photographer": "Maciej Cisowski"
+  },
+  {
+    "file": "02.webp",
+    "width": 1600,
+    "height": 1037,
+    "source": "https://www.pexels.com/photo/aerial-photography-of-an-empty-road-9227739/",
+    "photographer": "K"
+  },
+  {
+    "file": "03.webp",
+    "width": 1600,
+    "height": 1200,
+    "source": "https://www.pexels.com/photo/drone-shot-of-an-empty-road-15258680/",
+    "photographer": "Denitsa Kireva"
+  },
+  {
+    "file": "04.webp",
+    "width": 1600,
+    "height": 1200,
+    "source": "https://www.pexels.com/photo/car-on-road-between-autumn-trees-10584639/",
+    "photographer": "Mike Cho"
+  },
+  {
+    "file": "05.webp",
+    "width": 1600,
+    "height": 1200,
+    "source": "https://www.pexels.com/photo/road-in-countryside-in-fog-10800226/",
+    "photographer": "Lewis Ashton"
+  },
+  {
+    "file": "06.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/navigating-open-road-with-car-dashboard-view-35484520/",
+    "photographer": "Axel Sandoval"
+  },
+  {
+    "file": "07.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/speedometer-and-screen-in-car-16195433/",
+    "photographer": "Erik Mclean"
+  },
+  {
+    "file": "08.webp",
+    "width": 1600,
+    "height": 1068,
+    "source": "https://www.pexels.com/photo/warning-message-on-car-screen-21404727/",
+    "photographer": "Gift Lane"
+  },
+  {
+    "file": "09.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/high-angle-shot-of-expressway-10802497/",
+    "photographer": "Alexas Fotos"
+  },
+  {
+    "file": "10.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/open-road-leading-to-a-vietnamese-town-38322840/",
+    "photographer": "Thái Trường Giang"
+  }
+]

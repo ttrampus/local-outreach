@@ -26,6 +26,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanDisplayName } from "./brand";
 import { photoShapes } from "./photos";
+import {
+  DEFAULT_HERO_ROLES,
+  classifyPhotos,
+  heroEligible,
+  heroRank,
+  unusable,
+  type PhotoRole,
+} from "./photoRoles";
+import { stockPhotos } from "./stock";
 import type { NormalizedPlaceDetails } from "@/lib/leadSource/types";
 
 const TEMPLATE_DIR = path.join(process.cwd(), "templates");
@@ -41,6 +50,19 @@ export interface KitTemplate {
    * a page that claims services the business does not offer.
    */
   types: string[];
+  /** Which assets/stock/<set> tops this template's frames up when real photos run out. */
+  stockSet: string;
+  /**
+   * Photo roles allowed to open the page, best first. Defaults to the room, then
+   * the storefront. Trades whose product IS the picture widen it.
+   */
+  heroRoles?: PhotoRole[];
+  /**
+   * The template's service cards are empty frames without a picture (t01's
+   * square tiles), so each card gets one — the business's own work if it has
+   * spare, otherwise stock.
+   */
+  serviceImages?: boolean;
   /**
    * Present only on the layouts that can host a business of ANY category. The
    * overrides are merged over the business data, after the derived fields, and
@@ -109,11 +131,14 @@ export const KIT_TEMPLATES: KitTemplate[] = [
     file: "t01-frizerski-salon-oakame.html",
     label: "Hair salon",
     types: ["hair_salon", "hair_care"],
+    stockSet: "hair",
+    serviceImages: true,
   },
   {
     id: "t02",
     file: "t02-masaze-wellness-alveos.html",
     label: "Spa / massage / beauty",
+    stockSet: "spa",
     types: [
       "beauty_salon",
       "spa",
@@ -125,12 +150,21 @@ export const KIT_TEMPLATES: KitTemplate[] = [
       "wellness_center",
     ],
   },
-  { id: "t03", file: "t03-brivnica-aplos.html", label: "Barbershop", types: ["barber_shop"] },
+  {
+    id: "t03",
+    file: "t03-brivnica-aplos.html",
+    label: "Barbershop",
+    types: ["barber_shop"],
+    stockSet: "barber",
+  },
   {
     id: "t04",
     file: "t04-fotograf-aker.html",
     label: "Photographer",
     types: ["photographer", "photography_studio", "photo_lab"],
+    // The portfolio is the product: a photographer's own portraits belong up top.
+    stockSet: "photo",
+    heroRoles: ["work", "person", "interior", "exterior"],
     // Photo-led all the way down: a full-bleed hero and a masonry portfolio.
     // Give it fewer than three photos and it is mostly empty frames.
     generic: { minPhotos: 3, overrides: GENERIC_T04, dropAnchors: ["#storitve"] },
@@ -140,6 +174,8 @@ export const KIT_TEMPLATES: KitTemplate[] = [
     file: "t05-avtosola-lightship.html",
     label: "Driving school",
     types: ["driving_school"],
+    stockSet: "driving",
+    heroRoles: ["vehicle", "exterior", "interior"],
   },
   {
     id: "t06",
@@ -156,6 +192,8 @@ export const KIT_TEMPLATES: KitTemplate[] = [
       "seafood_restaurant",
       "meal_takeaway",
     ],
+    stockSet: "restaurant",
+    heroRoles: ["interior", "food", "exterior"],
   },
   {
     id: "t07",
@@ -164,24 +202,31 @@ export const KIT_TEMPLATES: KitTemplate[] = [
     // Not general_contractor: the defaults are kitchens, wardrobes and stairs,
     // which is a joiner's work and not a builder's.
     types: ["carpenter", "cabinet_maker", "furniture_maker"],
+    stockSet: "carpentry",
+    heroRoles: ["work", "interior", "exterior"],
   },
   {
     id: "t08",
     file: "t08-kavarna-sweetgreen.html",
     label: "Café / bakery",
     types: ["cafe", "coffee_shop", "bakery", "tea_house"],
+    stockSet: "cafe",
+    heroRoles: ["interior", "food", "exterior"],
   },
   {
     id: "t09",
     file: "t09-avtoservis-lamborghini.html",
     label: "Car service / garage",
     types: ["car_repair"],
+    stockSet: "garage",
+    heroRoles: ["interior", "exterior", "vehicle"],
   },
   {
     id: "t10",
     file: "t10-zobozdravnik-alden.html",
     label: "Dentist / clinic",
     types: ["dentist", "dental_clinic"],
+    stockSet: "dental",
     // Centered and type-led: the one layout that holds up with no photography
     // at all, which makes it the last-resort host.
     generic: { minPhotos: 0, overrides: GENERIC_T10, dropAnchors: ["#storitve"] },
@@ -256,18 +301,126 @@ export function cityFromAddress(address: string): string | null {
   return m ? m[1].trim() : null;
 }
 
+/** The page always gets at least this many gallery frames (the engine's data-min). */
+const GALLERY_MIN = 4;
+/** Stock sent beyond the counted frames, for the engine to close a ragged last gallery row. */
+const ROW_FILL_SPARE = 2;
+/** Hard ceiling on inlined stock, which is what keeps a page one reasonable download. */
+const MAX_STOCK = 9;
+/** Hero candidates handed to the engine. It picks the sharpest crop among them, so
+ * this is how "the room first" survives the engine's size-based choice. */
+const HERO_SHORTLIST = 2;
+
+export interface KitPhotoOptions {
+  template: KitTemplate;
+  generic: boolean;
+  /** Classification per photo, parallel to `photos`; computed if omitted. */
+  insights?: Awaited<ReturnType<typeof classifyPhotos>>;
+  /** Stable per business, so stock never reshuffles between regenerations. */
+  seed?: string;
+}
+
+/** How many single-photo frames a template's markup declares. */
+async function photoSlotCount(tpl: KitTemplate): Promise<number> {
+  const raw = await readFile(path.join(TEMPLATE_DIR, tpl.file), "utf8");
+  return (raw.match(/<[a-z][^>]*\sdata-photo-slot[\s>=]/g) ?? []).length;
+}
+
+/**
+ * Decide what every image frame on the page shows.
+ *
+ * The business's own photos are classified and the unusable ones (flyers, text
+ * posters, junk) dropped. The best-ranked place photos are shortlisted for the
+ * hero and every other photo is barred from it, so a macro close-up can never
+ * open the page. Then stock tops the set up until the hero, every slot and a
+ * minimum gallery are covered — and if not one real photo may be the hero, stock
+ * supplies it rather than the frame going blank.
+ */
+async function assignPhotos(
+  photos: string[],
+  opts: KitPhotoOptions,
+): Promise<{ photos: Record<string, unknown>[]; serviceImages: string[] }> {
+  const { template, generic } = opts;
+  const heroRoles = generic ? DEFAULT_HERO_ROLES : (template.heroRoles ?? DEFAULT_HERO_ROLES);
+  const insights = opts.insights ?? (await classifyPhotos(photos));
+  const shapes = await photoShapes(photos);
+
+  const real = photos
+    .map((src, i) => ({ src, shape: shapes[i], insight: insights[i] ?? null }))
+    .filter((p) => !unusable(p.insight));
+
+  const shortlist = new Set(
+    real
+      .filter((p) => p.insight && heroEligible(p.insight, heroRoles))
+      .sort((a, b) => heroRank(b.insight!, heroRoles) - heroRank(a.insight!, heroRoles))
+      .slice(0, HERO_SHORTLIST)
+      .map((p) => p.src),
+  );
+  // With no classification at all (model unavailable) nothing is barred, and the
+  // template's own size rules decide exactly as they always did.
+  const classified = real.some((p) => p.insight);
+
+  // Shortlisted photos go first, best-ranked first. The engine picks the hero by
+  // size and keeps input order on a tie, which phone photos of one salon — all
+  // the same resolution — nearly always are.
+  const rankOf = (src: string) => [...shortlist].indexOf(src);
+  real.sort((a, b) => {
+    const ra = rankOf(a.src), rb = rankOf(b.src);
+    return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
+  });
+
+  const out: Record<string, unknown>[] = real.map((p) => {
+    const o: Record<string, unknown> = { src: p.src };
+    if (p.shape && p.shape.w > 0 && p.shape.h > 0) {
+      o.width = p.shape.w;
+      o.height = p.shape.h;
+      // A portrait phone shot of a room cropped into a wide frame keeps its
+      // middle band, which is mostly ceiling and air-con. Eye level is lower.
+      if (p.shape.h > p.shape.w * 1.15) o.focus = "50% 62%";
+    }
+    if (p.insight) o.role = p.insight.role;
+    if (classified) o.hero = shortlist.has(p.src);
+    return o;
+  });
+
+  const frames = 1 + (await photoSlotCount(template)) + GALLERY_MIN;
+  let stockForFrames = Math.max(0, frames - real.length);
+  if (classified && shortlist.size === 0) stockForFrames = Math.max(stockForFrames, 1);
+  // Plus a couple the engine may use to finish a gallery's last row, which it can
+  // only measure in the browser. Unused ones cost bytes, never an empty frame.
+  stockForFrames = Math.min(stockForFrames + ROW_FILL_SPARE, MAX_STOCK);
+
+  const serviceCount = template.serviceImages && !generic ? 4 : 0;
+  const set = generic ? "neutral" : template.stockSet;
+  const stock = await stockPhotos(set, stockForFrames + serviceCount, opts.seed ?? photos[0] ?? "");
+
+  for (const st of stock.slice(0, stockForFrames)) out.push({ ...st });
+  // Service cards take the stock left after the frames, so a tile never repeats
+  // the hero. A small set that runs short reuses from the start rather than
+  // leaving a card empty.
+  const spare = stock.slice(stockForFrames);
+  const serviceImages = Array.from({ length: serviceCount }, (_, i) =>
+    (spare[i] ?? stock[i % Math.max(1, stock.length)])?.src,
+  ).filter((x): x is string => Boolean(x));
+
+  return { photos: out, serviceImages };
+}
+
 /**
  * The <script id="business-data"> payload for one lead. Only fields Google
  * actually gave us are emitted; every omitted key falls back to the template's
  * own default, which is the whole point of the kit.
+ *
+ * Without `opts` the photos go in unclassified and unpadded, which is what the
+ * showcase build script relies on for its hand-picked sets.
  */
 export async function buildKitBusinessData(
   details: NormalizedPlaceDetails,
   photos: string[],
+  opts?: KitPhotoOptions,
 ): Promise<Record<string, unknown>> {
   const name = cleanDisplayName(details.name);
   const type = details.primaryTypeDisplayName;
-  const shapes = await photoShapes(photos);
 
   const data: Record<string, unknown> = {
     name_raw: details.name,
@@ -293,7 +446,13 @@ export async function buildKitBusinessData(
   // reviewSnippets are plain strings; the template accepts those verbatim and
   // trims Google's ellipsis back to a clean ending itself.
   if (details.reviewSnippets?.length) data.reviews = details.reviewSnippets.slice(0, 5);
-  if (photos.length) {
+
+  if (opts) {
+    const assigned = await assignPhotos(photos, opts);
+    if (assigned.photos.length) data.photos = assigned.photos;
+    if (assigned.serviceImages.length) data.service_images = assigned.serviceImages;
+  } else if (photos.length) {
+    const shapes = await photoShapes(photos);
     data.photos = photos.map((src, i) => {
       const s = shapes[i];
       return s && s.w > 0 && s.h > 0 ? { src, width: s.w, height: s.h } : src;
@@ -339,8 +498,17 @@ export async function generateKitSiteHtml(
   details: NormalizedPlaceDetails,
   photos: string[],
 ): Promise<KitSite> {
-  const { template, generic } = pickTemplate(details, photos.length);
-  const data = await buildKitBusinessData(details, photos);
+  // Classified once, up front: the template choice needs the count of photos
+  // that will actually be shown, and the placement needs the verdicts.
+  const insights = await classifyPhotos(photos);
+  const usable = insights.filter((p) => !unusable(p)).length;
+  const { template, generic } = pickTemplate(details, usable);
+  const data = await buildKitBusinessData(details, photos, {
+    template,
+    generic,
+    insights,
+    seed: details.placeId,
+  });
   if (!generic) return { html: await fillTemplate(template, data), template, generic };
 
   const g = template.generic!;

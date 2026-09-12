@@ -624,6 +624,8 @@ footer{border-top:1px solid var(--fog);padding-block:40px}
       setF(node, 'note', s.note); setF(node, 'category', s.category); setF(node, 'n', String(i + 1).padStart(2, '0'));
       node.setAttribute('data-i', i);
       if (s.category) node.setAttribute('data-cat', s.category);
+      var simg = s.image || (D.service_images || [])[i];
+      if (simg) { node.classList.add('has-img'); node.style.setProperty('--svc-img', 'url("' + simg + '")'); }
     });
     if (!n) (box.closest('[data-section]') || box).hidden = true;
   });
@@ -727,38 +729,69 @@ footer{border-top:1px solid var(--fog);padding-block:40px}
   function setRoot(add, rem) { root.classList.add.apply(root.classList, add); if (rem) root.classList.remove.apply(root.classList, rem); }
 
   function distribute(list) {
-    var pool = list.filter(function (p) { return p.ok; }).sort(function (a, b) { return b.px - a.px; });
+    /* photo-engine v2 */
+    /* Real photos first, sharpest first; stock only fills what real photos cannot. */
+    var pool = list.filter(function (p) { return p.ok; }).sort(function (a, b) { return (a.stock ? 1 : 0) - (b.stock ? 1 : 0) || b.px - a.px; });
     var used = 0;
     var hero = $('[data-hero-photo]');
     if (hero && pool.length) {
       var o = hero.getAttribute('data-orient') || 'landscape';
       var min = +hero.getAttribute('data-min-px') || 1500000;
-      var pick = pool.filter(function (p) { return p.px >= min && (o === 'any' || p.o === o || (o === 'landscape' && p.o === 'square' && p.w >= 1800)); })[0];
+      /* Judge a photo by what survives the crop, not by its orientation: a 3024x4032 phone shot of the
+         salon cropped to a wide hero still has ~5MP, while the old "landscape only" rule threw it away
+         and left the hero empty. */
+      var cropPx = function (p) { return o === 'portrait' ? p.h * Math.min(p.w, p.h / 1.4) : o === 'any' ? p.px : p.w * Math.min(p.h, p.w / 1.6); };
+      /* hero:false = the server judged it wrong for a hero (close-up, dark, flat). Big is not the same as right. */
+      /* hero:true = the server shortlisted it as the right subject; display copies are capped at ~1500px,
+         which still fills a desktop hero, so a vetted photo gets a lower floor than an unknown one. */
+      var pick = pool.filter(function (p) { return p.hero !== false && (p.stock || cropPx(p) >= (p.hero === true ? Math.min(min, 1000000) : min)); })[0];
       if (pick) { putImg(hero, pick, used++, true); pool.splice(pool.indexOf(pick), 1); setRoot(['has-hero-photo'], ['hero-type']); }
     }
     $$('[data-photo-slot]').forEach(function (slot) {
       var min = +slot.getAttribute('data-min-px') || 250000;
       var maxpx = +slot.getAttribute('data-max-px') || Infinity;
-      var ok = pool.filter(function (p) { return p.px >= min && p.px <= maxpx; });
+      var ok = pool.filter(function (p) { return p.stock || (p.px >= min && p.px <= maxpx); });
       /* data-pick="low": small slots (avatars, thumbs) take the weakest photos first, saving sharp ones for big frames */
       var pick = slot.getAttribute('data-pick') === 'low' ? ok[ok.length - 1] : ok[0];
       if (pick) { putImg(slot, pick, used++); pool.splice(pool.indexOf(pick), 1); slot.classList.add('is-filled'); (slot.closest('[data-photo-host]') || slot).classList.add('has-photo'); }
     });
-    var gcount = 0;
+    var gcount = 0, rowFillers = [];
     $$('[data-gallery]').forEach(function (box) {
       var t = $('template', box), max = +box.getAttribute('data-max') || 12;
       if (!t) return;
-      pool.slice(0, max).forEach(function (p) {
+      /* Real photos up to max; stock only pads a thin set up to data-min, so a gallery is never a lone frame. */
+      var gmin = Math.min(max, +box.getAttribute('data-min') || 4);
+      var take = pool.filter(function (p) { return !p.stock; }).slice(0, max);
+      if (take.length < gmin) take = take.concat(pool.filter(function (p) { return p.stock; }).slice(0, gmin - take.length));
+      pool = pool.filter(function (p) { return take.indexOf(p) < 0; });
+      var addItem = function (p) {
         var n = t.content.firstElementChild.cloneNode(true);
         var w = $('[data-f="photo"]', n) || n;
         n.setAttribute('data-gallery-item', '');
         n.classList.add('o-' + p.o, 'q-' + p.q);
         putImg(w, p, used++);
         box.appendChild(n); gcount++;
+      };
+      take.forEach(addItem);
+      /* Measure, don't guess: every template's grid differs. While the last frame leaves more than half a
+         frame of empty row beside it and stock remains, add one more, so the gallery ends on a full row. */
+      var rowGap = function () {
+        var it = $$('[data-gallery-item]', box); if (it.length < 2) return false;
+        var last = it[it.length - 1].getBoundingClientRect(), br = box.getBoundingClientRect();
+        return last.width > 0 && br.right - last.right > last.width * 0.5;
+      };
+      /* Runs after the gallery is un-hidden below; measured while hidden, every width is zero. */
+      rowFillers.push(function () {
+        for (var guard = 0; guard < 6 && rowGap(); guard++) {
+          var extra = pool.filter(function (p) { return p.stock; })[0];
+          if (!extra) break;
+          pool.splice(pool.indexOf(extra), 1);
+          addItem(extra);
+        }
       });
-      pool = pool.slice(max);
     });
     setRoot([gcount ? 'has-gallery' : 'no-gallery', used ? 'has-photos' : 'no-photos'], ['photos-pending']);
+    rowFillers.forEach(function (f) { f(); });
     fitAll();
   }
   if (!photos.length) setRoot(['hero-type', 'no-gallery', 'no-photos']);

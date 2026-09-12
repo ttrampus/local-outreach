@@ -108,6 +108,56 @@ function contactLinks(t: Strings): string {
 }
 
 /**
+ * Keeps the bar off the page's own bottom-pinned controls.
+ *
+ * Every kit template ships a fixed call bar on phones ("Pokliči" / "Rezerviraj
+ * termin") at bottom:0 — exactly where this bar sits — so the pitch covered the
+ * one button the page exists to get pressed. Rather than special-casing ten
+ * templates, measure: find anything fixed to the bottom edge that is actually
+ * showing, and stand the bar above the tallest of it. Re-run on resize, since the
+ * call bars are mobile-only and appear and vanish at a breakpoint.
+ *
+ * The page also gets bottom padding equal to what we cover, so the footer can
+ * still be scrolled clear of the bar instead of sitting under it forever.
+ */
+const DODGE_JS = `
+  var baseBottom=18;
+  function dodge(){
+    var lift=0,vh=window.innerHeight;
+    var all=document.body.getElementsByTagName("*");
+    for(var i=0;i<all.length;i++){
+      var el=all[i];
+      if(el===bar||bar.contains(el))continue;
+      var cs=getComputedStyle(el);
+      if(cs.position!=="fixed"||cs.display==="none"||cs.visibility==="hidden")continue;
+      var r=el.getBoundingClientRect();
+      // Pinned to the bottom edge, visible, and not a full-screen overlay.
+      if(r.height>0&&r.width>0&&r.bottom>=vh-4&&r.height<vh*0.5)lift=Math.max(lift,vh-r.top);
+    }
+    bar.style.bottom=(lift?lift+10:baseBottom)+"px";
+    document.body.style.paddingBottom=(bar.offsetHeight+(lift?lift+10:baseBottom)+12)+"px";
+  }
+  dodge();
+  window.addEventListener("resize",dodge);
+  // Templates build their call bars and swap layouts after load; a single
+  // measurement at inject time would miss them.
+  window.addEventListener("load",dodge);
+  setTimeout(dodge,600);
+  if(window.ResizeObserver)new ResizeObserver(dodge).observe(bar);
+  // On a phone the full pitch is half the screen. It is read on arrival; once the
+  // owner starts scrolling through their own site, shrink it to the one button.
+  // Not persisted — that stays the owner's explicit choice via the toggle.
+  if(window.innerWidth<=620&&!bar.classList.contains("__lo-min")){
+    var onScroll=function(){
+      if(window.scrollY<80)return;
+      window.removeEventListener("scroll",onScroll);
+      if(!bar.classList.contains("__lo-done"))setMin(true,false);
+    };
+    window.addEventListener("scroll",onScroll,{passive:true});
+  }
+`;
+
+/**
  * Return `html` with the owner bar inserted before </body>. Off (returns html
  * unchanged) when OWNER_BAR=off. The bar self-hides if the visitor previously
  * dismissed it (localStorage), and posts interest to /api/p/:leadId/interest.
@@ -249,11 +299,16 @@ export function injectOwnerBar(
   var wasMin=false;try{wasMin=localStorage.getItem(MINKEY)==="1";}catch(e){}
   if(wasMin)setMin(true,false);
   tog.addEventListener("click",function(){setMin(!bar.classList.contains("__lo-min"),true);});
+  ${DODGE_JS}
   var thanks=${JSON.stringify(thanks)};
   bar.querySelector(".__lo-no").addEventListener("click",function(){
     try{localStorage.setItem(KEY,"1");}catch(e){}
     bar.style.transition="opacity .3s,transform .3s";bar.style.opacity="0";bar.style.transform="translate(-50%,16px)";
-    setTimeout(function(){if(bar.parentNode)bar.parentNode.removeChild(bar);},300);
+    setTimeout(function(){
+      if(bar.parentNode)bar.parentNode.removeChild(bar);
+      // The padding existed only to scroll clear of the bar.
+      window.removeEventListener("resize",dodge);document.body.style.paddingBottom="";
+    },300);
   });
   bar.querySelector(".__lo-yes").addEventListener("click",function(){
     bar.querySelector(".__lo-title").textContent=thanks;

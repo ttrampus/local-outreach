@@ -1,0 +1,65 @@
+[
+  {
+    "file": "01.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/cozy-sunlit-living-room-with-green-velvet-sofa-30520758/",
+    "photographer": "Vladyslav Dukhin"
+  },
+  {
+    "file": "02.webp",
+    "width": 1600,
+    "height": 1065,
+    "source": "https://www.pexels.com/photo/bright-room-with-wooden-decor-and-potted-plant-39228994/",
+    "photographer": "Andrea Davis"
+  },
+  {
+    "file": "03.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/plant-standing-by-a-window-and-a-staircase-in-a-modern-building-6345056/",
+    "photographer": "cottonbro studio"
+  },
+  {
+    "file": "04.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/urban-gardening-potted-plants-on-city-window-sill-31416062/",
+    "photographer": "Letícia Alvares"
+  },
+  {
+    "file": "05.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/a-table-on-a-patio-26179852/",
+    "photographer": "Hoài  Nam"
+  },
+  {
+    "file": "06.webp",
+    "width": 1600,
+    "height": 1068,
+    "source": "https://www.pexels.com/photo/modern-workspace-interior-with-furniture-under-lamps-in-daytime-7046156/",
+    "photographer": "Max Vakhtbovych"
+  },
+  {
+    "file": "07.webp",
+    "width": 1600,
+    "height": 1068,
+    "source": "https://www.pexels.com/photo/white-desks-and-swivel-chairs-in-the-office-7750129/",
+    "photographer": "Max Vakhtbovych"
+  },
+  {
+    "file": "08.webp",
+    "width": 1600,
+    "height": 1068,
+    "source": "https://www.pexels.com/photo/modern-interior-of-office-room-7534216/",
+    "photographer": "Max Vakhtbovych"
+  },
+  {
+    "file": "09.webp",
+    "width": 1600,
+    "height": 1066,
+    "source": "https://www.pexels.com/photo/interior-design-of-a-business-office-5511099/",
+    "photographer": "Mike van Schoonderwalt"
+  }
+]
