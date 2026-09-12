@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fotograf</title>
+<meta name="description" content="">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Lora&display=swap" rel="stylesheet">
+<style>
+/* ---- LocalSite core styles (shared) ---- */
+[hidden]{display:none!important}
+.no-gallery [data-section="gallery"],.photos-pending [data-section="gallery"]{display:none!important}
+.ls-img{display:block;width:100%;height:100%;object-fit:cover;filter:var(--ph-filter,none)}
+.ls-ph{position:relative;overflow:hidden}
+.ls-ph.q-lo .ls-img{filter:var(--ph-filter-lo,var(--ph-filter,none))}
+/* Low-resolution photos get film grain: it hides JPEG blocking and upscaling mush */
+.ls-ph.q-lo::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:var(--grain,.28);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.ls-stars{--s:16px;display:inline-block;vertical-align:middle;width:calc(var(--s)*5);height:var(--s);flex:none;
+  background:linear-gradient(90deg,var(--star-on,currentColor) var(--fill,100%),var(--star-off,rgba(127,127,127,.3)) 0);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-2 -2 28 28'%3E%3Cpath d='M12 1.8l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 18l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z'/%3E%3C/svg%3E") 0 0/var(--s) var(--s) repeat-x;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-2 -2 28 28'%3E%3Cpath d='M12 1.8l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 18l-6.4 3.5 1.4-7.2-5.3-5 7.2-.9z'/%3E%3C/svg%3E") 0 0/var(--s) var(--s) repeat-x}
+.ls-map{position:relative;overflow:hidden}
+.ls-map iframe{position:absolute;inset:0;width:100%;height:100%;border:0;filter:var(--map-filter,none)}
+.ls-map.is-loaded [data-map-facade]{display:none}
+[data-gallery] .ls-img{cursor:pointer}
+/* lightbox: a full-viewport stage, so the photo sits dead centre whatever its shape.
+   The explicit margin matters — the sitewide `*{margin:0}` reset kills a dialog's
+   default `margin:auto`, which is what parks an unsized modal against the edge. */
+dialog.ls-lightbox{position:fixed;inset:0;width:100%;max-width:100%;height:100%;max-height:100%;margin:0;padding:0;border:0;background:rgba(0,0,0,.93);overflow:hidden}
+dialog.ls-lightbox::backdrop{background:rgba(0,0,0,.92)}
+.ls-lightbox .lb-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:clamp(16px,6vw,80px)}
+.ls-lightbox img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;cursor:pointer;box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.ls-lightbox .lb-nav,.ls-lightbox .lb-close{position:absolute;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:300 30px/1 system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ls-lightbox .lb-nav:hover,.ls-lightbox .lb-close:hover{background:rgba(255,255,255,.3)}
+.ls-lightbox .lb-nav{top:50%;transform:translateY(-50%);width:52px;height:52px}
+.ls-lightbox .lb-prev{left:clamp(8px,2vw,26px)}
+.ls-lightbox .lb-next{right:clamp(8px,2vw,26px)}
+.ls-lightbox .lb-close{top:clamp(8px,2vw,26px);right:clamp(8px,2vw,26px);width:44px;height:44px;font-size:26px}
+.ls-lightbox .lb-count{position:absolute;left:0;right:0;bottom:clamp(10px,2vw,22px);text-align:center;color:rgba(255,255,255,.75);font:400 13px/1 system-ui,sans-serif;letter-spacing:.1em}
+.ls-lightbox.is-single .lb-nav,.ls-lightbox.is-single .lb-count{display:none}
+@media (max-width:640px){.ls-lightbox .lb-nav{width:42px;height:42px;font-size:24px}}
+.ls-skip{position:absolute;left:-999px;top:0;z-index:100;padding:12px 16px;background:#000;color:#fff}
+.ls-skip:focus{left:12px;top:12px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ---- LocalSite responsive foundation (shared, generated) ---- */
+/* Nothing scrolls sideways, ever. clip rather than hidden: hidden would turn the
+   root into a scroll container and break every position:sticky inside the page. */
+html{overflow-x:clip}
+body{overflow-x:clip;max-width:100%}
+
+/* Media is fluid regardless of the source file's real dimensions. Google photos
+   arrive at whatever size the uploader's phone produced. */
+:where(img,svg,video,canvas,iframe,embed,object){max-width:100%}
+:where(img,video){height:auto}
+/* …except cover-fitted photos, which must keep filling their frame. */
+.ls-img,.ls-ph>img{height:100%}
+
+/* The classic grid/flex blowout: children default to min-width:auto, so one long
+   unbroken word makes its track wider than the share it was given, and the whole
+   row overflows. Opting the structural elements out of that is what lets the
+   tracks actually honour 1fr. */
+:where(main,section,article,div,aside,header,footer,ul,ol,li,figure,figcaption,
+p,h1,h2,h3,h4,h5,h6,blockquote,dl,dt,dd,form,label,fieldset,a){min-width:0}
+
+/* Long words break instead of overflowing. break-word leaves intrinsic sizing
+   alone, so normal prose is unaffected. */
+:where(h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,dd,dt,td,th,small,label,
+summary,address){overflow-wrap:break-word}
+
+/* Nav labels are one or two fixed words from the template — never lead data.
+   Holding them on one line is what makes the rule below safe to state without
+   exceptions: with "break anywhere" and no nowrap, a nav link in a flex row can
+   shrink to one character per line and stack "Storitve" vertically. The
+   wordmark is excluded from the nowrap, because that one IS the business name. */
+:where(nav) :where(a):not(:where(.brand,.logo,.mark,.wordmark)){white-space:nowrap}
+/* …except where a nav link carries lead data. t04's drawer prints the street
+   under each label, and white-space INHERITS — so the nowrap above reached the
+   address and silently defeated the overflow-wrap rule below it, which is why
+   a long street ran 50px past the drawer. Template labels (data-t) keep the
+   nowrap; fields filled from the lead (data-bind, data-f) get wrapping back. */
+:where(nav) :where([data-bind],[data-f]){white-space:normal}
+/* Everything carrying lead data may break mid-word rather than overflow.
+   "anywhere" also lowers the element's min-content width, which is what stops a
+   long name from forcing a grid track or a flex row open.
+   The wordmark classes are here because they are where this actually bites: the
+   header and footer both print the business name, at display size, in a cell
+   sized for "Tamara" — and a 43-character name ran 500px past the viewport. */
+:where([data-bind],[data-t],[data-f],[data-fit],
+.brand,.logo,.mark,.wordmark,
+a[href^="mailto:"],a[href^="http"]){overflow-wrap:anywhere}
+/* Footers carry the legal business name ("… Marjana Kovačič Novak s.p."), the
+   address and the year in one inline run — the longest unbreakable string on the
+   page, and the last place anyone looks. */
+:where(footer),:where(footer) *{overflow-wrap:anywhere}
+/* A call link comes in two shapes. Most are a prose label that includes the
+   business name ("Pokliči Frizerski studio Tamara"), and those must be able to
+   break an over-long word. It has to be "anywhere" and not "break-word":
+   break-word does not lower min-content width, so the button still pushes its
+   column open and overflows. */
+:where(a[href^="tel:"]),:where(a[href^="tel:"]) *{overflow-wrap:anywhere}
+/* A field bound to the phone number and nothing else is the exception, stated
+   last so it wins: it wraps at the spaces between digit groups, never inside
+   one. This is also what stops the nav's phone collapsing to a 24px column. */
+:where([data-bind="phone"],[data-f="phone"]){overflow-wrap:normal;word-break:normal}
+/* Headings that hold a business name hyphenate rather than break mid-syllable
+   where the language has hyphenation rules. */
+:where(h1,h2,h3)[data-bind],:where(h1,h2,h3)[data-t],:where(h1,h2,h3)[data-fit]{hyphens:auto}
+
+/* Tables and any deliberately wide block scroll inside themselves rather than
+   widening the page. */
+:where(table){width:100%;border-collapse:collapse}
+.ls-scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+
+/* Touch. Under the nav's collapse point every control is at least 44px in the
+   direction it is tapped. Stated with :where() so a template can opt out, and as
+   min-height rather than padding so it never changes a deliberate text size. */
+@media (max-width:900px){
+  :where(.btn,.pill,.btn-o,.ghost,.tab,.cta,.big,.brand,.logo,button,[role="button"],
+  a[href^="tel:"],a[href^="mailto:"],input[type="submit"],input[type="button"]){min-height:44px}
+  /* The templates' text-link treatments — an arrow link, an underlined link, a
+     small caps link. They are real destinations, styled at 18–25px tall, which
+     is under the tap target minimum on every one of them. */
+  :where(a.link,a.arrow,a.mark,a.keep,a.ul,a.more,a.back){min-height:44px;
+    display:inline-flex;align-items:center}
+  :where(.callbar) :where(a,button){min-height:48px}
+  /* Nav links are still on screen on a tablet — several templates collapse at
+     760px, so 768 shows the desktop bar on a touch device, at 35px tall. Footer
+     links get breathing room rather than a height, since they wrap in prose. */
+  :where(nav) :where(a){min-height:44px;display:inline-flex;align-items:center}
+  :where(.foot,.footer) :where(a){padding-block:2px}
+}
+
+/* Form controls: 16px is the threshold under which iOS Safari zooms the viewport
+   on focus, which reads to the visitor as the page jumping. */
+:where(input,select,textarea){font:inherit;max-width:100%}
+@media (max-width:900px){
+  :where(input,select,textarea):where(:not([type=checkbox]):not([type=radio])){font-size:16px;min-height:44px}
+}
+
+/* Mobile nav sheet. Injected by the runtime below only when a template's own nav
+   links have been hidden by that template's breakpoint, so each template keeps
+   its own collapse point. It borrows the page's colours through inherit and
+   currentColor, so it looks native to whichever template it lands in. */
+/* Anchored to the header's top-right corner rather than appended to its flow.
+   The ten headers are a grid, a flex row and a plain block in different files —
+   appending a child to a two-column grid pushes the button onto a row of its own
+   and opens a band of empty header under the logo. Taking it out of flow is the
+   only placement that is correct in all of them. position:relative on a static
+   block header changes nothing else. */
+.ls-navtoggle{display:none;position:absolute;top:50%;right:clamp(12px,4vw,26px);
+  transform:translateY(-50%);z-index:5;align-items:center;justify-content:center;
+  width:44px;height:44px;padding:0;border:0;background:none;color:inherit;
+  font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ls-navtoggle.is-on{display:inline-flex}
+/* Once the burger is showing, the header's own action button is redundant — every
+   template already pins a call/directions bar to the bottom of the screen at this
+   width, and the sheet repeats the phone number. Dropping it is what stops the
+   absolutely-positioned burger landing on top of it. */
+header.ls-nav-collapsed :where(.btn,.pill,.btn-o,.cta,.ghost,
+a[href^="tel:"],a[href^="mailto:"]){display:none}
+.ls-navtoggle span{position:relative;display:block;width:22px;height:1.5px;background:currentColor;
+  transition:transform .25s,background-color .25s}
+.ls-navtoggle span::before,.ls-navtoggle span::after{content:"";position:absolute;left:0;width:22px;
+  height:1.5px;background:currentColor;transition:transform .25s,top .25s}
+.ls-navtoggle span::before{top:-7px}
+.ls-navtoggle span::after{top:7px}
+.ls-navtoggle[aria-expanded="true"] span{background:transparent}
+.ls-navtoggle[aria-expanded="true"] span::before{top:0;transform:rotate(45deg)}
+.ls-navtoggle[aria-expanded="true"] span::after{top:0;transform:rotate(-45deg)}
+
+.ls-navsheet{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;
+  padding:max(76px,env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+  background:var(--ls-sheet-bg,Canvas);color:var(--ls-sheet-fg,CanvasText);
+  overflow-y:auto;overscroll-behavior:contain;
+  opacity:0;visibility:hidden;transform:translateY(-8px);
+  transition:opacity .22s ease,transform .22s ease,visibility .22s}
+.ls-navsheet.is-open{opacity:1;visibility:visible;transform:none}
+.ls-navsheet a{display:block;padding:14px 0;font-size:clamp(20px,6vw,28px);line-height:1.2;
+  border-bottom:1px solid color-mix(in srgb,currentColor 16%,transparent)}
+/* The toggle sits inside the header, below the sheet in paint order, and several
+   templates give that header a backdrop-filter — which makes it the containing
+   block for anything fixed inside it, so raising the toggle's z-index is not
+   reliably enough to lift it above the sheet. The sheet carries its own close
+   button instead. */
+.ls-navsheet .ls-navsheet-close{position:absolute;top:16px;right:18px;width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center;padding:0;border:0;background:none;
+  color:inherit;font:300 30px/1 system-ui,sans-serif;cursor:pointer;opacity:.7}
+.ls-navsheet .ls-navsheet-close:hover{opacity:1}
+.ls-navsheet .ls-navsheet-foot{margin-top:auto;padding-top:28px;display:grid;gap:12px}
+.ls-navsheet .ls-navsheet-foot a{border:0;padding:0;font-size:clamp(17px,4.4vw,20px);opacity:.75}
+html.ls-navopen{overflow:hidden}
+@media (min-width:901px){.ls-navsheet{display:none}}
+/* ---- end responsive foundation ---- */
+
+
+:root{
+  --ink:#000; --paper:#fff; --char:#1c1c1c; --midnight:#070707; --iron:#262626; --mist:#e5e4e4;
+  --smoke:#8d8d8d; --pewter:#666; --ember:#b75928; --pine:#193f32; --tide:#002934; --fill:#494949;
+  --f:Montserrat,'Proxima Nova','Nunito Sans',system-ui,sans-serif; --serif:Lora,Georgia,serif;
+  --ph-filter:saturate(.78) brightness(.94) contrast(1.02);
+  --ph-filter-lo:saturate(.55) brightness(.92) contrast(1.06) blur(.35px);
+}
+*{box-sizing:border-box;margin:0}
+html{background:var(--paper);color:var(--ink);font-family:var(--f);-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-size:15px;line-height:1.5;letter-spacing:.01em}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:1px solid var(--ember);outline-offset:3px}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:24px}
+.label{font-size:12px;color:var(--smoke);letter-spacing:.01em;margin-bottom:8px;display:block}
+.h62{font-size:clamp(32px,1.4rem+3.1vw,62px);font-weight:300;line-height:1.1;letter-spacing:-.025em}
+.h36{font-size:clamp(24px,1.1rem+1.7vw,36px);font-weight:300;line-height:1.2;letter-spacing:-.02em}
+.h22{font-size:22px;font-weight:400;line-height:1.25;letter-spacing:-.02em}
+.arrow{display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:400;transition:gap .2s}
+.arrow::after{content:"→";font-size:16px}
+.arrow:hover{gap:14px}
+.pillbtn{display:inline-flex;align-items:center;gap:10px;padding:16px 19px;border:1px solid currentColor;border-radius:80px;font-size:15px}
+.pillbtn::after{content:"→"}
+.darkbtn{display:inline-flex;align-items:center;gap:10px;padding:16px 22px;border-radius:80px;background:var(--char);color:var(--paper);font-size:13px;font-weight:500}
+.ember{color:var(--ember)}
+
+/* hero */
+.hero{position:relative;min-height:100svh;color:var(--paper);background:var(--pine);isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;padding:32px 40px 40px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.5;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.hero-bg{position:absolute;inset:0;z-index:-2;display:none}
+.has-hero-photo .hero-bg{display:block}
+.has-hero-photo .hero::before{opacity:0}
+/* The top band carries the intro paragraph in white. .35 held up over the dark
+   demo photo but not over a real shopfront shot in daylight, so the top stop is
+   deeper and reaches further down than the bottom one. */
+.has-hero-photo .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,0) 36%,rgba(0,0,0,0) 55%,rgba(0,0,0,.45))}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+.intro{max-width:400px;font-size:15px;line-height:1.5}
+.intro p + p{margin-top:12px;opacity:.8}
+.wordmark{font-weight:300;font-size:168px;line-height:.8;letter-spacing:-.025em;display:block;width:100%;padding-bottom:.08em}
+.hero-bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-top:24px}
+.hero-meta{display:flex;gap:28px;font-size:13px;opacity:.9}
+
+/* nav pill + menu */
+.navpill{display:inline-flex;align-items:center;gap:14px;height:32px;padding:0 13px;border-radius:1584px;background:var(--char);color:var(--paper);font-size:12px;font-weight:500;letter-spacing:.01em;border:0;cursor:pointer;font-family:var(--f);position:relative;z-index:30;text-transform:uppercase}
+.burger{width:16px;height:9px;border-block:1px solid currentColor;position:relative}
+.burger::after{content:"";position:absolute;left:0;right:0;top:3px;border-top:1px solid currentColor}
+.menu{position:fixed;top:72px;right:40px;z-index:29;width:min(560px,calc(100vw - 32px));display:grid;grid-template-columns:1fr 1fr;gap:8px;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .2s,transform .2s}
+.menu.open{opacity:1;pointer-events:auto;transform:none}
+.menu a{background:var(--char);color:var(--paper);border-radius:8px;padding:16px;display:flex;justify-content:space-between;align-items:flex-end;min-height:88px}
+.menu a small{display:block;font-size:12px;color:var(--mist);margin-top:4px}
+.menu a::after{content:"→"}
+.fixednav{position:fixed;top:24px;right:40px;z-index:30}
+
+/* what I do */
+.sec{padding-block:80px}
+.intro-grid{display:grid;grid-template-columns:5fr 6fr;gap:64px;align-items:start}
+.statement{font-family:var(--serif);font-size:18px;line-height:1.5;letter-spacing:.011em;max-width:600px;margin-top:24px}
+.numlist{list-style:none;padding:0}
+.numlist li{display:grid;grid-template-columns:48px 1fr auto;gap:16px;align-items:baseline;padding:24px 0;border-top:1px solid var(--mist)}
+.numlist li:last-child{border-bottom:1px solid var(--mist)}
+.numlist [data-f="n"]{font-size:12px;color:var(--smoke)}
+.numlist [data-f="name"]{font-size:18px}
+.numlist [data-f="desc"]{grid-column:2/-1;font-size:14px;color:var(--pewter);max-width:52ch}
+.numlist [data-f="price"]{font-size:13px;color:var(--ember)}
+
+/* portfolio */
+.pf-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:40px}
+.pf{columns:3;column-gap:16px;list-style:none;padding:0}
+.pf li{break-inside:avoid;margin-bottom:16px;border-radius:8px;overflow:hidden;position:relative;aspect-ratio:3/2}
+.pf li.o-portrait{aspect-ratio:4/5}
+.pf li.o-square{aspect-ratio:1}
+.pf li figure{position:absolute;inset:0}
+
+/* feature pair */
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fcard{border-radius:8px;min-height:clamp(320px,42vw,480px);padding:24px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;isolation:isolate}
+.fcard-mist{background:var(--mist)}
+.fcard-photo{background:var(--tide);color:var(--paper)}
+.fcard-photo .slot{position:absolute;inset:0;z-index:-2}
+.fcard-photo.has-photo::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,0) 50%,rgba(0,0,0,.4))}
+.fcard .h36{font-size:clamp(26px,1.2rem+2.2vw,44px);max-width:14ch;margin-top:8px}
+.fcard .label{color:inherit;opacity:.7}
+.fcard-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.mark{font-size:44px;font-weight:300;letter-spacing:-.025em;line-height:1}
+.fcard .ls-stars{--s:16px;--star-on:var(--paper);--star-off:rgba(255,255,255,.3)}
+
+/* reviews */
+.revs{display:grid;grid-template-columns:repeat(3,1fr);gap:48px;list-style:none;padding:0;margin-top:48px}
+.revs li{border-top:1px solid var(--ink);padding-top:22px}
+.revs blockquote{font-family:var(--serif);font-size:18px;line-height:1.45;letter-spacing:.011em}
+.revs small{display:block;margin-top:18px;font-size:12px;color:var(--smoke)}
+
+/* visit — dark band */
+.visitband{background:var(--char);color:var(--paper)}
+.visit{display:grid;grid-template-columns:5fr 7fr;gap:64px}
+.visitband .label{color:var(--smoke)}
+.hours{list-style:none;padding:0;margin-top:28px}
+.hours li{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid rgba(255,255,255,.14);font-size:15px;color:rgba(255,255,255,.75)}
+.hours li span:first-child::first-letter{text-transform:uppercase}
+.hours li.is-today{color:var(--paper)}
+.hours li.is-today span:first-child{color:var(--ember)}
+.status{font-size:13px;color:var(--ember);margin-top:14px}
+.contact{margin-top:36px;display:grid;gap:10px}
+.contact .h22 a:hover{color:var(--ember)}
+.map{border-radius:8px;min-height:clamp(320px,44vw,520px);background:var(--iron)}
+.facade{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:24px}
+.facade .h36{max-width:12ch}
+.facade .pillbtn{align-self:flex-start;color:var(--paper);background:none;font-family:var(--f);cursor:pointer}
+
+footer{background:var(--midnight);color:var(--paper);padding:48px 40px 40px;overflow:hidden}
+.fwm{font-weight:300;font-size:168px;line-height:.8;letter-spacing:-.025em;display:block;width:100%;margin-top:40px}
+.frow{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px 40px;font-size:13px;color:var(--smoke)}
+.frow a:hover{color:var(--paper)}
+.callbar{display:none}
+
+@media (max-width:900px){
+  .hero{padding:24px 20px 28px}
+  .fixednav{right:20px;top:18px}
+  .menu{right:16px;top:60px}
+  .intro-grid,.pair,.visit{grid-template-columns:1fr;gap:40px}
+  .pf{columns:2;column-gap:10px}
+  .pf li{margin-bottom:10px}
+  .revs{grid-template-columns:1fr;gap:32px}
+  .hero-meta{display:none}
+}
+@media (max-width:600px){
+  .intro{max-width:100%;font-size:14px;margin-top:44px}
+  footer{padding:40px 20px 110px}
+  .callbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:40}
+  .callbar a{justify-content:center;background:var(--char);color:var(--paper);border-radius:80px;padding:15px;font-size:13px;font-weight:500;display:flex}
+  .callbar a + a{background:var(--paper);color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+}
+/* Small phones. Two masonry columns leave ~140px per photo. */
+@media (max-width:430px){
+  .menu{grid-template-columns:1fr}
+  .menu a{min-height:68px}
+  .pf{columns:1}
+  .fcard{padding:18px}
+  .callbar{left:8px;right:8px}
+  footer{padding:32px 16px 110px}
+}
+</style>
+</head>
+<body>
+<a class="ls-skip" href="#main">Preskoči na vsebino</a>
+<div class="fixednav">
+  <button class="navpill" type="button" aria-expanded="false" aria-controls="menu" id="menubtn"><span data-bind="short"></span><span class="burger" aria-hidden="true"></span></button>
+</div>
+<nav class="menu" id="menu" aria-label="Glavni meni">
+  <a href="#delo"><span><span data-t="nav_work"></span><small data-t="nav_work_sub"></small></span></a>
+  <a href="#storitve"><span><span data-t="nav_services"></span><small data-t="nav_services_sub"></small></span></a>
+  <a href="#mnenja"><span><span data-t="nav_reviews"></span><small data-t="nav_reviews_sub"></small></span></a>
+  <a href="#obisk"><span><span data-t="nav_visit"></span><small data-bind="street"></small></span></a>
+</nav>
+
+<header class="hero">
+  <div class="hero-bg" data-hero-photo data-orient="landscape"></div>
+  <div class="hero-top">
+    <div class="intro"><p data-t="hero_intro"></p><p data-t="hero_intro2"></p></div>
+  </div>
+  <div>
+    <h1 class="wordmark" data-fit="fill" data-fit-max="200" data-fit-min="56" data-bind="short"></h1>
+    <div class="hero-bottom">
+      <div class="hero-meta"><span data-bind="type"></span><span data-bind="city"></span><span data-requires="rating"><span data-bind="rating"></span> / 5 Google</span></div>
+      <a class="pillbtn" data-href="tel" data-t="call"></a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="sec wrap" id="storitve">
+    <div class="intro-grid">
+      <div>
+        <span class="label" data-t="services_label"></span>
+        <h2 class="h62" data-t="services_title"></h2>
+        <p class="statement" data-t="statement"></p>
+      </div>
+      <ol class="numlist" data-services data-section="services"><template><li><span data-f="n"></span><span data-f="name"></span><span data-f="price"></span><span data-f="desc"></span></li></template></ol>
+    </div>
+  </section>
+
+  <section class="sec wrap" id="delo" data-section="gallery">
+    <div class="pf-head"><div><span class="label" data-t="work_label"></span><h2 class="h36" data-t="work_title"></h2></div><a class="arrow ember" data-href="instagram" data-t="instagram"></a></div>
+    <ul class="pf" data-gallery data-max="10"><template><li><figure data-f="photo"></figure></li></template></ul>
+  </section>
+
+  <section class="sec wrap">
+    <div class="pair">
+      <div class="fcard fcard-mist">
+        <div><span class="label" data-t="book_label"></span><h2 class="h36" data-t="book_title"></h2></div>
+        <div class="fcard-foot"><a class="arrow" data-href="tel" data-t="call_long"></a><span class="mark" data-initials aria-hidden="true"></span></div>
+      </div>
+      <div class="fcard fcard-photo" data-photo-host>
+        <div class="slot" data-photo-slot data-min-px="700000"></div>
+        <div data-requires="rating"><span class="label" data-t="proof_label"></span><h2 class="h36" data-t="proof_title"></h2></div>
+        <div class="fcard-foot"><a class="arrow" data-href="reviews" data-t="all_reviews"></a><span class="ls-stars" data-stars></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec wrap" id="mnenja" data-section="reviews">
+    <span class="label" data-t="reviews_label"></span>
+    <h2 class="h36" data-t="reviews_title"></h2>
+    <ul class="revs" data-reviews data-limit="3" data-max="240" data-hide-empty><template><li><blockquote data-f="text"></blockquote><small data-f="author"></small></li></template></ul>
+  </section>
+
+  <section class="sec visitband" id="obisk">
+    <div class="wrap visit">
+      <div data-section="hours">
+        <span class="label" data-t="visit_label"></span>
+        <h2 class="h36" data-t="visit_title"></h2>
+        <p class="status" data-open-status></p>
+        <ul class="hours" data-hours><template><li><span data-f="day"></span><span data-f="val"></span></li></template></ul>
+        <div class="contact"><span class="h22"><a data-href="tel" data-bind="phone"></a></span><span class="h22"><a data-href="email" data-bind="email"></a></span><a class="arrow" data-href="directions" data-t="directions"></a></div>
+      </div>
+      <div class="map ls-map" data-section="map" data-map>
+        <div class="facade" data-map-facade><span class="label" data-t="map_label"></span><h3 class="h36"><span data-bind="street"></span><br><span data-bind="city_line"></span></h3><button class="pillbtn" type="button" data-map-load data-t="map_load"></button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="frow"><span data-bind="name_raw"></span><span data-bind="address"></span><a data-href="tel" data-bind="phone"></a><span>© <span data-bind="year"></span></span></div>
+  <span class="fwm" data-fit="fill" data-fit-max="200" data-fit-min="48" data-bind="short" aria-hidden="true"></span>
+</footer>
+<div class="callbar"><a data-href="tel" data-t="call"></a><a data-href="directions" data-t="directions_short"></a></div>
+
+<script>
+(function(){var b=document.getElementById('menubtn'),m=document.getElementById('menu');
+b.addEventListener('click',function(){var o=m.classList.toggle('open');b.setAttribute('aria-expanded',o)});
+m.addEventListener('click',function(e){if(e.target.closest('a')){m.classList.remove('open');b.setAttribute('aria-expanded','false')}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){m.classList.remove('open');b.setAttribute('aria-expanded','false')}})})();
+</script>
+
+<script type="application/json" id="template-defaults">
+{
+  "schema_type": "ProfessionalService",
+  "services": [
+    {"name": "Portreti", "desc": "Osebni in poslovni portreti v studiu ali na lokaciji po vaši izbiri."},
+    {"name": "Poroke", "desc": "Celodnevno ali delno fotografiranje poroke, od priprav do večernega slavja."},
+    {"name": "Družine in otroci", "desc": "Sproščeno fotografiranje doma ali v naravi."},
+    {"name": "Podjetja in izdelki", "desc": "Fotografije ekipe, prostorov in izdelkov za splet in tisk."}
+  ],
+  "labels": {
+    "meta_title": "{name} | {type}, {city}",
+    "meta_description": "{type} na naslovu {street}, {city}. Portreti, poroke in poslovna fotografija. Pokličite {phone}.",
+    "nav_work": "Portfelj", "nav_work_sub": "Izbrane fotografije", "nav_services": "Storitve", "nav_services_sub": "Kaj fotografiram",
+    "nav_reviews": "Mnenja", "nav_reviews_sub": "{rating} / 5 na Googlu", "nav_visit": "Kontakt",
+    "call": "Pokličite", "call_long": "Pokličite {phone}", "directions": "Kako do studia", "directions_short": "Pot",
+    "hero_intro": "{type}, {city}. Portreti, poroke in fotografije za podjetja.",
+    "hero_intro2": "Termine usklajujem po telefonu.",
+    "services_label": "Kaj fotografiram", "services_title": "Fotografije, ki jih boste radi pokazali.",
+    "statement": "Vsako fotografiranje začnem s pogovorom o tem, kaj potrebujete in kje bodo fotografije uporabljene. Tako je dan fotografiranja sproščen, rezultat pa pripravljen za tisk ali splet.",
+    "work_label": "Portfelj", "work_title": "Izbrane fotografije", "instagram": "Več na Instagramu",
+    "book_label": "Rezervacija", "book_title": "Dogovoriva se za termin fotografiranja",
+    "proof_label": "Ocena na Googlu", "proof_title": "{rating} od 5, {count} {count_word}",
+    "reviews_label": "Mnenja", "reviews_title": "Kaj pravijo stranke",
+    "review_anon": "Stranka na Googlu", "all_reviews": "Preberite mnenja",
+    "visit_label": "Studio", "visit_title": "Obisk in delovni čas",
+    "map_label": "Lokacija studia", "map_load": "Prikaži zemljevid"
+  }
+}
+</script>
+
+<!-- ============ BUSINESS DATA — replace on every generation (demo data below is fictional) ============ -->
+<script type="application/json" id="business-data">
+{
+  "name_raw": "Fotostudio Svetloba",
+  "name": "Fotostudio Svetloba",
+  "short_name": "Svetloba",
+  "type": "Fotografski studio",
+  "address": "Koroška cesta 20, 4000 Kranj, Slovenija",
+  "phone": "+386 1 234 56 78",
+  "rating": 4.9,
+  "review_count": 64,
+  "hours": [
+    "ponedeljek: 9:00–17:00",
+    "torek: 9:00–17:00",
+    "sreda: 9:00–17:00",
+    "četrtek: 9:00–17:00",
+    "petek: 9:00–15:00",
+    "sobota: Zaprto",
+    "nedelja: Zaprto"
+  ],
+  "reviews": [
+    {
+      "text": "Nika je ujela točno tisto vzdušje, ki sva ga želela na poroki. Fotografije so naravne in tople, dobili smo jih že po treh tednih.",
+      "rating": 5
+    },
+    {
+      "text": "Poslovni portreti za celotno ekipo v enem dopoldnevu. Profesionalno, hitro in brez stresa.",
+      "rating": 5
+    },
+    {
+      "text": "Družinsko fotografiranje v naravi je bilo sproščeno, otroci so se imeli lepo, fotografije pa so čudovite.",
+      "rating": 5
+    }
+  ],
+  "photos": [
+    {
+      "src": "photos/t04/01.webp",
+      "width": 1600,
+      "height": 1066,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/02.webp",
+      "width": 1600,
+      "height": 1066,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/03.webp",
+      "width": 1600,
+      "height": 1066,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/04.webp",
+      "width": 1600,
+      "height": 1065,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/05.webp",
+      "width": 1600,
+      "height": 1066,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/06.webp",
+      "width": 1600,
+      "height": 1061,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/07.webp",
+      "width": 1600,
+      "height": 1066,
+      "stock": true
+    },
+    {
+      "src": "photos/t04/08.webp",
+      "width": 1600,
+      "height": 1066,
+      "stock": true
+    }
+  ]
+}
+</script>
+<script>
+/* ==========================================================================
+   LocalSite core — renders #business-data JSON into the template's slots.
+   Shared by all templates (inlined at build time). No dependencies.
+   ========================================================================== */
+(function () {
+  'use strict';
+  var doc = document, root = doc.documentElement;
+  var $ = function (s, r) { return (r || doc).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
+
+  function readJSON(id) {
+    var el = doc.getElementById(id);
+    if (!el) return {};
+    try { return JSON.parse(el.textContent); } catch (e) { console.error('[LocalSite] Invalid JSON in #' + id, e); return {}; }
+  }
+  function isEmpty(v) { return v == null || v === '' || (Array.isArray(v) && v.length === 0); }
+  function isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+  function merge(a, b) {
+    var o = {}, k;
+    for (k in a) o[k] = a[k];
+    for (k in b) if (!isEmpty(b[k])) o[k] = (isObj(a[k]) && isObj(b[k])) ? merge(a[k], b[k]) : b[k];
+    return o;
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  var CORE_LABELS = {
+    status_open: 'Odprto do {t}',
+    status_closed: 'Zaprto, odpremo {when} ob {t}',
+    status_closed_plain: 'Trenutno zaprto',
+    today_word: 'danes', tomorrow_word: 'jutri',
+    days_acc: ['v nedeljo', 'v ponedeljek', 'v torek', 'v sredo', 'v četrtek', 'v petek', 'v soboto'],
+    reviews_word: { one: 'mnenje', two: 'mnenji', few: 'mnenja', other: 'mnenj' },
+    map_title: 'Zemljevid: {name}',
+    photo_alt: '{name}, fotografija {n}',
+    photo_close: 'Zapri', photo_prev: 'Prej\u0161nja fotografija', photo_next: 'Naslednja fotografija'
+  };
+
+  var T = readJSON('template-defaults');
+  var B = readJSON('business-data');
+  var D = merge(T, B);
+  D.labels = merge(CORE_LABELS, merge(T.labels || {}, B.labels || {}));
+  var L = D.labels;
+  var params = new URLSearchParams(location.search);
+  if (params.has('nophotos')) D.photos = [];
+
+  /* ---------- derived values ---------- */
+  var locale = D.locale || 'sl-SI';
+  var lang = locale.split('-')[0];
+  var legalRe = /[\s,]+(s\.\s?p\.|d\.\s?o\.\s?o\.|d\.\s?n\.\s?o\.|k\.\s?d\.|d\.\s?d\.|z\.\s?o\.\s?o\.|gmbh|ltd\.?|llc)\s*$/i;
+  var name = D.name || String(D.name_raw || '').replace(legalRe, '').trim();
+  var short = D.short_name || name;
+  var addrParts = String(D.address || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  var street = addrParts[0] || '';
+  var cityLine = addrParts[1] || '';
+  var pc = cityLine.match(/^(\d{4,5})\s+(.+)$/);
+  var city = D.city || (pc ? pc[2] : cityLine);
+  var tel = String(D.phone || '').replace(/[^\d+]/g, '');
+  var rating = D.rating != null && D.rating !== '' ? Number(D.rating) : null;
+  var count = D.review_count ? Number(D.review_count) : null;
+  var plural = function (n) { try { return new Intl.PluralRules(lang).select(n); } catch (e) { return n === 1 ? 'one' : 'other'; } };
+  var countWord = count != null ? (L.reviews_word[plural(count)] || L.reviews_word.other) : '';
+  var fmt1 = function (n) { return n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); };
+
+  /* ---------- opening hours ---------- */
+  var DAYS = { ponedeljek: 1, torek: 2, sreda: 3, 'četrtek': 4, cetrtek: 4, petek: 5, sobota: 6, nedelja: 0,
+    monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6, sunday: 0 };
+  var hours = (D.hours || []).map(function (line) {
+    var m = String(line).match(/^\s*([^:]+?)\s*:\s*(.+)$/);
+    var day = m ? m[1] : String(line), val = m ? m[2].trim() : '';
+    var ranges = [];
+    val.replace(/(\d{1,2})[:.](\d{2})\s*[–—-]\s*(\d{1,2})[:.](\d{2})/g, function (_, a, b, c, d) { ranges.push([+a * 60 + +b, +c * 60 + +d]); });
+    var idx = DAYS[day.toLowerCase().trim()];
+    return { day: day, val: val, idx: idx == null ? null : idx, closed: /zaprt|closed/i.test(val), ranges: ranges };
+  });
+  var byIdx = {};
+  hours.forEach(function (h) { if (h.idx != null) byIdx[h.idx] = h; });
+  var hm = function (m) { return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); };
+  var hm2 = function (m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  function fill(s, o) { return String(s || '').replace(/\{(\w+)\}/g, function (_, k) { return o[k] != null ? o[k] : ''; }); }
+  function nowParts() {
+    var p = {};
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: D.timezone || 'Europe/Ljubljana', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+      return { wd: { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday], min: (+p.hour % 24) * 60 + +p.minute };
+    } catch (e) { var d = new Date(); return { wd: d.getDay(), min: d.getHours() * 60 + d.getMinutes() }; }
+  }
+  var now = nowParts();
+  function openStatus() {
+    if (!Object.keys(byIdx).length) return null;
+    var t = byIdx[now.wd], i, r;
+    if (t && !t.closed) for (i = 0; i < t.ranges.length; i++) { r = t.ranges[i]; if (now.min >= r[0] && now.min < r[1]) return { open: true, text: fill(L.status_open, { t: hm(r[1]) }) }; }
+    for (var k = 0; k < 8; k++) {
+      var d = (now.wd + k) % 7, h = byIdx[d];
+      if (!h || h.closed) continue;
+      for (i = 0; i < h.ranges.length; i++) {
+        if (k === 0 && h.ranges[i][0] <= now.min) continue;
+        var when = k === 0 ? L.today_word : k === 1 ? L.tomorrow_word : L.days_acc[d];
+        return { open: false, text: fill(L.status_closed, { when: when, t: hm(h.ranges[i][0]) }) };
+      }
+    }
+    return { open: false, text: L.status_closed_plain };
+  }
+  var status = openStatus();
+  var today = byIdx[now.wd];
+
+  /* ---------- values + links available to data-bind / data-href / labels ---------- */
+  var V = {
+    name: name, short: short, name_raw: D.name_raw, type: D.type, city: city, street: street,
+    postal: pc ? pc[1] : '', city_line: cityLine, address: D.address, phone: D.phone, email: D.email,
+    rating: rating != null ? fmt1(rating) : '', count: count != null ? count.toLocaleString(locale) : '',
+    count_word: countWord, year: String(new Date().getFullYear()),
+    today_hours: today ? today.val : '', open_status: status ? status.text : ''
+  };
+  var q = encodeURIComponent([D.name_raw || name, D.address].filter(Boolean).join(', '));
+  var H = {
+    tel: tel ? 'tel:' + tel : '',
+    email: D.email ? 'mailto:' + D.email : '',
+    directions: D.address ? 'https://www.google.com/maps/dir/?api=1&destination=' + q : '',
+    reviews: D.google_maps_url || (D.address ? 'https://www.google.com/maps/search/?api=1&query=' + q : ''),
+    booking: D.booking_url || '', website: D.website || '',
+    instagram: D.instagram || '', facebook: D.facebook || ''
+  };
+  /* Label syntax: {token} inserts a value, [words] marks an accent span, | is a line break. */
+  function tpl(s) { return esc(fill(s, V)).replace(/\[([^\]]+)\]/g, '<span class="hl">$1</span>').replace(/\s*\|\s*/g, '<br>'); }
+
+  /* ---------- list rendering ---------- */
+  function setF(node, f, v) {
+    var els = $$('[data-f="' + f + '"]', node);
+    if (node.matches && node.matches('[data-f="' + f + '"]')) els.push(node);
+    els.forEach(function (el) { if (isEmpty(v)) el.hidden = true; else el.textContent = v; });
+  }
+  function renderList(box, items, each) {
+    var t = $('template', box);
+    if (!t) return 0;
+    var lim = +box.getAttribute('data-limit') || items.length;
+    items.slice(0, lim).forEach(function (it, i) {
+      var n = t.content.firstElementChild.cloneNode(true);
+      each(n, it, i);
+      box.appendChild(n);
+    });
+    return Math.min(lim, items.length);
+  }
+
+  $$('[data-hours]').forEach(function (box) {
+    if (!hours.length) { (box.closest('[data-section]') || box).hidden = true; return; }
+    renderList(box, hours, function (n, h) {
+      setF(n, 'day', h.day); setF(n, 'val', h.val);
+      if (h.idx === now.wd) n.classList.add('is-today');
+      if (h.closed) n.classList.add('is-closed');
+    });
+  });
+
+  function cleanReview(t, max) {
+    t = String(t || '').replace(/\s+/g, ' ').trim();
+    var cut = /(…|\.\.\.)$/.test(t);
+    t = t.replace(/(…|\.\.\.)$/, '').trim();
+    if (max && t.length > max) { t = t.slice(0, max); cut = true; }
+    if (!cut) return t;
+    var s = Math.max(t.lastIndexOf('. '), t.lastIndexOf('! '), t.lastIndexOf('? '));
+    if (s > t.length * 0.8) return t.slice(0, s + 1);
+    return t.replace(/[\s,;:(–-]+[^\s]*$/, '') + '…';
+  }
+  var minStars = D.review_min_rating != null ? D.review_min_rating : 4;
+  var reviews = (D.reviews || []).map(function (r) { return typeof r === 'string' ? { text: r } : r; })
+    .filter(function (r) { return r && r.text && (r.rating == null || r.rating >= minStars); });
+  $$('[data-reviews]').forEach(function (box) {
+    var max = +box.getAttribute('data-max') || 0;
+    var offset = +box.getAttribute('data-offset') || 0;
+    var n = renderList(box, reviews.slice(offset), function (node, r) {
+      setF(node, 'text', cleanReview(r.text, max));
+      setF(node, 'author', r.author || L.review_anon || '');
+      setF(node, 'when', r.when || '');
+      var st = $('[data-f="stars"]', node);
+      if (st) { if (r.rating) st.style.setProperty('--fill', (r.rating / 5 * 100) + '%'); else st.hidden = true; }
+    });
+    if (!n && box.hasAttribute('data-hide-empty')) (box.closest('[data-section]') || box).hidden = true;
+  });
+  if (!reviews.length && rating == null) $$('[data-section="reviews"]').forEach(function (s) { s.hidden = true; });
+
+  $$('[data-services]').forEach(function (box) {
+    var n = renderList(box, D.services || [], function (node, s, i) {
+      if (typeof s === 'string') s = { name: s };
+      setF(node, 'name', s.name); setF(node, 'desc', s.desc); setF(node, 'price', s.price);
+      setF(node, 'note', s.note); setF(node, 'category', s.category); setF(node, 'n', String(i + 1).padStart(2, '0'));
+      node.setAttribute('data-i', i);
+      if (s.category) node.setAttribute('data-cat', s.category);
+      var simg = s.image || (D.service_images || [])[i];
+      if (simg) { node.classList.add('has-img'); node.style.setProperty('--svc-img', 'url("' + simg + '")'); }
+    });
+    if (!n) (box.closest('[data-section]') || box).hidden = true;
+  });
+  $$('[data-list]').forEach(function (box) {
+    var arr = D[box.getAttribute('data-list')] || L[box.getAttribute('data-list')] || [];
+    var n = renderList(box, arr, function (node, s, i) {
+      if (typeof s === 'string') s = { name: s };
+      Object.keys(s).forEach(function (k) { setF(node, k, s[k]); });
+      setF(node, 'n', String(i + 1).padStart(2, '0'));
+    });
+    if (!n) (box.closest('[data-section]') || box).hidden = true;
+  });
+
+  /* ---------- bindings (run after lists so cloned template rows get filled too) ---------- */
+  $$('[data-t]').forEach(function (el) {
+    var s = L[el.getAttribute('data-t')];
+    if (isEmpty(s)) { el.hidden = true; return; }
+    el.innerHTML = tpl(s);
+  });
+  $$('[data-bind]').forEach(function (el) {
+    var v = V[el.getAttribute('data-bind')];
+    if (isEmpty(v)) { if (!el.hasAttribute('data-keep')) el.hidden = true; } else el.textContent = v;
+  });
+  $$('[data-href]').forEach(function (el) {
+    var h = H[el.getAttribute('data-href')];
+    if (!h) { el.hidden = true; return; }
+    el.setAttribute('href', h);
+    if (/^https?:/.test(h)) { el.target = '_blank'; el.rel = 'noopener'; }
+  });
+  $$('[data-requires]').forEach(function (el) {
+    var miss = el.getAttribute('data-requires').split(/\s+/).some(function (k) { return isEmpty(V[k]) && isEmpty(D[k]) && isEmpty(H[k]); });
+    if (miss) el.hidden = true;
+  });
+  $$('[data-stars]').forEach(function (el) {
+    if (rating == null) { el.hidden = true; return; }
+    el.style.setProperty('--fill', (Math.max(0, Math.min(5, rating)) / 5 * 100) + '%');
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', fmt1(rating) + ' / 5');
+  });
+  $$('[data-open-status-dot]').forEach(function (el) { if (status) el.classList.add(status.open ? 'is-open' : 'is-closed'); });
+  $$('[data-open-status]').forEach(function (el) {
+    if (!status) { el.hidden = true; return; }
+    el.textContent = status.text;
+    el.classList.add(status.open ? 'is-open' : 'is-closed');
+  });
+  $$('[data-initials]').forEach(function (el) {
+    el.textContent = (name.match(/\b\p{Lu}/gu) || [name.charAt(0)]).slice(0, 2).join('');
+  });
+
+  /* ---------- map (shown straight away; set map_mode:"click" for a consent-gated facade) ---------- */
+  $$('[data-map]').forEach(function (el) {
+    if (!D.address) { (el.closest('[data-section="map"]') || el).hidden = true; return; }
+    var src = D.map_embed_url || ('https://maps.google.com/maps?q=' + q + '&z=16&hl=' + lang + '&output=embed');
+    var load = function () {
+      if (el.classList.contains('is-loaded')) return;
+      var f = doc.createElement('iframe');
+      f.src = src; f.title = fill(L.map_title, V); f.loading = 'lazy';
+      f.referrerPolicy = 'no-referrer-when-downgrade'; f.allowFullscreen = true;
+      el.appendChild(f); el.classList.add('is-loaded');
+    };
+    var btn = $('[data-map-load]', el);
+    if ((D.map_mode || 'embed') !== 'click' || !btn) load(); else btn.addEventListener('click', load);
+  });
+
+  /* ---------- photos: probe, grade, and distribute (hero → slots → gallery) ---------- */
+  var photos = (D.photos || []).map(function (p) { return typeof p === 'string' ? { src: p } : p; }).filter(function (p) { return p && p.src; });
+  function grade(p) {
+    var px = p.w * p.h, r = p.w / p.h;
+    p.q = px >= 1900000 ? 'hi' : px >= 600000 ? 'mid' : 'lo';
+    p.o = r > 1.15 ? 'landscape' : r < 0.87 ? 'portrait' : 'square';
+    p.px = px;
+  }
+  function probe(p) {
+    return new Promise(function (res) {
+      var im = new Image(), done = false;
+      var fin = function (ok) {
+        if (done) return; done = true;
+        p.ok = ok;
+        p.w = im.naturalWidth || p.width || 0; p.h = im.naturalHeight || p.height || 0;
+        if (ok && p.w && p.h) grade(p); else p.ok = false;
+        res(p);
+      };
+      im.onload = function () { fin(true); };
+      im.onerror = function () { fin(false); };
+      setTimeout(function () { fin(!!(p.width && p.height)); }, 7000);
+      im.src = p.src;
+    });
+  }
+  function putImg(wrap, p, i, eager) {
+    var img = doc.createElement('img');
+    img.src = p.src; img.alt = p.alt || fill(L.photo_alt, { name: name, n: i + 1 });
+    img.decoding = 'async';
+    if (eager) img.fetchPriority = 'high'; else img.loading = 'lazy';
+    img.className = 'ls-img';
+    img.style.objectPosition = p.focus || '50% 42%';
+    img.onerror = function () { var g = wrap.closest('[data-gallery-item]'); (g || wrap).hidden = true; };
+    wrap.classList.add('ls-ph', 'q-' + p.q, 'o-' + p.o);
+    wrap.appendChild(img);
+    return img;
+  }
+  function setRoot(add, rem) { root.classList.add.apply(root.classList, add); if (rem) root.classList.remove.apply(root.classList, rem); }
+
+  function distribute(list) {
+    /* photo-engine v2 */
+    /* Real photos first, sharpest first; stock only fills what real photos cannot. */
+    var pool = list.filter(function (p) { return p.ok; }).sort(function (a, b) { return (a.stock ? 1 : 0) - (b.stock ? 1 : 0) || b.px - a.px; });
+    var used = 0;
+    var hero = $('[data-hero-photo]');
+    if (hero && pool.length) {
+      var o = hero.getAttribute('data-orient') || 'landscape';
+      var min = +hero.getAttribute('data-min-px') || 1500000;
+      /* Judge a photo by what survives the crop, not by its orientation: a 3024x4032 phone shot of the
+         salon cropped to a wide hero still has ~5MP, while the old "landscape only" rule threw it away
+         and left the hero empty. */
+      var cropPx = function (p) { return o === 'portrait' ? p.h * Math.min(p.w, p.h / 1.4) : o === 'any' ? p.px : p.w * Math.min(p.h, p.w / 1.6); };
+      /* hero:false = the server judged it wrong for a hero (close-up, dark, flat). Big is not the same as right. */
+      /* hero:true = the server shortlisted it as the right subject; display copies are capped at ~1500px,
+         which still fills a desktop hero, so a vetted photo gets a lower floor than an unknown one. */
+      var pick = pool.filter(function (p) { return p.hero !== false && (p.stock || cropPx(p) >= (p.hero === true ? Math.min(min, 1000000) : min)); })[0];
+      if (pick) { putImg(hero, pick, used++, true); pool.splice(pool.indexOf(pick), 1); setRoot(['has-hero-photo'], ['hero-type']); }
+    }
+    $$('[data-photo-slot]').forEach(function (slot) {
+      var min = +slot.getAttribute('data-min-px') || 250000;
+      var maxpx = +slot.getAttribute('data-max-px') || Infinity;
+      var ok = pool.filter(function (p) { return p.stock || (p.px >= min && p.px <= maxpx); });
+      /* data-pick="low": small slots (avatars, thumbs) take the weakest photos first, saving sharp ones for big frames */
+      var pick = slot.getAttribute('data-pick') === 'low' ? ok[ok.length - 1] : ok[0];
+      if (pick) { putImg(slot, pick, used++); pool.splice(pool.indexOf(pick), 1); slot.classList.add('is-filled'); (slot.closest('[data-photo-host]') || slot).classList.add('has-photo'); }
+    });
+    var gcount = 0, rowFillers = [];
+    $$('[data-gallery]').forEach(function (box) {
+      var t = $('template', box), max = +box.getAttribute('data-max') || 12;
+      if (!t) return;
+      /* Real photos up to max; stock only pads a thin set up to data-min, so a gallery is never a lone frame. */
+      var gmin = Math.min(max, +box.getAttribute('data-min') || 4);
+      var take = pool.filter(function (p) { return !p.stock; }).slice(0, max);
+      if (take.length < gmin) take = take.concat(pool.filter(function (p) { return p.stock; }).slice(0, gmin - take.length));
+      pool = pool.filter(function (p) { return take.indexOf(p) < 0; });
+      var addItem = function (p) {
+        var n = t.content.firstElementChild.cloneNode(true);
+        var w = $('[data-f="photo"]', n) || n;
+        n.setAttribute('data-gallery-item', '');
+        n.classList.add('o-' + p.o, 'q-' + p.q);
+        putImg(w, p, used++);
+        box.appendChild(n); gcount++;
+      };
+      take.forEach(addItem);
+      /* Measure, don't guess: every template's grid differs. While the last frame leaves more than half a
+         frame of empty row beside it and stock remains, add one more, so the gallery ends on a full row. */
+      var rowGap = function () {
+        var it = $$('[data-gallery-item]', box); if (it.length < 2) return false;
+        var last = it[it.length - 1].getBoundingClientRect(), br = box.getBoundingClientRect();
+        return last.width > 0 && br.right - last.right > last.width * 0.5;
+      };
+      /* Runs after the gallery is un-hidden below; measured while hidden, every width is zero. */
+      rowFillers.push(function () {
+        for (var guard = 0; guard < 6 && rowGap(); guard++) {
+          var extra = pool.filter(function (p) { return p.stock; })[0];
+          if (!extra) break;
+          pool.splice(pool.indexOf(extra), 1);
+          addItem(extra);
+        }
+      });
+    });
+    setRoot([gcount ? 'has-gallery' : 'no-gallery', used ? 'has-photos' : 'no-photos'], ['photos-pending']);
+    rowFillers.forEach(function (f) { f(); });
+    fitAll();
+  }
+  if (!photos.length) setRoot(['hero-type', 'no-gallery', 'no-photos']);
+  else { setRoot(['hero-type', 'photos-pending']); Promise.all(photos.map(probe)).then(distribute); }
+
+  /* ---------- gallery lightbox: the whole set in one viewer, not one photo per click ---------- */
+  var lbBox = null, lbList = [], lbAt = 0;
+  function lbBuild() {
+    var d = doc.createElement('dialog');
+    d.className = 'ls-lightbox';
+    d.innerHTML =
+      '<div class="lb-stage"><img alt=""></div>' +
+      '<button class="lb-close" type="button" aria-label="' + L.photo_close + '">\u00d7</button>' +
+      '<button class="lb-nav lb-prev" type="button" aria-label="' + L.photo_prev + '">\u2039</button>' +
+      '<button class="lb-nav lb-next" type="button" aria-label="' + L.photo_next + '">\u203a</button>' +
+      '<p class="lb-count"><span class="lb-i"></span> / <span class="lb-n"></span></p>';
+    $('.lb-close', d).addEventListener('click', function () { d.close(); });
+    $('.lb-prev', d).addEventListener('click', function () { lbGo(-1); });
+    $('.lb-next', d).addEventListener('click', function () { lbGo(1); });
+    /* the photo itself pages forward; the dark space around it closes */
+    $('img', d).addEventListener('click', function () { lbGo(1); });
+    d.addEventListener('click', function (e) { if (e.target === d || e.target === $('.lb-stage', d)) d.close(); });
+    d.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') { e.preventDefault(); lbGo(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); lbGo(-1); }
+    });
+    var x0 = null;
+    d.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    d.addEventListener('touchend', function (e) {
+      if (x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) > 40) lbGo(dx < 0 ? 1 : -1);
+    });
+    doc.body.appendChild(d);
+    return d;
+  }
+  function lbShow(i) {
+    var n = lbList.length;
+    if (!n) return;
+    lbAt = ((i % n) + n) % n;
+    var im = $('img', lbBox);
+    im.src = lbList[lbAt].src; im.alt = lbList[lbAt].alt;
+    $('.lb-i', lbBox).textContent = lbAt + 1;
+    $('.lb-n', lbBox).textContent = n;
+    lbBox.classList.toggle('is-single', n < 2);
+    /* warm both neighbours so paging never shows a blank frame */
+    [lbList[(lbAt + 1) % n], lbList[(lbAt - 1 + n) % n]].forEach(function (p) { var w = new Image(); w.src = p.src; });
+  }
+  function lbGo(step) { if (lbList.length > 1) lbShow(lbAt + step); }
+  doc.addEventListener('click', function (e) {
+    var img = e.target.closest && e.target.closest('[data-gallery] .ls-img');
+    if (!img) return;
+    var imgs = $$('.ls-img', img.closest('[data-gallery]')).filter(function (el) { return !el.closest('[hidden]'); });
+    lbList = imgs.map(function (el) { return { src: el.currentSrc || el.src, alt: el.alt }; });
+    lbBox = lbBox || lbBuild();
+    lbShow(imgs.indexOf(img));
+    lbBox.showModal();
+  });
+
+  /* ---------- fit giant type to its container ---------- */
+  function fitAll() {
+    $$('[data-fit]').forEach(function (el) {
+      el.style.fontSize = ''; el.style.whiteSpace = 'nowrap';
+      var max = parseFloat(getComputedStyle(el).fontSize);
+      var cs = getComputedStyle(el);
+      var avail = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      if (avail <= 0) return;
+      /* The authored floor, capped by what the viewport can actually carry: a
+         64px minimum on a 320px screen is a guaranteed overflow, and the floor
+         was chosen for the desktop frame, not this one. */
+      var min = Math.min(+el.getAttribute('data-fit-min') || 32, Math.max(20, avail * 0.16));
+      var r = doc.createRange(); r.selectNodeContents(el);
+      var need = r.getBoundingClientRect().width;
+      if (!need) return;
+      var grow = el.getAttribute('data-fit') === 'fill';
+      var cap = +el.getAttribute('data-fit-max') || (grow ? 480 : max);
+      var s = max;
+      if (need > avail + 1 || (grow && need < avail * 0.97)) {
+        s = Math.min(Math.floor(max * avail / need * 0.985), cap);
+      }
+      if (s < min) { s = min; el.style.whiteSpace = 'normal'; }
+      el.style.fontSize = s + 'px';
+      /* Fitting ONE LINE says nothing about whether the longest single word
+         fits. Once the text is allowed to wrap, a long unbroken business name
+         can still push past the edge, so step down until it genuinely stops
+         overflowing rather than trusting the single-line measurement. */
+      if (el.style.whiteSpace === 'normal') {
+        for (var g = 0; g < 14 && el.scrollWidth > el.clientWidth + 1 && s > 13; g++) {
+          s = Math.floor(s * 0.92);
+          el.style.fontSize = s + 'px';
+        }
+      }
+    });
+  }
+  fitAll();
+  if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(fitAll);
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fitAll, 120); });
+
+  /* ---------- document meta + structured data ---------- */
+  if (L.meta_title) doc.title = fill(L.meta_title, V);
+  var md = $('meta[name="description"]');
+  if (md && L.meta_description) md.setAttribute('content', fill(L.meta_description, V));
+  var ld = {
+    '@context': 'https://schema.org', '@type': D.schema_type || 'LocalBusiness',
+    name: name, legalName: D.name_raw || undefined, telephone: D.phone || undefined,
+    address: { '@type': 'PostalAddress', streetAddress: street, postalCode: V.postal, addressLocality: city, addressCountry: D.country_code || 'SI' },
+    url: location.href.split(/[?#]/)[0]
+  };
+  var DN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], spec = [];
+  hours.forEach(function (h) { if (h.idx != null && !h.closed) h.ranges.forEach(function (r) { spec.push({ '@type': 'OpeningHoursSpecification', dayOfWeek: 'https://schema.org/' + DN[h.idx], opens: hm2(r[0]), closes: hm2(r[1]) }); }); });
+  if (spec.length) ld.openingHoursSpecification = spec;
+  var s = doc.createElement('script'); s.type = 'application/ld+json'; s.textContent = JSON.stringify(ld); doc.head.appendChild(s);
+
+  root.classList.add('ls-ready');
+  window.LocalSite = { data: D, values: V, links: H, hours: hours, status: status };
+})();
+
+/* ---- LocalSite mobile nav (shared, generated) ---- */
+(function () {
+  var doc = document;
+  var header = doc.querySelector('header');
+  if (!header) return;
+
+  /* Two templates ship a mobile menu of their own, drawn in their own style
+     (t04's pill, t09's "Meni" drawer). Injecting a second burger beside one of
+     those gives the page two menus. Anything already wired as a disclosure for a
+     panel is taken as that template having solved this itself. */
+  if (doc.querySelector('button[aria-expanded][aria-controls]')) return;
+
+  /* The template's section links, in document order, deduplicated by href —
+     templates repeat the same anchor in more than one nav group.
+     The wordmark ("#", "#top") is deliberately excluded. It is the logo, it
+     stays visible at every width, and counting it as navigation is what would
+     make the visibility probe below decide the nav had not collapsed. */
+  function sectionLinks() {
+    var seen = {}, out = [];
+    doc.querySelectorAll('header a[href^="#"], header nav a[href^="#"]').forEach(function (a) {
+      var h = a.getAttribute('href');
+      if (!h || h === '#' || h === '#top' || h === '#main') return;
+      if (seen[h] || a.closest('.ls-navsheet')) return;
+      seen[h] = 1; out.push(a);
+    });
+    return out;
+  }
+
+  var links = sectionLinks();
+  if (!links.length) return;
+
+  var sheet = doc.createElement('div');
+  sheet.className = 'ls-navsheet';
+  sheet.id = 'ls-navsheet';
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-label', doc.documentElement.lang === 'sl' ? 'Meni' : 'Menu');
+
+  var foot = doc.createElement('div');
+  foot.className = 'ls-navsheet-foot';
+
+  links.forEach(function (a) {
+    var c = a.cloneNode(true);
+    c.removeAttribute('class');
+    c.removeAttribute('id');
+    sheet.appendChild(c);
+  });
+  /* The phone number, if the page has one, closes the sheet as the action line —
+     it is something to do, not somewhere to go, so it sits apart from the stack. */
+  var tel = doc.querySelector('a[href^="tel:"]');
+  if (tel) { var t = tel.cloneNode(true); t.removeAttribute('class'); t.removeAttribute('id'); foot.appendChild(t); }
+  if (foot.children.length) sheet.appendChild(foot);
+
+  var btn = doc.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ls-navtoggle';
+  btn.setAttribute('aria-expanded', 'false');
+  btn.setAttribute('aria-controls', 'ls-navsheet');
+  btn.setAttribute('aria-label', doc.documentElement.lang === 'sl' ? 'Meni' : 'Menu');
+  btn.appendChild(doc.createElement('span'));
+
+  /* The burger is positioned against the header. Set that here rather than in
+     CSS: a :has() rule would be the alternative, and a header that is already
+     fixed or sticky must keep the position it has. */
+  if (getComputedStyle(header).position === 'static') header.style.position = 'relative';
+  header.appendChild(btn);
+  doc.body.appendChild(sheet);
+
+  /* Pick up the page's real colours so the sheet is opaque and on-brand rather
+     than a system-coloured panel. Read from the hero band or body, whichever
+     actually paints a background. */
+  function paint() {
+    var probe = doc.querySelector('.heroband, header, body');
+    var bg = '', el = probe;
+    while (el && !bg) {
+      var c = getComputedStyle(el).backgroundColor;
+      if (c && c !== 'transparent' && !/rgba\(0, 0, 0, 0\)/.test(c)) bg = c;
+      el = el.parentElement;
+    }
+    var root = getComputedStyle(doc.documentElement);
+    sheet.style.setProperty('--ls-sheet-bg', bg || root.backgroundColor || '#fff');
+    sheet.style.setProperty('--ls-sheet-fg', getComputedStyle(doc.body).color || root.color);
+  }
+
+  function open() {
+    paint();
+    sheet.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
+    doc.documentElement.classList.add('ls-navopen');
+  }
+  function close() {
+    sheet.classList.remove('is-open');
+    btn.setAttribute('aria-expanded', 'false');
+    doc.documentElement.classList.remove('ls-navopen');
+  }
+  function toggle() { sheet.classList.contains('is-open') ? close() : open(); }
+
+  var closeBtn = doc.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'ls-navsheet-close';
+  closeBtn.setAttribute('aria-label', doc.documentElement.lang === 'sl' ? 'Zapri' : 'Close');
+  closeBtn.innerHTML = '&times;';
+  closeBtn.addEventListener('click', close);
+  sheet.insertBefore(closeBtn, sheet.firstChild);
+
+  btn.addEventListener('click', toggle);
+  sheet.addEventListener('click', function (e) { if (e.target.closest('a')) close(); });
+  doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+  /* Show the burger exactly when the template's own links are not visible. This
+     is re-checked on resize, so it tracks whatever breakpoint the template uses
+     without this code knowing what that breakpoint is. */
+  /* Reserve the burger's width in the header so a long business name cannot run
+     underneath it. Written as an inline style because the ten headers carry their
+     horizontal padding in different places — on the <header> itself in some files,
+     on an inner .wrap in others — and padding here narrows the row either way. */
+  var basePadRight = null;
+  function reserve(on) {
+    if (basePadRight === null) basePadRight = parseFloat(getComputedStyle(header).paddingRight) || 0;
+    header.classList.toggle('ls-nav-collapsed', on);
+    header.style.paddingRight = on ? (basePadRight + 52) + 'px' : '';
+  }
+
+  function sync() {
+    var visible = links.filter(function (a) {
+      return a.offsetParent !== null && a.getBoundingClientRect().width > 0;
+    }).length;
+    /* One-or-fewer counts as collapsed, not just zero. Some templates keep a
+       single anchor visible on mobile (t07 marks one "keep"), which still
+       leaves the visitor without the rest of the navigation. */
+    btn.classList.toggle('is-on', visible < 2);
+    reserve(visible < 2);
+    if (visible >= 2) close();
+  }
+  sync();
+  var rt;
+  window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(sync, 120); });
+  if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(sync);
+})();
+/* ---- end mobile nav ---- */
+</script>
+</body>
+</html>

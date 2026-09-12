@@ -2,10 +2,10 @@
 // asks "who even are you?" before anything else — this is the page that answers
 // it with work rather than claims.
 import type { Metadata } from "next";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import Image from "next/image";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { cleanDisplayName } from "@/lib/preview/brand";
 import { SiteBackdrop } from "@/components/SiteBackdrop";
 import { SiteNavBar } from "@/components/SiteNavBar";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -13,34 +13,38 @@ import { SiteFooter } from "@/components/SiteFooter";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Primeri spletnih strani",
+  title: "Nekaj primerov strani",
   description:
-    "Primeri spletnih strani, ki smo jih pripravili za lokalna podjetja — frizerski saloni, restavracije, zobozdravniki in drugi.",
+    "Primeri spletnih strani na naših predlogah — frizerski saloni, restavracije, zobozdravniki in drugi.",
 };
 
 const SHELL = "mx-auto w-full max-w-[1180px] px-6 lg:px-10";
 
+interface Example {
+  slug: string;
+  name: string;
+  type: string;
+}
+
 /**
- * The industry label under each card. searchRun.query is the discovery term
- * ("frizerski salon Ljubljana"), so drop the trailing region to leave the trade.
+ * The examples are invented businesses built by scripts/build-showcase-sites.mjs.
+ *
+ * This page used to list real prospects' previews (Lead.showcase), which put
+ * real businesses' names, photos and Google reviews on our public portfolio
+ * without their say-so. It now reads the same generated manifest as the
+ * marketing page, so there is one set of examples and none of them is anyone.
  */
-function industryLabel(query: string | undefined): string | null {
-  if (!query) return null;
-  const trimmed = query.trim();
-  if (!trimmed) return null;
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+async function loadExamples(): Promise<Example[]> {
+  try {
+    const raw = await readFile(path.join(process.cwd(), "public", "site", "work", "manifest.json"), "utf8");
+    return JSON.parse(raw) as Example[];
+  } catch {
+    return [];
+  }
 }
 
 export default async function ExamplesPage() {
-  const leads = await prisma.lead.findMany({
-    where: {
-      showcase: true,
-      previewHtmlPath: { not: null },
-      previewImagePath: { not: null },
-    },
-    include: { searchRun: true },
-    orderBy: { score: "desc" },
-  });
+  const examples = await loadExamples();
 
   return (
     <div className="relative">
@@ -54,61 +58,51 @@ export default async function ExamplesPage() {
               Primeri
             </div>
             <h1 className="mt-4 text-[clamp(2.25rem,5vw,3.75rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-              Strani, ki sem jih že pripravil
+              Nekaj primerov strani
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-              Vsaka od teh strani je bila pripravljena za resnično lokalno podjetje —
-              na podlagi njihovih fotografij, ocen in podatkov. Kliknite katero koli
-              in si jo oglejte v živo.
+              Primeri, zgrajeni na naših predlogah. Podjetja so izmišljena, fotografije
+              so iz fotobanke. Vaša stran dobi vaše ime, vaše podatke in vaše fotografije.
+              Kliknite katero koli in si jo oglejte.
             </p>
           </div>
         </section>
 
         <section className={`${SHELL} pb-24 sm:pb-32`}>
-          {leads.length === 0 ? (
+          {examples.length === 0 ? (
             <p className="text-center text-[var(--muted)]">Primeri bodo objavljeni kmalu.</p>
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {leads.map((lead) => {
-                const label = industryLabel(lead.searchRun?.query ?? undefined);
-                return (
-                  <a
-                    key={lead.id}
-                    // ?src=examples tells the preview route this is portfolio
-                    // traffic: don't count the view against the lead, and show a
-                    // generic CTA rather than that business's own interest button.
-                    href={`/p/${lead.id}?src=examples`}
-                    className="group block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--muted)]/50"
-                  >
-                    <div className="relative aspect-[4/3] overflow-hidden bg-[var(--panel-2)]">
-                      <Image
-                        src={lead.previewImagePath!}
-                        alt={`Spletna stran za ${cleanDisplayName(lead.name)}`}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        // Screenshots are tall; anchor to the top so each card shows
-                        // the hero rather than a slice of the middle of the page.
-                        className="object-cover object-top transition-transform duration-700 group-hover:scale-[1.04]"
-                      />
+              {examples.map((ex) => (
+                <a
+                  key={ex.slug}
+                  href={`/site/work/${ex.slug}.html`}
+                  target="_blank"
+                  rel="noopener"
+                  className="group block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--muted)]/50"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden bg-[var(--panel-2)]">
+                    <Image
+                      src={`/site/work/${ex.slug}.webp`}
+                      alt={`${ex.name} — primer strani`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      // Screenshots are full-page and tall; anchor to the top so each
+                      // card shows the hero rather than a slice of the middle.
+                      className="object-cover object-top transition-transform duration-700 group-hover:scale-[1.04]"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 px-5 py-4">
+                    <div className="min-w-0">
+                      <div className="truncate text-[15px] font-medium">{ex.name}</div>
+                      <div className="mt-0.5 truncate text-[13px] text-[var(--muted)]">{ex.type}</div>
                     </div>
-                    <div className="flex items-center justify-between gap-3 px-5 py-4">
-                      <div className="min-w-0">
-                        <div className="truncate text-[15px] font-medium">
-                          {cleanDisplayName(lead.name)}
-                        </div>
-                        {label && (
-                          <div className="mt-0.5 truncate text-[13px] text-[var(--muted)]">
-                            {label}
-                          </div>
-                        )}
-                      </div>
-                      <span className="shrink-0 text-[var(--muted)] transition-colors group-hover:text-[var(--accent)]">
-                        →
-                      </span>
-                    </div>
-                  </a>
-                );
-              })}
+                    <span className="shrink-0 text-[var(--muted)] transition-colors group-hover:text-[var(--accent)]">
+                      →
+                    </span>
+                  </div>
+                </a>
+              ))}
             </div>
           )}
         </section>

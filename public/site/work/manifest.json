@@ -1,72 +1,62 @@
 [
  {
-  "slug": "frizerski-studio-tamara",
-  "name": "Frizerski studio Tamara",
+  "slug": "frizerski-studio-lunara",
+  "name": "Frizerski studio Lunara",
   "type": "Frizerski salon",
-  "template": "t01",
-  "placeId": "ChIJY3ogh4UyZUcRMyVSb1MGOw4"
+  "template": "t01"
  },
  {
-  "slug": "lepotni-center-aloe-vera",
-  "name": "Lepotni center Aloe Vera",
-  "type": "Masažni in kozmetični salon",
-  "template": "t02",
-  "placeId": "ChIJeQ3FO78zZUcRjes10zdJrzs"
+  "slug": "wellness-tisina",
+  "name": "Wellness Tišina",
+  "type": "Masažni salon",
+  "template": "t02"
  },
  {
-  "slug": "dd-brivnica",
-  "name": "D.D. Brivnica",
+  "slug": "brivnica-ostri-rob",
+  "name": "Brivnica Ostri rob",
   "type": "Brivnica",
-  "template": "t03",
-  "placeId": "ChIJiVxzoW4tZUcR4v4u0ros0Zc"
+  "template": "t03"
  },
  {
-  "slug": "fotooko",
-  "name": "Fotooko",
+  "slug": "fotostudio-svetloba",
+  "name": "Fotostudio Svetloba",
   "type": "Fotografski studio",
-  "template": "t04",
-  "placeId": "ChIJiR4GHY4tZUcR06jVcsWXgvk"
+  "template": "t04"
  },
  {
-  "slug": "avtosola-modri-voznik",
-  "name": "Avtošola Modri voznik",
+  "slug": "avtosola-zeleni-val",
+  "name": "Avtošola Zeleni val",
   "type": "Avtošola",
-  "template": "t05",
-  "placeId": "ChIJ2chGlWAyZUcRoXxvhj50XEE"
+  "template": "t05"
  },
  {
-  "slug": "gostilna-trnovski-pristan",
-  "name": "Gostilna Trnovski pristan",
-  "type": "Gostilna",
-  "template": "t06",
-  "placeId": "ChIJefqaUAAtZUcRpK7RZjhVD5M"
+  "slug": "gostilna-zerjavica",
+  "name": "Gostilna Žerjavica",
+  "type": "Gostilna in žar",
+  "template": "t06"
  },
  {
-  "slug": "ambius-pohistvo",
-  "name": "Ambius pohištvo",
-  "type": "Mizarstvo in pohištvo",
-  "template": "t07",
-  "placeId": "ChIJqS4yQ3PNekcR5LmDSr4aKp0"
+  "slug": "mizarstvo-grca",
+  "name": "Mizarstvo Grča",
+  "type": "Mizarstvo",
+  "template": "t07"
  },
  {
-  "slug": "crno-zrno",
-  "name": "Črno Zrno",
-  "type": "Kavarna",
-  "template": "t08",
-  "placeId": "ChIJO33T02QtZUcRorw9CCVcZCw"
+  "slug": "kavarna-mlincek",
+  "name": "Kavarna Mlinček",
+  "type": "Kavarna in pekarna",
+  "template": "t08"
  },
  {
-  "slug": "avto-svetek-studenec",
-  "name": "Avto-Svetek Studenec",
+  "slug": "avtoservis-zobnik",
+  "name": "Avtoservis Zobnik",
   "type": "Avtoservis",
-  "template": "t09",
-  "placeId": "ChIJKT99SRsyZUcRYbWiXcWTyac"
+  "template": "t09"
  },
  {
-  "slug": "modri-zob",
-  "name": "Modri Zob",
-  "type": "Zobozdravstvena ordinacija",
-  "template": "t10",
-  "placeId": "ChIJ87RH_YMyZUcR3aIIo_urP9Y"
+  "slug": "zobna-ordinacija-belina",
+  "name": "Zobna ordinacija Belina",
+  "type": "Zobozdravnik",
+  "template": "t10"
  }
 ]
