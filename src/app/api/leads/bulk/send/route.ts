@@ -34,6 +34,7 @@ import { LeadFilterSchema, leadWhere } from "@/lib/leads/selection";
 import { createBulkJob, describeTarget, runBulkJob } from "@/lib/leads/bulkJob";
 import { loadLeadForOutreach, prepareOutreach } from "@/lib/outreach/prepare";
 import { deliverOutreach } from "@/lib/outreach/send";
+import { buildAndStorePreview } from "@/lib/preview/generate";
 import { isSmtpConfigured } from "@/lib/outreach/mailer";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -151,8 +152,23 @@ export async function POST(req: Request) {
   const jobId = await createBulkJob("send", describeTarget(body), ids.length, skipped);
 
   void runBulkJob(jobId, ids, async (leadId) => {
-    const lead = await loadLeadForOutreach(leadId);
+    let lead = await loadLeadForOutreach(leadId);
     if (!lead) return "skip";
+
+    // The email's whole pitch is the link to their own site. A lead fresh from
+    // discovery has none yet, and sending it would point a stranger at "this
+    // preview isn't available". Build it first — free on the kit engine — and
+    // if that fails, don't send at all.
+    if (!lead.previewHtmlPath) {
+      try {
+        await buildAndStorePreview(lead);
+      } catch (err) {
+        console.error(`[bulk-send] no preview for lead ${leadId}, not sending:`, err);
+        return "failed";
+      }
+      lead = await loadLeadForOutreach(leadId);
+      if (!lead?.previewHtmlPath) return "failed";
+    }
 
     // Draft fresh rather than reusing whatever is sitting there: the body embeds
     // the preview URL and the price, and a draft written before the last preview
