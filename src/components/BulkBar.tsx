@@ -17,6 +17,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export interface BulkFilter {
   tier?: string;
   reach?: string;
+  emailed?: string;
+  optout?: string;
   q?: string;
 }
 
@@ -45,6 +47,8 @@ function selectionBody(
     const f: BulkFilter = {};
     if (filter.tier) f.tier = filter.tier;
     if (filter.reach) f.reach = filter.reach;
+    if (filter.emailed) f.emailed = filter.emailed;
+    if (filter.optout) f.optout = filter.optout;
     if (filter.q?.trim()) f.q = filter.q.trim();
     return { filter: f };
   }
@@ -71,6 +75,19 @@ export function BulkBar({
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
   const [starting, setStarting] = useState<"preview" | "send" | null>(null);
+  // A capped run leaves leads behind. The selection that produced it is kept here
+  // with the number the cap cut, so the next batch is one button rather than a
+  // manual re-tick — re-posting the same selection is safe because the leads it
+  // just mailed are now excluded by the endpoint's already-sent rule.
+  const [lastSend, setLastSend] = useState<{
+    body: Record<string, unknown>;
+    remaining: number;
+  } | null>(null);
+  // Set while the operator is confirming one of those continuation batches: the
+  // ticked rows are long gone by then, so the selection has to come from here.
+  const [resume, setResume] = useState<{ body: Record<string, unknown>; remaining: number } | null>(
+    null,
+  );
   // Held in a ref so the poll loop can stop itself after unmount without
   // depending on state that has already been torn down.
   const alive = useRef(true);
@@ -81,7 +98,7 @@ export function BulkBar({
     };
   }, []);
 
-  const count = allMatching ? matchingCount : selectedIds.length;
+  const count = resume ? resume.remaining : allMatching ? matchingCount : selectedIds.length;
 
   // Self-terminating poll, same shape as the sweep list: reschedule only while
   // the run is still running, and back off on a transient error rather than
@@ -113,14 +130,17 @@ export function BulkBar({
   async function start(kind: "preview" | "send", extra: Record<string, unknown> = {}) {
     setErr(null);
     setStarting(kind);
+    const body = resume?.body ?? selectionBody(allMatching, selectedIds, filter);
     try {
       const res = await fetch(`/api/leads/bulk/${kind}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...selectionBody(allMatching, selectedIds, filter), ...extra }),
+        body: JSON.stringify({ ...body, ...extra }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status !== 202) throw new Error(data.error ?? `Request failed (${res.status})`);
+      if (kind === "send") setLastSend({ body, remaining: data.remaining ?? 0 });
+      setResume(null);
       setConfirming(false);
       setTyped("");
       onClear();
@@ -180,7 +200,26 @@ export function BulkBar({
             <span className="text-[var(--muted)]"> · {job.skipped} skipped</span>
           )}
           {job.error && <div className="text-[11px] text-red-400 mt-0.5">{job.error}</div>}
+          {job.kind === "send" && (lastSend?.remaining ?? 0) > 0 && (
+            <div className="text-[11px] text-[var(--muted)] mt-0.5">
+              {lastSend!.remaining} more from the same selection have not been emailed yet — the
+              run hit its cap.
+            </div>
+          )}
         </div>
+        {job.kind === "send" && (lastSend?.remaining ?? 0) > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setResume(lastSend);
+              setJob(null);
+              setConfirming(true);
+            }}
+            className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm hover:border-red-500"
+          >
+            Send the next {lastSend!.remaining}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setJob(null)}
@@ -204,7 +243,7 @@ export function BulkBar({
           </div>
           <div className="text-[11px] text-[var(--muted)] mt-0.5">
             Leads with no email address, who unsubscribed, or who were already sent to are skipped.
-            Capped per run and per day.
+            Capped per run and per day{resume ? ", so this may again take only part of them" : ""}.
           </div>
           {err && <div className="text-[11px] text-red-400 mt-1">{err}</div>}
         </div>
@@ -228,6 +267,7 @@ export function BulkBar({
           onClick={() => {
             setConfirming(false);
             setTyped("");
+            setResume(null);
           }}
           className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm hover:border-[var(--accent)]"
         >

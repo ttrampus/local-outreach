@@ -38,11 +38,26 @@ export const REACH_FILTERS: Record<string, Prisma.LeadWhereInput> = {
 
 export const TIERS = ["HOT", "WARM", "COLD"] as const;
 
+// Whether the lead has had its first email. Same clause the send endpoint uses to
+// exclude already-contacted leads, exposed as a filter so the operator can look
+// at exactly the set a run would take — which is what "the other 113" means after
+// a capped batch.
+const EMAILED: Prisma.LeadWhereInput = { outreach: { some: { step: 0, status: "sent" } } };
+const NOT_EMAILED: Prisma.LeadWhereInput = { outreach: { none: { step: 0, status: "sent" } } };
+
+// Asked to be left alone. The stamp is set by /api/unsubscribe and is the only
+// thing that matters here — there is no separate suppression table, the lead row
+// IS the opt-out record, which is why it can never be silently overwritten by a
+// re-import of the same business.
+const OPTED_OUT: Prisma.LeadWhereInput = { unsubscribedAt: { not: null } };
+
 /** The table's four filter controls, exactly as /api/leads accepts them. */
 export const LeadFilterSchema = z.object({
   tier: z.enum(TIERS).optional(),
   status: z.string().trim().max(40).optional(),
   reach: z.enum(["email", "phone", "social", "none"]).optional(),
+  emailed: z.enum(["yes", "no"]).optional(),
+  optout: z.enum(["yes", "no"]).optional(),
   q: z.string().trim().max(200).optional(),
 });
 export type LeadFilter = z.infer<typeof LeadFilterSchema>;
@@ -71,6 +86,8 @@ export function leadWhere(filter: LeadFilter): Prisma.LeadWhereInput {
     const clause = REACH_FILTERS[filter.reach];
     if (clause) and.push(clause);
   }
+  if (filter.emailed) and.push(filter.emailed === "yes" ? EMAILED : NOT_EMAILED);
+  if (filter.optout) and.push(filter.optout === "yes" ? OPTED_OUT : { unsubscribedAt: null });
   return { AND: and };
 }
 

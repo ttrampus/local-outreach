@@ -149,6 +149,11 @@ export async function POST(req: Request) {
 
   // Everything the selection lost: ineligible leads plus anything the caps cut.
   const skipped = requested - ids.length;
+  // Of those, the ones that were perfectly sendable and only lost to a cap. They
+  // are the next run's batch — re-running the same selection picks them up,
+  // because this run's leads become "already sent" — so the UI says so out loud
+  // instead of leaving the operator to un-tick 50 rows by hand.
+  const remaining = eligible.length - ids.length;
   const jobId = await createBulkJob("send", describeTarget(body), ids.length, skipped);
 
   void runBulkJob(jobId, ids, async (leadId) => {
@@ -189,7 +194,7 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json(
-    { jobId, total: ids.length, requested, skipped, cap, sentToday },
+    { jobId, total: ids.length, requested, skipped, remaining, cap, sentToday },
     { status: 202 },
   );
 }

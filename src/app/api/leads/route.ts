@@ -29,6 +29,8 @@ export async function GET(req: Request) {
   const tier = searchParams.get("tier")?.toUpperCase();
   const status = searchParams.get("status") ?? undefined;
   const reach = searchParams.get("reach") ?? undefined;
+  const emailed = searchParams.get("emailed") ?? undefined;
+  const optout = searchParams.get("optout") ?? undefined;
   const q = searchParams.get("q")?.trim();
   const sort = searchParams.get("sort") ?? "score";
 
@@ -36,6 +38,14 @@ export async function GET(req: Request) {
     tier: tier && ["HOT", "WARM", "COLD"].includes(tier) ? (tier as "HOT" | "WARM" | "COLD") : undefined,
     status,
     reach: reach && reach in REACH_FILTERS ? (reach as "email" | "phone" | "social" | "none") : undefined,
+    emailed: (emailed === "yes" || emailed === "no" ? emailed : undefined) as
+      | "yes"
+      | "no"
+      | undefined,
+    optout: (optout === "yes" || optout === "no" ? optout : undefined) as
+      | "yes"
+      | "no"
+      | undefined,
     q: q || undefined,
   };
   const where = leadWhere(filter);
@@ -76,11 +86,26 @@ export async function GET(req: Request) {
   );
   reachCounts.all = await prisma.lead.count({ where: withoutReach });
 
+  // Same "what would I get if I clicked this" treatment for the emailed chips,
+  // so "Not emailed 113" reads as the size of the next batch's pool.
+  const withoutEmailed = { ...filter, emailed: undefined } as const;
+  const [emailedYes, emailedNo] = await Promise.all([
+    prisma.lead.count({ where: leadWhere({ ...withoutEmailed, emailed: "yes" }) }),
+    prisma.lead.count({ where: leadWhere({ ...withoutEmailed, emailed: "no" }) }),
+  ]);
+  const emailedCounts = { yes: emailedYes, no: emailedNo, all: emailedYes + emailedNo };
+
+  // How many have opted out, ignoring the opt-out chip itself so the number does
+  // not collapse to the filtered set once it is clicked.
+  const optedOut = await prisma.lead.count({
+    where: leadWhere({ ...filter, optout: "yes" }),
+  });
+
   // How many match the filter as a whole. The chip counts each drop their own
   // dimension, so neither of them answers "how many am I looking at" — and the
   // returned rows are capped at 500, so the array length does not either. A
   // "select all matching" control has to state the real number.
   const matching = await prisma.lead.count({ where });
 
-  return NextResponse.json({ leads, counts, reachCounts, matching });
+  return NextResponse.json({ leads, counts, reachCounts, emailedCounts, optedOut, matching });
 }

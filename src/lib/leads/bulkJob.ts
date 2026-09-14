@@ -126,10 +126,14 @@ export async function runBulkJob(
  * would have to be re-rendered by code that no longer knows the UI's labels.
  */
 export function describeTarget(
-  selection: { ids?: string[]; filter?: { tier?: string; reach?: string; q?: string } },
+  selection: {
+    ids?: string[];
+    filter?: { tier?: string; reach?: string; emailed?: string; q?: string };
+  },
 ): string {
   if (selection.ids) return `${selection.ids.length} selected`;
   const f = selection.filter ?? {};
-  const parts = [f.tier, f.reach, f.q && `"${f.q}"`].filter(Boolean);
+  const emailed = f.emailed === "no" ? "not emailed" : f.emailed === "yes" ? "emailed" : undefined;
+  const parts = [f.tier, f.reach, emailed, f.q && `"${f.q}"`].filter(Boolean);
   return parts.length ? parts.join(" · ") : "all leads";
 }

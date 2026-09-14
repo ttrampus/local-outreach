@@ -39,6 +39,7 @@ export interface Lead {
   lastViewedAt: string | null;
   interestedAt: string | null;
   repliedAt: string | null;
+  unsubscribedAt: string | null;
   showcase: boolean;
   email: string | null;
   customDomain: string | null;
@@ -81,6 +82,16 @@ export function LeadsTable() {
   const [tier, setTier] = useState<string>("");
   const [reach, setReach] = useState<string>("");
   const [reachCounts, setReachCounts] = useState<Record<string, number>>({});
+  // Whether the first email has gone out. The one filter that answers "who is
+  // left" after a capped bulk run, so it gets its own control rather than living
+  // inside the funnel status.
+  const [emailed, setEmailed] = useState<string>("");
+  const [emailedCounts, setEmailedCounts] = useState<Record<string, number>>({});
+  // Opt-outs. Their own control rather than a value of the filter above, because
+  // "who asked me to stop" is a list you go and look at, not a way of slicing the
+  // funnel — and because it must be visible even when it is empty.
+  const [optout, setOptout] = useState<string>("");
+  const [optedOut, setOptedOut] = useState(0);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("score");
   const [loading, setLoading] = useState(true);
@@ -105,6 +116,8 @@ export function LeadsTable() {
     const params = new URLSearchParams();
     if (tier) params.set("tier", tier);
     if (reach) params.set("reach", reach);
+    if (emailed) params.set("emailed", emailed);
+    if (optout) params.set("optout", optout);
     if (q.trim()) params.set("q", q.trim());
     params.set("sort", sort);
     try {
@@ -113,11 +126,13 @@ export function LeadsTable() {
       setLeads(data.leads ?? []);
       setCounts(data.counts ?? {});
       setReachCounts(data.reachCounts ?? {});
+      setEmailedCounts(data.emailedCounts ?? {});
+      setOptedOut(data.optedOut ?? 0);
       setMatching(data.matching ?? 0);
     } finally {
       setLoading(false);
     }
-  }, [tier, reach, q, sort]);
+  }, [tier, reach, emailed, optout, q, sort]);
 
   const clearSelection = useCallback(() => {
     setSelected(new Set());
@@ -132,6 +147,8 @@ export function LeadsTable() {
   // mean a different set than the one that was ticked.
   const changeTier = useCallback((v: string) => { setTier(v); clearSelection(); }, [clearSelection]);
   const changeReach = useCallback((v: string) => { setReach(v); clearSelection(); }, [clearSelection]);
+  const changeEmailed = useCallback((v: string) => { setEmailed(v); clearSelection(); }, [clearSelection]);
+  const changeOptout = useCallback((v: string) => { setOptout(v); clearSelection(); }, [clearSelection]);
   const changeQ = useCallback((v: string) => { setQ(v); clearSelection(); }, [clearSelection]);
 
   const toggleOne = useCallback((id: string) => {
@@ -229,6 +246,30 @@ export function LeadsTable() {
             {r.label} <span className="opacity-60">{reachCounts[r.value] ?? 0}</span>
           </Chip>
         ))}
+
+        <span className="text-[11px] uppercase tracking-wide text-[var(--muted)] ml-4 mr-1">
+          First email
+        </span>
+        <Chip active={emailed === ""} onClick={() => changeEmailed("")}>
+          Any <span className="opacity-60">{emailedCounts.all ?? 0}</span>
+        </Chip>
+        <Chip active={emailed === "no"} onClick={() => changeEmailed(emailed === "no" ? "" : "no")}>
+          Not emailed <span className="opacity-60">{emailedCounts.no ?? 0}</span>
+        </Chip>
+        <Chip
+          active={emailed === "yes"}
+          onClick={() => changeEmailed(emailed === "yes" ? "" : "yes")}
+        >
+          Emailed <span className="opacity-60">{emailedCounts.yes ?? 0}</span>
+        </Chip>
+
+        <Chip
+          active={optout === "yes"}
+          onClick={() => changeOptout(optout === "yes" ? "" : "yes")}
+        >
+          <span style={{ color: optout === "yes" ? undefined : "var(--muted)" }}>🚫 Opted out</span>{" "}
+          <span className="opacity-60">{optedOut}</span>
+        </Chip>
       </div>
 
       {regen.msg && (
@@ -239,7 +280,7 @@ export function LeadsTable() {
         selectedIds={[...selected]}
         allMatching={allMatching}
         matchingCount={matching}
-        filter={{ tier, reach, q }}
+        filter={{ tier, reach, emailed, optout, q }}
         onClear={clearSelection}
         // A bulk run rewrites previews and funnel statuses, so refetch rather
         // than patching rows one by one and hoping the two agree.
@@ -403,6 +444,16 @@ function LeadRow({
             <span className="text-[11px] px-2 py-0.5 rounded bg-[var(--panel-2)] text-[var(--muted)]">
               {lead.status}
             </span>
+            {/* Opt-out outranks every other signal: it is the one state that
+                means "do not contact", so it is shown even next to interest. */}
+            {lead.unsubscribedAt && (
+              <span
+                title={`Unsubscribed ${new Date(lead.unsubscribedAt).toLocaleString()}`}
+                className="text-[11px] px-1.5 py-0.5 rounded border border-red-500/60 text-red-400 whitespace-nowrap"
+              >
+                🚫 opted out
+              </span>
+            )}
             {lead.interestedAt ? (
               <span
                 title={`Interested ${new Date(lead.interestedAt).toLocaleString()}`}
